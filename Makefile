@@ -1,8 +1,16 @@
+.DEFAULT_GOAL := build
+
+build:
+	tsc
+
+clean:
+	rm lib/nats.js
+	rm lib/nats.js.map
 
 lint:
 	./node_modules/.bin/eslint ./test ./lib/nats.js ./examples ./benchmark
 
-test:
+test: clean build
 	@NODE_ENV=test ./node_modules/.bin/mocha -c\
 	  --reporter list \
 	  --slow 5000 \
