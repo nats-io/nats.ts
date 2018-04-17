@@ -173,8 +173,8 @@ class Server {
 }
 
 class Servers {
-    servers: Server[];
-    currentServer: Server;
+    private servers: Server[];
+    private currentServer: Server;
 
     constructor(randomize: boolean, urls: string[], firstServer?: string) {
         this.servers = [] as Server[];
@@ -248,7 +248,7 @@ class Servers {
             let discovered : {[key: string]: Server} = {};
 
             info.connect_urls.forEach(server => {
-                let u = 'nats://' + server;
+                let u = `nats://${server}`;
                 let s = new Server(u, true);
                 discovered[s.toString()] = s;
             });
@@ -318,35 +318,35 @@ interface Payload {
     msg:string|Buffer;
 }
 
-class Client extends events.EventEmitter {
-    closed?: boolean;
-    connected: boolean = false;
-    currentServer!: Server;
-    encoding?: BufferEncoding;
-    inbound!: Buffer | null;
-    info: ServerInfo = {} as ServerInfo;
-    infoReceived: boolean = false;
-    options: NatsConnectionOptions;
-    pass?: string;
-    payload?: Payload | null;
-    pBufs: boolean = false;
-    pending: any[] | null = [];
-    pingTimer?: number;
-    pongs: any[] | null = [];
-    pout:number = 0;
-    pSize: number = 0;
-    pstate: ParserState = ParserState.CLOSED;
-    reconnecting: boolean = false;
-    reconnects: number = 0;
-    servers: Servers;
-    ssid: number = 1;
-    stream!: net.Socket | TLSSocket | null;
-    subs: {[key: number]: Subscription} | null = {};
-    token?: string;
-    url!: url.UrlObject;
-    user?: string;
-    wasConnected: boolean = false;
-    respmux?:RespMux;
+export class Client extends events.EventEmitter {
+    private closed?: boolean;
+    private connected: boolean = false;
+    private currentServer!: Server;
+    private encoding?: BufferEncoding;
+    private inbound!: Buffer | null;
+    private info: ServerInfo = {} as ServerInfo;
+    private infoReceived: boolean = false;
+    private options: NatsConnectionOptions;
+    private pass?: string;
+    private payload?: Payload | null;
+    private pBufs: boolean = false;
+    private pending: any[] | null = [];
+    private pingTimer?: number;
+    private pongs: any[] | null = [];
+    private pout:number = 0;
+    private pSize: number = 0;
+    private pstate: ParserState = ParserState.CLOSED;
+    private reconnecting: boolean = false;
+    private reconnects: number = 0;
+    private servers: Servers;
+    private ssid: number = 1;
+    private stream!: net.Socket | TLSSocket | null;
+    private subs: {[key: number]: Subscription} | null = {};
+    private token?: string;
+    private url!: url.UrlObject;
+    private user?: string;
+    private wasConnected: boolean = false;
+    private respmux?:RespMux;
 
 
     constructor(arg?: string | number | NatsConnectionOptions | void) {
@@ -519,8 +519,8 @@ class Client extends events.EventEmitter {
      * @api private
      */
     private setupHandlers():void {
-        var client = this;
-        var stream = client.stream;
+        let client = this;
+        let stream = client.stream;
 
         if (stream === null) {
             return;
@@ -1606,7 +1606,7 @@ class Client extends events.EventEmitter {
      * @api private
      */
     private scheduleReconnect():void {
-        var client = this;
+        let client = this;
         // Just return if no more servers
         if (client.servers.length() === 0) {
             return;
@@ -1634,7 +1634,7 @@ class Client extends events.EventEmitter {
      */
     createInbox = createInbox;
 
-    static defaultOptions() : ConnectionOptions {
+    private static defaultOptions() : ConnectionOptions {
         return {
             encoding: "utf8",
             maxPingOut: DEFAULT_MAX_PING_OUT,
@@ -1652,15 +1652,15 @@ class Client extends events.EventEmitter {
     }
 }
 
-interface FlushCallback {
+export interface FlushCallback {
     (err?: NatsError): void;
 }
 
-interface RequestCallback {
+export interface RequestCallback {
     (msg: string | Buffer | object, inbox?: string):void;
 }
 
-interface SubscriptionCallback {
+export interface SubscriptionCallback {
     (msg: string | Buffer | object, inbox: string, subject: string, sid: number):void;
 }
 
@@ -1784,7 +1784,7 @@ class RespMux {
      * @api private
      */
     cancelMuxRequest(token: string | number) {
-        var conf = this.getMuxRequestConfig(token);
+        let conf = this.getMuxRequestConfig(token);
         if (conf) {
             if(conf.timeout) {
                 clearTimeout(conf.timeout);
@@ -1811,9 +1811,9 @@ class RespMux {
  *
  * @api public
  */
-var createInbox = exports.createInbox = function() {
-    return ("_INBOX." + nuid.next());
-};
+export function createInbox() {
+    return (`_INBOX.${nuid.next()}`);
+}
 
 /**
  * Connect to a nats-server and return the client.
@@ -1824,8 +1824,8 @@ var createInbox = exports.createInbox = function() {
  *
  * @api public
  */
-exports.connect = function(opts?: NatsConnectionOptions) {
+export function connect(opts?: NatsConnectionOptions) {
     return new Client(opts);
-};
+}
 
 
