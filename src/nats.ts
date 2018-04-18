@@ -13,9 +13,6 @@
  * limitations under the License.
  */
 
-/* jslint node: true */
-'use strict';
-
 import url = require('url');
 import events = require('events');
 import util = require('util');
@@ -23,7 +20,7 @@ import net = require('net');
 import tls = require('tls');
 import nuid = require('nuid');
 import _ = require('lodash');
-import {ConnectionOptions, SecureContextOptions, TlsOptions, TLSSocket} from "tls";
+import {ConnectionOptions, TLSSocket} from "tls";
 import {isNumber} from "util";
 import Timer = NodeJS.Timer;
 
@@ -173,7 +170,7 @@ class Server {
 }
 
 class Servers {
-    private servers: Server[];
+    private readonly servers: Server[];
     private currentServer: Server;
 
     constructor(randomize: boolean, urls: string[], firstServer?: string) {
@@ -331,7 +328,7 @@ export class Client extends events.EventEmitter {
     private payload?: Payload | null;
     private pBufs: boolean = false;
     private pending: any[] | null = [];
-    private pingTimer?: number;
+    private pingTimer?: Timer;
     private pongs: any[] | null = [];
     private pout:number = 0;
     private pSize: number = 0;
@@ -353,7 +350,7 @@ export class Client extends events.EventEmitter {
         super();
         events.EventEmitter.call(this);
 
-        this.options = this.parseOptions(arg);
+        this.options = Client.parseOptions(arg);
 
         // Set user/pass/token as needed if in options.
         this.user = this.options.user;
@@ -378,7 +375,7 @@ export class Client extends events.EventEmitter {
         this.createConnection();
     }
 
-    private parseOptions(args?: string | number | NatsConnectionOptions | void): NatsConnectionOptions {
+    private static parseOptions(args?: string | number | NatsConnectionOptions | void): NatsConnectionOptions {
         if(args === undefined || args === null) {
             args = {url: DEFAULT_URI} as NatsConnectionOptions;
         }
@@ -471,7 +468,7 @@ export class Client extends events.EventEmitter {
      * @api private
      */
     private connectCB():void {
-        var event = this.reconnecting ? 'reconnect' : 'connect';
+        let event = this.reconnecting ? 'reconnect' : 'connect';
         this.reconnecting = false;
         this.reconnects = 0;
         this.wasConnected = true;
@@ -510,7 +507,7 @@ export class Client extends events.EventEmitter {
             }
             // reschedule
             client.scheduleHeartbeat();
-        }, this.options.pingInterval, this);
+        }, this.options.pingInterval || DEFAULT_PING_INTERVAL, this);
     }
 
     /**
@@ -526,7 +523,7 @@ export class Client extends events.EventEmitter {
             return;
         }
 
-        stream.on('connect', function() {
+        stream.on('connect', () => {
             if (client.pingTimer) {
                 clearTimeout(client.pingTimer);
                 delete client.pingTimer;
@@ -535,7 +532,7 @@ export class Client extends events.EventEmitter {
             client.scheduleHeartbeat();
         });
 
-        stream.on('close', function(hadError) {
+        stream.on('close', () => {
             client.closeStream();
             client.emit('disconnect');
             if (client.closed === true ||
@@ -547,7 +544,7 @@ export class Client extends events.EventEmitter {
             }
         });
 
-        stream.on('error', function(exception) {
+        stream.on('error', (exception) => {
             // If we were connected just return, close event will process
             if (client.wasConnected === true && client.currentServer.didConnect === true) {
                 return;
@@ -575,7 +572,7 @@ export class Client extends events.EventEmitter {
             client.closeStream();
         });
 
-        stream.on('data', function(data) {
+        stream.on('data', (data) => {
             // If inbound exists, concat them together. We try to avoid this for split
             // messages, so this should only really happen for a split control line.
             // Long term answer is hand rolled parser and not regexp.
@@ -803,10 +800,10 @@ export class Client extends events.EventEmitter {
         if(!this.pending) {
             return;
         }
-        var pending = this.pending;
+        let pending = this.pending;
         this.pending = [];
         this.pSize = 0;
-        for (var i = 0; i < pending.length; i++) {
+        for (let i = 0; i < pending.length; i++) {
             if (!SUBRE.test(pending[i])) {
                 // Re-queue the command.
                 this.sendCommand(pending[i]);
@@ -838,7 +835,7 @@ export class Client extends events.EventEmitter {
         if (this.connected === true) {
             // First one let's setup flush..
             if (this.pending.length === 1) {
-                var self = this;
+                let self = this;
                 setImmediate(function() {
                     self.flushPending();
                 });
@@ -910,7 +907,7 @@ export class Client extends events.EventEmitter {
                 case ParserState.AWAITING_CONTROL:
                     // Regex only works on strings, so convert once to be more efficient.
                     // Long term answer is a hand rolled parser, not regex.
-                    var buf = client.inbound.toString('binary', 0, MAX_CONTROL_LINE_SIZE);
+                    let buf = client.inbound.toString('binary', 0, MAX_CONTROL_LINE_SIZE);
                     if ((m = MSG.exec(buf)) !== null) {
                         client.payload = {
                             subj: m[1],
@@ -927,7 +924,7 @@ export class Client extends events.EventEmitter {
                         return;
                     } else if ((m = PONG.exec(buf)) !== null) {
                         client.pout = 0;
-                        var cb = client.pongs && client.pongs.shift();
+                        let cb = client.pongs && client.pongs.shift();
                         if (cb) {
                             cb();
                         } // FIXME: Should we check for exceptions?
@@ -1024,7 +1021,7 @@ export class Client extends events.EventEmitter {
 
                         client.payload.chunks.push(client.inbound.slice(0, client.payload.psize));
                         // don't append trailing control characters
-                        var mbuf = Buffer.concat(client.payload.chunks, client.payload.size);
+                        let mbuf = Buffer.concat(client.payload.chunks, client.payload.size);
 
                         if (client.options.preserveBuffers) {
                             client.payload.msg = mbuf;
@@ -1138,7 +1135,7 @@ export class Client extends events.EventEmitter {
     private processErr(s: string): void {
         // current NATS clients, will raise an error and close on any errors
         // except stale connection and permission errors
-        var m = s ? s.toLowerCase() : '';
+        let m = s ? s.toLowerCase() : '';
         if (m.indexOf(STALE_CONNECTION_ERR) !== -1) {
             // closeStream() triggers a reconnect if allowed
             this.closeStream();
@@ -1335,7 +1332,7 @@ export class Client extends events.EventEmitter {
             return;
         }
 
-        var proto;
+        let proto;
         if (opt_max) {
             proto = [UNSUB, sid, opt_max + CR_LF];
         } else {
@@ -1510,6 +1507,7 @@ export class Client extends events.EventEmitter {
                 callback = opt_options;
             }
             timeout = opt_msg;
+            //@ts-ignore
             opt_options = undefined;
             opt_msg = EMPTY;
         }
@@ -1519,6 +1517,7 @@ export class Client extends events.EventEmitter {
                 callback = timeout;
             }
             timeout = opt_options;
+            //@ts-ignore
             opt_options = undefined;
         }
 
@@ -1531,17 +1530,6 @@ export class Client extends events.EventEmitter {
 
 
     /**
-     * @api private
-     */
-    private createResponseMux():string {
-        if(!this.respmux) {
-            this.respmux = new RespMux(this);
-        }
-        return this.respmux.inbox;
-    };
-
-
-    /**
      * @deprecated
      * @api private
      */
@@ -1549,20 +1537,23 @@ export class Client extends events.EventEmitter {
         if (typeof opt_msg === 'number') {
             callback = opt_options as RequestCallback;
             timeout = opt_msg;
+            //@ts-ignore
             opt_options = undefined;
             opt_msg = EMPTY;
         }
 
         if (typeof opt_options === 'number') {
+            //@ts-ignore
             callback = timeout;
             timeout = opt_options;
+            //@ts-ignore
             opt_options = undefined;
         }
 
         opt_options = opt_options || {};
         opt_options.max = 1;
 
-        var sid = this.request(subject, opt_msg, opt_options, callback);
+        let sid = this.request(subject, opt_msg, opt_options, callback);
         this.timeout(sid, timeout, 1, function() {
             if(callback) {
                 callback(new NatsError(REQ_TIMEOUT_MSG_PREFIX + sid, REQ_TIMEOUT));
@@ -1824,7 +1815,7 @@ export function createInbox() {
  *
  * @api public
  */
-export function connect(opts?: NatsConnectionOptions) {
+export function connect(opts?: NatsConnectionOptions | number) {
     return new Client(opts);
 }
 

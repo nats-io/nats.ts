@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2018 The NATS Authors
+ * Copyright 2018 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -11,84 +11,86 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
  */
 
-/* eslint-env node, es6 */
-/* global describe: false, before: false, after: false, it: false */
-/* jshint -W030 */
-
-'use strict';
-
-var NATS = require('../'),
-    mockserver = require('./support/mock_server'),
-    should = require('should');
+import 'mocha';
+import * as NATS from '../src/nats'
+import * as mockserver from './support/mock_server';
+import {expect} from 'chai'
 
 describe('Ping Timer', function() {
     this.timeout(10000);
-    var PORT = 1966;
-    var server;
+    let PORT = 1966;
+    let server: mockserver.ScriptedServer;
 
     before(function(done) {
-        // default server simply sends connect and responds to one ping
         server = new mockserver.ScriptedServer(PORT);
         server.on('listening', done);
         server.start();
     });
 
-    after(function(done) {
+    after((done) => {
         server.stop(done);
     });
 
-    it('should reconnect if server doesnt ping', function(done) {
-        var nc = NATS.connect({
+    it('should reconnect if server doesnt ping', (done)=> {
+        let opts = {
             port: PORT,
             pingInterval: 200,
             maxReconnectAttempts: 1
-        });
+        } as NATS.NatsConnectionOptions;
+
+        let nc = NATS.connect(opts);
         nc.on('reconnect', () => {
             nc.close();
             done();
-        });
+        })
     });
 
     it('timer pings are sent', function(done) {
-        var nc = NATS.connect({
+        let opts = {
             port: PORT,
-            pingInterval: 200,
+                pingInterval: 200,
             maxPingOut: 5,
             maxReconnectAttempts: 1
-        });
+        } as NATS.NatsConnectionOptions;
 
-        var pingTimerFired = false;
+        let nc = NATS.connect(opts);
+
+        let pingTimerFired = false;
         nc.on('pingtimer', () => {
             pingTimerFired = true;
         });
 
         nc.on('reconnect', () => {
             nc.close();
-            should(pingTimerFired).be.true();
+            expect(pingTimerFired).to.be.true;
             done();
         });
     });
 
-
     it('configured number of missed pings is honored', function(done) {
-        var nc = NATS.connect({
+        let opts = {
             port: PORT,
             pingInterval: 200,
             maxPingOut: 5,
             maxReconnectAttempts: 1
-        });
+        } as NATS.NatsConnectionOptions;
 
-        var maxOut = 0;
+        let nc = NATS.connect(opts);
+
+        let maxOut = 0;
         nc.on('pingcount', (c) => {
             maxOut = Math.max(maxOut, c);
         });
 
         nc.on('reconnect', () => {
-            should(maxOut).be.equal(5);
             nc.close();
+            expect(maxOut).be.equal(5);
             done();
         });
     });
+
+
 });

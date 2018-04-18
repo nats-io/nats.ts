@@ -21,8 +21,5 @@ examples/
 test/
 .istanbul.yml
 .travis.yml
-.eslintrc.js
-.eslintignore
-crockford.jscsrc
 Makefile
 TODO
