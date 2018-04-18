@@ -13,50 +13,49 @@
  * limitations under the License.
  */
 
-/* jslint node: true */
-/* global describe: false, before: false, after: false, it: false */
-'use strict';
+import * as NATS from '../src/nats';
+import * as nsc from './support/nats_server_control';
+import {expect} from 'chai'
+import {Server} from "../lib/test/support/nats_server_control";
+import {NatsConnectionOptions} from "../lib/src/nats";
+import {sleep} from './support/sleep';
 
-var NATS = require('../'),
-    nsc = require('./support/nats_server_control'),
-    sleep = require('./support/sleep'),
-    should = require('should');
 
-describe('Yield', function() {
-    var PORT = 1469;
-    var server;
+describe('Yield', () => {
+    let PORT = 1469;
+    let server: Server;
 
     // Start up our own nats-server
-    before(function(done) {
-        server = nsc.start_server(PORT, done);
+    before((done) => {
+        server = nsc.start_server(PORT, [], done);
     });
 
     // Shutdown our server
-    after(function(done) {
+    after((done) => {
         nsc.stop_server(server, done);
     });
 
-    it('should yield to other events', function(done) {
-        var nc = NATS.connect({
+    it('should yield to other events', (done) => {
+        let nc = NATS.connect({
             port: PORT,
             yieldTime: 5
-        });
+        } as NatsConnectionOptions);
 
-        var start = Date.now();
+        let start = Date.now();
 
-        var timer = setInterval(function() {
-            var delta = Date.now() - start;
+        let timer = setInterval(() => {
+            let delta = Date.now() - start;
             nc.close();
             clearTimeout(timer);
-            delta.should.within(10, 25);
+            expect(delta).to.be.within(10, 25);
             done();
         }, 10);
 
-        nc.subscribe('foo', function() {
-            sleep.sleep(1);
+        nc.subscribe('foo', {}, () => {
+            sleep(1);
         });
 
-        for (var i = 0; i < 256; i++) {
+        for (let i = 0; i < 256; i++) {
             nc.publish('foo', 'hello world');
         }
     });

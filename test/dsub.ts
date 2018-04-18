@@ -13,51 +13,47 @@
  * limitations under the License.
  */
 
-/* jslint node: true */
-/* global describe: false, before: false, after: false, it: false */
-'use strict';
+import * as NATS from '../src/nats';
+import * as nsc from './support/nats_server_control';
+import {Server} from "../lib/test/support/nats_server_control";
+import {expect} from 'chai'
 
-var NATS = require('../'),
-    nsc = require('./support/nats_server_control'),
-    should = require('should');
+describe('Double SUBS', function () {
 
-describe('Double SUBS', function() {
-
-    var PORT = 1922;
-    var flags = ['-DV'];
-    var server;
+    let PORT = 1922;
+    let flags = ['-DV'];
+    let server: Server;
 
     // Start up our own nats-server
-    before(function(done) {
+    before(function (done) {
         server = nsc.start_server(PORT, flags, done);
     });
 
     // Shutdown our server after we are done
-    after(function(done) {
+    after(function (done) {
         nsc.stop_server(server, done);
     });
 
-    it('should not send multiple subscriptions on startup', function(done) {
-        var subsSeen = 0;
-        var subRe = /(\[SUB foo \d\])+/g;
+    it('should not send multiple subscriptions on startup', (done) => {
+        let subsSeen = 0;
+        let subRe = /(\[SUB foo \d\])+/g;
 
         // Capture log output from nats-server and check for double SUB protos.
-        server.stderr.on('data', function(data) {
-            var m;
-            while ((m = subRe.exec(data)) !== null) {
+        server.stderr.on('data', function (data) {
+            let m;
+            while ((m = subRe.exec(data.toString())) !== null) {
                 subsSeen++;
             }
         });
 
-        var nc = NATS.connect(PORT);
+        let nc = NATS.connect(PORT);
         nc.subscribe('foo');
-        nc.on('connect', function(nc) {
-            setTimeout(function() {
+        nc.on('connect', function (nc) {
+            setTimeout(function () {
                 nc.close();
-                subsSeen.should.equal(1);
+                expect(subsSeen).to.be.equal(1);
                 done();
             }, 100);
         });
     });
-
 });

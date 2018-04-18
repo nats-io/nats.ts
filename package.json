@@ -28,7 +28,7 @@
   "contributors": [],
   "main": "./index.js",
   "scripts": {
-    "test": "mocha -r ts-node/register test/*"
+    "test": "mocha --exit --timeout 15000 -r ts-node/register test/*"
   },
   "engines": {
     "node": ">= 6.13.1"

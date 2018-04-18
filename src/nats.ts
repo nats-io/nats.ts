@@ -1370,7 +1370,7 @@ export class Client extends events.EventEmitter {
      * @param {Function} callback
      * @api public
      */
-    timeout(sid: number, timeout: number, expected: number, callback: Function):void {
+    timeout(sid: number, timeout: number, expected: number, callback: TimeoutCallback):void {
         if (!sid) {
             return;
         }
@@ -1655,6 +1655,10 @@ export interface SubscriptionCallback {
     (msg: string | Buffer | object, inbox: string, subject: string, sid: number):void;
 }
 
+export interface TimeoutCallback {
+    (sid: number): void;
+}
+
 interface Subscription {
     subject: string;
     callback?: SubscriptionCallback | null;
@@ -1815,7 +1819,7 @@ export function createInbox() {
  *
  * @api public
  */
-export function connect(opts?: NatsConnectionOptions | number) {
+export function connect(opts?: NatsConnectionOptions | number | string) {
     return new Client(opts);
 }
 

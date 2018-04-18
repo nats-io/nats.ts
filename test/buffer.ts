@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2018 The NATS Authors
+ * Copyright 2018 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,68 +13,61 @@
  * limitations under the License.
  */
 
-/* jslint node: true */
-/* global describe: false, before: false, after: false, it: false */
-'use strict';
+import * as NATS from '../src/nats';
+import * as nsc from './support/nats_server_control';
+import {expect} from 'chai'
+import {Server} from "./support/nats_server_control";
+import {NatsConnectionOptions} from "../src/nats";
 
-var NATS = require('../'),
-    nsc = require('./support/nats_server_control'),
-    should = require('should');
+describe('Buffer', () => {
 
-describe('Buffer', function() {
-
-    var PORT = 1432;
-    var server;
+    let PORT = 1432;
+    let server: Server;
 
     // Start up our own nats-server
-    before(function(done) {
-        server = nsc.start_server(PORT, done);
+    before((done) => {
+        server = nsc.start_server(PORT, [], done);
     });
 
     // Shutdown our server
-    after(function(done) {
+    after((done) => {
         nsc.stop_server(server, done);
     });
 
-    it('should allow sending and receiving raw buffers', function(done) {
-        var nc = NATS.connect({
+    it('should allow sending and receiving raw buffers', (done) => {
+        let nc = NATS.connect({
             'url': 'nats://localhost:' + PORT,
             'preserveBuffers': true
-        });
+        } as NatsConnectionOptions);
 
-        var validBuffer = new Buffer('foo-bar');
+        let validBuffer = new Buffer('foo-bar');
 
-        nc.subscribe('validBuffer', function(msg) {
-
-            should(validBuffer.equals(msg)).equal(true);
+        nc.subscribe('validBuffer', {}, (msg) => {
+            expect(msg).to.be.eql(validBuffer);
             nc.close();
             done();
         });
 
         nc.publish('validBuffer', validBuffer);
-
     });
 
-    it('should allow parsing raw buffers to json', function(done) {
-        var nc = NATS.connect({
+    it('should allow parsing raw buffers to json', (done) => {
+        let nc = NATS.connect({
             'url': 'nats://localhost:' + PORT,
             'preserveBuffers': true,
             'json': true
-        });
+        } as NatsConnectionOptions);
 
-        var jsonString = '{ "foo-bar": true }';
-        var validBuffer = new Buffer(jsonString);
+        let jsonString = '{ "foo-bar": true }';
+        let validBuffer = new Buffer(jsonString);
+        let obj = JSON.parse(jsonString);
 
-        nc.subscribe('validBuffer', function(msg) {
-
-            msg.should.eql({
-                "foo-bar": true
-            });
+        nc.subscribe('validBuffer', {}, (msg) => {
+            expect(msg).to.be.eql(obj);
             nc.close();
             done();
         });
 
         nc.publish('validBuffer', validBuffer);
-
     });
 });

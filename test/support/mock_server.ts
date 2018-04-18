@@ -27,7 +27,7 @@ const PING = /^PING\r\n/i;
 const CONNECT = /^CONNECT\s+([^\r\n]+)\r\n/i;
 
 // default script handles a connect, and initial ping
-function defaultScript() : Script[] {
+function defaultScript(): Script[] {
     let script = [];
     script.push({
         re: CONNECT,
@@ -68,6 +68,7 @@ export class ScriptedServer extends EventEmitter {
     stream!: Server;
     sockets: Socket[];
     buffer!: Buffer;
+
     constructor(port: number, script?: Script[]) {
         super();
         this.port = port;
@@ -80,7 +81,7 @@ export class ScriptedServer extends EventEmitter {
         this.stream = net.createServer((socket: Socket) => {
             this.emit('connect_request');
             this.sendInfo(socket);
-            let client : Client = socket as Client;
+            let client: Client = socket as Client;
             client.script = Array.from(this.script);
             client.on('data', this.handleData(this, client));
         });
@@ -106,7 +107,7 @@ export class ScriptedServer extends EventEmitter {
 
     stop(cb?: Function) {
         this.stream.close(cb);
-        if(this.sockets) {
+        if (this.sockets) {
             this.sockets.forEach(function (socket) {
                 if (!socket.destroyed) {
                     socket.destroy();
@@ -132,7 +133,7 @@ export class ScriptedServer extends EventEmitter {
 
 
     handleData(server: ScriptedServer, client: Client): handler {
-        return function(data): void {
+        return function (data): void {
             // if we have a buffer append to it or make one
             if (client.buffer) {
                 client.buffer = Buffer.concat([client.buffer, data]);
@@ -140,7 +141,7 @@ export class ScriptedServer extends EventEmitter {
                 client.buffer = data;
             }
 
-            if(client.buffer) {
+            if (client.buffer) {
                 // convert to string like node-nats does so we can test protocol
                 let buf = client.buffer.toString('binary', 0, MAX_CONTROL);
                 if (client.script.length) {
@@ -169,7 +170,6 @@ export class ScriptedServer extends EventEmitter {
         };
     }
 }
-
 
 
 function colorize(str: string) {

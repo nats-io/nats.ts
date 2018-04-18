@@ -14,17 +14,17 @@
  *
  */
 
-import 'mocha';
 import * as NATS from '../src/nats'
 import * as mockserver from './support/mock_server';
 import {expect} from 'chai'
+import {NatsConnectionOptions} from "../src/nats";
 
-describe('Ping Timer', function() {
+describe('Ping Timer', function () {
     this.timeout(10000);
     let PORT = 1966;
     let server: mockserver.ScriptedServer;
 
-    before(function(done) {
+    before(function (done) {
         server = new mockserver.ScriptedServer(PORT);
         server.on('listening', done);
         server.start();
@@ -34,7 +34,7 @@ describe('Ping Timer', function() {
         server.stop(done);
     });
 
-    it('should reconnect if server doesnt ping', (done)=> {
+    it('should reconnect if server doesnt ping', (done) => {
         let opts = {
             port: PORT,
             pingInterval: 200,
@@ -48,13 +48,13 @@ describe('Ping Timer', function() {
         })
     });
 
-    it('timer pings are sent', function(done) {
+    it('timer pings are sent', (done) => {
         let opts = {
             port: PORT,
-                pingInterval: 200,
+            pingInterval: 200,
             maxPingOut: 5,
             maxReconnectAttempts: 1
-        } as NATS.NatsConnectionOptions;
+        } as NatsConnectionOptions;
 
         let nc = NATS.connect(opts);
 
@@ -70,15 +70,13 @@ describe('Ping Timer', function() {
         });
     });
 
-    it('configured number of missed pings is honored', function(done) {
-        let opts = {
+    it('configured number of missed pings is honored', (done) => {
+        let nc = NATS.connect({
             port: PORT,
             pingInterval: 200,
             maxPingOut: 5,
             maxReconnectAttempts: 1
-        } as NATS.NatsConnectionOptions;
-
-        let nc = NATS.connect(opts);
+        } as NatsConnectionOptions);
 
         let maxOut = 0;
         nc.on('pingcount', (c) => {
@@ -91,6 +89,4 @@ describe('Ping Timer', function() {
             done();
         });
     });
-
-
 });

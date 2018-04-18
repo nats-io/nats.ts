@@ -13,33 +13,31 @@
  * limitations under the License.
  */
 
-/* jslint node: true */
-'use strict';
-
-var fs = require('fs');
+import {PathLike, writeFileSync} from "fs";
 
 // TODO: add array support
-function jsonToYaml(o) {
-    var indent = arguments[1] !== undefined ? arguments[1] + '  ' : '';
-    var buf = [];
-    for (var k in o) {
+export function jsonToYaml(o: object, indent?: string): string {
+    let pad = arguments[1] !== undefined ? arguments[1] + '  ' : '';
+    let buf = [];
+    for (let k in o) {
         if (o.hasOwnProperty(k)) {
-            var v = o[k];
+            //@ts-ignore
+            let v = o[k];
             if (Array.isArray(v)) {
-                buf.push(indent + k + ' [');
-                buf.push(jsonToYaml(v, indent));
-                buf.push(indent + ' ]');
+                buf.push(pad + k + ' [');
+                buf.push(jsonToYaml(v, pad));
+                buf.push(pad + ' ]');
             } else if (typeof v === 'object') {
                 // don't print a key if it is an array and it is an index
-                var kn = Array.isArray(o) ? '' : k;
-                buf.push(indent + kn + ' {');
-                buf.push(jsonToYaml(v, indent));
-                buf.push(indent + ' }');
+                let kn = Array.isArray(o) ? '' : k;
+                buf.push(pad + kn + ' {');
+                buf.push(jsonToYaml(v, pad));
+                buf.push(pad + ' }');
             } else {
                 if (!Array.isArray(o)) {
-                    buf.push(indent + k + ': ' + v);
+                    buf.push(pad + k + ': ' + v);
                 } else {
-                    buf.push(indent + v);
+                    buf.push(pad + v);
                 }
             }
         }
@@ -47,8 +45,6 @@ function jsonToYaml(o) {
     return buf.join('\n');
 }
 
-exports.j = jsonToYaml;
-
-exports.writeFile = function(fn, data) {
-    fs.writeFileSync(fn, data);
-};
+export function writeFile(fn: PathLike, data: any) {
+    writeFileSync(fn, data);
+}

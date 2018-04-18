@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env ts-node
 
 /*
  * Copyright 2013-2018 The NATS Authors
@@ -14,49 +14,54 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-/* jslint node: true */
-'use strict';
-
 import * as NATS from '../../src/nats';
 import * as fs from 'fs';
 
 let count = process.argv.length;
-let port = parseInt(process.argv[count-1], 10);
-let nats = NATS.connect({port: port} as NATS.NatsConnectionOptions);
+let port = parseInt(process.argv[count - 1], 10);
+let nc = NATS.connect({port: port} as NATS.NatsConnectionOptions);
 
 
-nats.on('connect', function() {
+nc.on('connect', function () {
     fs.writeFile('/tmp/existing_client.log', 'connected\n', (err) => {
-        console.error(err);
+        if (err) {
+            console.error(err);
+        }
     });
 });
 
 
-nats.on('error', function(e) {
+nc.on('error', function (e) {
     fs.appendFile('/tmp/existing_client.log', 'got error\n' + e, (err) => {
-        console.error(err);
+        if (err) {
+            console.error(err);
+        }
     });
     process.exit(1);
 });
 
-nats.subscribe("close", {} as NATS.SubscribeOptions, (msg, inbox) => {
+nc.subscribe("close", {} as NATS.SubscribeOptions, (msg, inbox) => {
     fs.appendFile('/tmp/existing_client.log', 'got close\n', (err) => {
-        console.error(err);
-        process.exit(1);
-    });
-    if(inbox) {
-        nats.publish(inbox, "closing");
-    }
-    nats.flush(function() {
-        nats.close();
-        fs.appendFile('/tmp/existing_client.log', 'closed\n', (err) => {
+        if (err) {
             console.error(err);
             process.exit(1);
+        }
+    });
+    if (inbox) {
+        nc.publish(inbox, "closing");
+    }
+    nc.flush(function () {
+        nc.close();
+        fs.appendFile('/tmp/existing_client.log', 'closed\n', (err) => {
+            if (err) {
+                console.error(err);
+                process.exit(1);
+            }
         });
+        process.exit(0);
     });
 });
 
-nats.flush(function() {
-    nats.publish("started", "");
+nc.flush(function () {
+    nc.publish("started", "");
 });

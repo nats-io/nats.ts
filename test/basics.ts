@@ -19,9 +19,8 @@ import * as nsc from './support/nats_server_control';
 import {expect} from 'chai'
 import {Server} from "../lib/test/support/nats_server_control";
 import {NatsConnectionOptions} from "../lib/src/nats";
-import {NatsError} from "../src/nats";
 
-describe('Basics', function() {
+describe('Basics', function () {
 
     let PORT = 1423;
     let server: Server;
@@ -32,11 +31,11 @@ describe('Basics', function() {
     });
 
     // Shutdown our server
-    after( (done) => {
+    after((done) => {
         nsc.stop_server(server, done);
     });
 
-    it('should do basic subscribe and unsubscribe',  (done) => {
+    it('should do basic subscribe and unsubscribe', (done) => {
         let nc = NATS.connect(PORT);
         let sid = nc.subscribe('foo');
         expect(sid).to.exist;
@@ -58,7 +57,7 @@ describe('Basics', function() {
 
     it('should fire a callback for subscription', (done) => {
         let nc = NATS.connect(PORT);
-        nc.subscribe('foo', {},  () => {
+        nc.subscribe('foo', {}, () => {
             nc.close();
             done();
         });
@@ -68,7 +67,7 @@ describe('Basics', function() {
     it('should include the correct message in the callback', (done) => {
         let nc = NATS.connect(PORT);
         let data = 'Hello World';
-        nc.subscribe('foo', {},  (msg) => {
+        nc.subscribe('foo', {}, (msg) => {
             nc.close();
             expect(msg).to.exist;
             expect(msg).to.be.equal(data);
@@ -92,12 +91,12 @@ describe('Basics', function() {
         nc.publish('foo', data, inbox);
     });
 
-    it('should do request-reply',  (done) => {
+    it('should do request-reply', (done) => {
         let nc = NATS.connect(PORT);
         let initMsg = 'Hello World';
         let replyMsg = 'Hello Back!';
 
-        nc.subscribe('foo', {},(msg, reply) => {
+        nc.subscribe('foo', {}, (msg, reply) => {
             expect(msg).to.exist;
             expect(msg).to.be.equal(initMsg);
             expect(reply).to.exist;
@@ -113,7 +112,7 @@ describe('Basics', function() {
         });
     });
 
-    it('should return a sub id for requests',  (done) => {
+    it('should return a sub id for requests', (done) => {
         let nc = NATS.connect(PORT);
         let initMsg = 'Hello World';
         let replyMsg = 'Hello Back!';
@@ -125,7 +124,7 @@ describe('Basics', function() {
             nc.publish(reply, replyMsg);
         });
 
-        nc.subscribe('foo', {},(msg, reply) => {
+        nc.subscribe('foo', {}, (msg, reply) => {
             nc.publish(reply, replyMsg);
         });
 
@@ -141,7 +140,7 @@ describe('Basics', function() {
         });
     });
 
-    it('should do single partial wildcard subscriptions correctly',  (done) => {
+    it('should do single partial wildcard subscriptions correctly', (done) => {
         let nc = NATS.connect(PORT);
         let expected = 3;
         let received = 0;
@@ -160,11 +159,11 @@ describe('Basics', function() {
         nc.publish('baz');
     });
 
-    it('should do partial wildcard subscriptions correctly',  (done) => {
+    it('should do partial wildcard subscriptions correctly', (done) => {
         let nc = NATS.connect(PORT);
         let expected = 3;
         let received = 0;
-        nc.subscribe('foo.bar.*', {},  () => {
+        nc.subscribe('foo.bar.*', {}, () => {
             received += 1;
             if (received === expected) {
                 nc.close();
@@ -210,15 +209,15 @@ describe('Basics', function() {
         nc.publish(subject);
     });
 
-    it('should do callback after publish is flushed',  (done) => {
+    it('should do callback after publish is flushed', (done) => {
         let nc = NATS.connect(PORT);
-        nc.publish('foo', "", "",  () => {
+        nc.publish('foo', "", "", () => {
             nc.close();
             done();
         });
     });
 
-    it('should do callback after flush',  (done) => {
+    it('should do callback after flush', (done) => {
         let nc = NATS.connect(PORT);
         nc.flush(function () {
             nc.close();
@@ -226,7 +225,7 @@ describe('Basics', function() {
         });
     });
 
-    it('should handle an unsubscribe after close of connection',  (done) => {
+    it('should handle an unsubscribe after close of connection', (done) => {
         let nc = NATS.connect(PORT);
         let sid = nc.subscribe('foo');
         nc.close();
@@ -234,7 +233,7 @@ describe('Basics', function() {
         done();
     });
 
-    it('should not receive data after unsubscribe call',  (done) => {
+    it('should not receive data after unsubscribe call', (done) => {
         let nc = NATS.connect(PORT);
         let received = 0;
         let expected = 1;
@@ -253,7 +252,7 @@ describe('Basics', function() {
         });
     });
 
-    it('should pass sid properly to a message callback if requested',  (done) => {
+    it('should pass sid properly to a message callback if requested', (done) => {
         let nc = NATS.connect(PORT);
         let sid = nc.subscribe('foo', {}, (msg, reply, subj, lsid) => {
             expect(lsid).to.equal(sid);
@@ -263,7 +262,7 @@ describe('Basics', function() {
         nc.publish('foo');
     });
 
-    it('should parse json messages',  (done) => {
+    it('should parse json messages', (done) => {
         let config = {
             port: PORT,
             json: true
@@ -306,13 +305,13 @@ describe('Basics', function() {
         nc.publish('foo2', utf8msg);
     });
 
-    it('should validate json messages before publishing',  (done) => {
+    it('should validate json messages before publishing', (done) => {
         let config = {
             port: PORT,
             json: true
         } as NatsConnectionOptions;
         let nc = NATS.connect(config);
-        let error : Error | null = null;
+        let error: Error | null = null;
 
         try {
             nc.publish('foo3', 'not JSON');
@@ -372,7 +371,7 @@ describe('Basics', function() {
             nc.publish(reply, replyMsg);
         });
 
-        nc.requestOne('foo', initMsg, {}, 1000,  (reply) => {
+        nc.requestOne('foo', initMsg, {}, 1000, (reply) => {
             expect(reply).to.exist;
             expect(reply).to.be.equal(replyMsg);
             nc.close();
@@ -380,12 +379,12 @@ describe('Basics', function() {
         });
     }
 
-    it('should do requestone-get-reply',  (done) => {
+    it('should do requestone-get-reply', (done) => {
         let nc = NATS.connect(PORT);
         requestOneGetsReply(nc, done);
     });
 
-    it('oldRequestOne should do requestone-get-reply',  (done) => {
+    it('oldRequestOne should do requestone-get-reply', (done) => {
         let nc = NATS.connect({port: PORT, useOldRequestStyle: true} as NatsConnectionOptions);
         requestOneGetsReply(nc, done);
     });
@@ -411,28 +410,28 @@ describe('Basics', function() {
             }, 1500);
         });
 
-        nc.requestOne(rsub, "", {}, 1000,  (reply) => {
+        nc.requestOne(rsub, "", {}, 1000, (reply) => {
             expect(reply).to.not.be.instanceof(Error);
             expect(reply).to.exist;
             count++;
         });
     }
 
-    it('should do requestone-will-unsubscribe',  (done) => {
+    it('should do requestone-will-unsubscribe', (done) => {
         let nc = NATS.connect(PORT);
         requestOneWillUnsubscribe(nc, done);
     }).timeout(3000);
 
 
-    it('oldRequest: should do requestone-will-unsubscribe',  (done) => {
+    it('oldRequest: should do requestone-will-unsubscribe', (done) => {
         let nc = NATS.connect({port: PORT, useOldRequestStyle: true} as NatsConnectionOptions);
         requestOneWillUnsubscribe(nc, done);
     }).timeout(3000);
 
     function requestTimeoutTest(nc: NATS.Client, done: Function) {
-        nc.requestOne('a.b.c', '', {}, 1000,  (reply) => {
+        nc.requestOne('a.b.c', '', {}, 1000, (reply) => {
             expect(reply).to.exist;
-            expect(reply).to.be.an.instanceof(NatsError);
+            expect(reply).to.be.an.instanceof(Error);
             expect(reply).to.have.property('code');
             //@ts-ignore
             expect(reply.code).to.be.equal(NATS.REQ_TIMEOUT);
@@ -441,7 +440,7 @@ describe('Basics', function() {
         });
     }
 
-    it('should do requestone-can-timeout',(done) => {
+    it('should do requestone-can-timeout', (done) => {
         let nc = NATS.connect(PORT);
         requestTimeoutTest(nc, done);
     });
@@ -455,7 +454,7 @@ describe('Basics', function() {
         let replies = 0;
         let responses = 0;
         // set a subscriber to respond to the request
-        nc.subscribe('a.b.c', { max: 1 } as NATS.SubscribeOptions , (msg, reply) => {
+        nc.subscribe('a.b.c', {max: 1} as NATS.SubscribeOptions, (msg, reply) => {
             setTimeout(function () {
                 nc.publish(reply);
                 nc.flush();
@@ -465,7 +464,7 @@ describe('Basics', function() {
 
         // request one - we expect a timeout
         nc.requestOne('a.b.c', '', {}, 250, (reply) => {
-            expect(reply).to.be.an.instanceof(NatsError);
+            expect(reply).to.be.an.instanceof(Error);
             expect(reply).to.have.property('code');
             //@ts-ignore
             expect(reply.code).to.be.equal(NATS.REQ_TIMEOUT);
@@ -483,7 +482,7 @@ describe('Basics', function() {
         }, 1000);
     }
 
-    it('should unsubscribe when request one timesout',  (done) => {
+    it('should unsubscribe when request one timesout', (done) => {
         let nc = NATS.connect(PORT);
         shouldUnsubscribeWhenRequestOneTimeout(nc, done);
     }).timeout(3000);
@@ -495,9 +494,9 @@ describe('Basics', function() {
 
     it('requestone has negative sids', function (done) {
         let nc = NATS.connect(PORT);
-        nc.flush(function() {
-            let sid = nc.requestOne("121.2.13.4", "", {},1000, (r) => {
-                expect.fail(r, null,"got message when it shouldn't have");
+        nc.flush(function () {
+            let sid = nc.requestOne("121.2.13.4", "", {}, 1000, (r) => {
+                expect.fail(r, null, "got message when it shouldn't have");
             });
             expect(sid).to.be.a('number');
             expect(sid).to.be.below(0);
@@ -519,18 +518,18 @@ describe('Basics', function() {
         let four = false;
         let three = true;
         let count = 0;
-        nc.flush(function() {
-            nc.requestOne("a", "", {}, 1, function() {
+        nc.flush(function () {
+            nc.requestOne("a", "", {}, 1, function () {
                 all = true;
                 called();
             });
 
-            nc.requestOne("b", "", {}, 1, function() {
+            nc.requestOne("b", "", {}, 1, function () {
                 four = true;
                 called();
             });
 
-            nc.requestOne("b", "", {}, 1, function() {
+            nc.requestOne("b", "", {}, 1, function () {
                 three = true;
                 called();
             });
@@ -538,7 +537,7 @@ describe('Basics', function() {
 
         function called() {
             count++;
-            if(count === 3) {
+            if (count === 3) {
                 expect(all).to.be.true;
                 expect(four).to.be.true;
                 expect(three).to.be.true;
@@ -548,7 +547,7 @@ describe('Basics', function() {
         }
     }
 
-    it('requestOne: optional param transpositions',  (done) => {
+    it('requestOne: optional param transpositions', (done) => {
         let nc = NATS.connect(PORT);
         paramTranspositions(nc, done);
     });
