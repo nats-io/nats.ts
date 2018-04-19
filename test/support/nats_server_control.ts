@@ -16,7 +16,7 @@
 
 import {ChildProcess, spawn} from 'child_process';
 import * as net from 'net';
-import {Socket} from "net";
+import {Socket} from 'net';
 import Timer = NodeJS.Timer;
 
 let SERVER = (process.env.TRAVIS) ? 'gnatsd/gnatsd' : 'gnatsd';
@@ -27,7 +27,7 @@ export interface Server extends ChildProcess {
 }
 
 
-export function start_server(port: number, opt_flags?: string[], done?: Function) {
+export function start_server(port: number, opt_flags?: string[], done?: Function): Server {
     if (!port) {
         port = DEFAULT_PORT;
     }
@@ -123,7 +123,7 @@ export function start_server(port: number, opt_flags?: string[], done?: Function
     return server;
 }
 
-function wait_stop(server: Server, done?: Function) {
+function wait_stop(server: Server, done?: Function): void {
     if (server.killed) {
         if (done) {
             done();
@@ -135,8 +135,8 @@ function wait_stop(server: Server, done?: Function) {
     }
 }
 
-export function stop_server(server: Server, done: Function) {
-    if (server) {
+export function stop_server(server: Server | null, done?: Function): void {
+    if (server && !server.killed) {
         server.kill();
         wait_stop(server, done);
     } else if (done) {
@@ -147,7 +147,7 @@ export function stop_server(server: Server, done: Function) {
 
 // starts a number of servers in a cluster at the specified ports.
 // must call with at least one port.
-function start_cluster(ports: number[], route_port: number, opt_flags?: string[], done?: Function) {
+export function start_cluster(ports: number[], route_port: number, opt_flags?: string[], done?: Function): Server[] {
     if (typeof opt_flags == 'function') {
         done = opt_flags;
         opt_flags = [];
@@ -177,7 +177,7 @@ function start_cluster(ports: number[], route_port: number, opt_flags?: string[]
 
 // adds more cluster members, if more than one server is added additional
 // servers are added after the specified delay.
-export function add_member_with_delay(ports: number[], route_port: number, delay: number, opt_flags?: string[], done?: Function) {
+export function add_member_with_delay(ports: number[], route_port: number, delay: number, opt_flags?: string[], done?: Function): Server[] {
     if (typeof opt_flags == 'function') {
         done = opt_flags;
         opt_flags = [];
@@ -197,24 +197,22 @@ export function add_member_with_delay(ports: number[], route_port: number, delay
     return servers;
 }
 
-export function add_member(port: number, route_port: number, cluster_port: number, opt_flags?: string[], done?: Function) {
+export function add_member(port: number, route_port: number, cluster_port: number, opt_flags?: string[], done?: Function): Server {
     if (typeof opt_flags == 'function') {
         done = opt_flags;
         opt_flags = [];
     }
     opt_flags = opt_flags || [];
-    var opts = JSON.parse(JSON.stringify(opt_flags));
+    let opts = JSON.parse(JSON.stringify(opt_flags));
     opts.push('--routes', 'nats://localhost:' + route_port);
     opts.push('--cluster', 'nats://localhost:' + cluster_port);
 
     return start_server(port, opts, done);
 }
 
-exports.start_cluster = start_cluster;
 
-exports.stop_cluster = function (servers: Server[], done: Function) {
-    var count = servers.length;
-
+export function stop_cluster(servers: Server[], done: Function): void {
+    let count = servers.length;
     function latch() {
         count--;
         if (count === 0) {
@@ -225,11 +223,11 @@ exports.stop_cluster = function (servers: Server[], done: Function) {
     servers.forEach(function (s) {
         stop_server(s, latch);
     });
-};
+}
 
-exports.find_server = function (pn: number, servers: Server[]) {
+export function find_server(pn: number, servers: Server[]): Server | void {
     let port = pn.toString();
     return servers.find(function (s) {
-        return s.args[2] === port;
+        return s.args[1] === port;
     });
-};
+}

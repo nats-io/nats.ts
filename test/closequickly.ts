@@ -14,11 +14,11 @@
  */
 
 import * as NATS from '../src/nats';
+import {NatsConnectionOptions} from '../src/nats';
 import * as nsc from './support/nats_server_control';
-import {Server} from "./support/nats_server_control";
-import {NatsConnectionOptions} from "../lib/src/nats";
-import Timer = NodeJS.Timer;
+import {Server} from './support/nats_server_control';
 import * as child_process from "child_process";
+import Timer = NodeJS.Timer;
 
 describe('Close functionality', () => {
 

@@ -14,10 +14,10 @@
  */
 
 import * as NATS from '../src/nats';
+import {NatsConnectionOptions} from '../src/nats';
 import * as nsc from './support/nats_server_control';
+import {Server} from './support/nats_server_control';
 import {expect} from 'chai'
-import {Server} from "./support/nats_server_control";
-import {NatsConnectionOptions} from "../src/nats";
 
 describe('Basic Connectivity', function () {
 
@@ -107,13 +107,13 @@ describe('Basic Connectivity', function () {
         });
         setTimeout(function () {
             ub.publish('topic1', 'hello');
-        }, 100 * 1);
+        }, 100);
         setTimeout(function () {
             expect(recvMsg).to.be.equal('hello');
             ua.close();
             ub.close();
             done();
-        }, 100 * 2);
+        }, 200);
     });
 
 

@@ -20,9 +20,9 @@ import net = require('net');
 import tls = require('tls');
 import nuid = require('nuid');
 import _ = require('lodash');
+import Timer = NodeJS.Timer;
 import {ConnectionOptions, TLSSocket} from "tls";
 import {isNumber} from "util";
-import Timer = NodeJS.Timer;
 
 export const VERSION = '0.8.6';
 
@@ -1609,7 +1609,7 @@ export class Client extends events.EventEmitter {
         }
         // Only stall if we have connected before.
         let wait = 0;
-        let s = client.servers.next()
+        let s = client.servers.next();
         if (s && s.didConnect === true && this.options.reconnectTimeWait !== undefined) {
             wait = this.options.reconnectTimeWait;
         }

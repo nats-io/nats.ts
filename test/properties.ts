@@ -14,11 +14,11 @@
  */
 
 import * as NATS from '../src/nats';
+import {NatsConnectionOptions} from '../src/nats';
 import {expect} from 'chai'
-import {NatsConnectionOptions} from "../lib/src/nats";
 import * as _ from 'lodash';
 import * as nsc from "./support/nats_server_control";
-import {Server} from "../lib/test/support/nats_server_control";
+import {Server} from "./support/nats_server_control";
 
 describe('Base Properties', () => {
 
@@ -126,8 +126,6 @@ describe('Connection Properties', () => {
             'reconnectTimeWait': 11,
             'useOldRequestStyle': true,
         } as NatsConnectionOptions;
-
-        console.log(options.url);
 
         nc = NATS.connect(options);
         nc.on('error', () => {

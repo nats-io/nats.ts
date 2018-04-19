@@ -15,9 +15,9 @@
  */
 
 import * as NATS from '../src/nats'
+import {NatsConnectionOptions} from '../src/nats'
 import * as mockserver from './support/mock_server';
 import {expect} from 'chai'
-import {NatsConnectionOptions} from "../src/nats";
 
 describe('Ping Timer', function () {
     this.timeout(10000);

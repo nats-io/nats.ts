@@ -14,9 +14,9 @@
  */
 
 import * as NATS from '../src/nats';
+import {NatsConnectionOptions} from '../src/nats';
 import * as nsc from './support/nats_server_control';
-import {Server} from "../lib/test/support/nats_server_control";
-import {NatsConnectionOptions} from "../lib/src/nats";
+import {Server} from './support/nats_server_control';
 import * as ncu from './support/nats_conf_utils';
 import * as os from 'os';
 import * as fs from 'fs';

@@ -14,11 +14,9 @@
  */
 
 import * as net from 'net';
+import {Server, Socket} from 'net';
 import * as nuid from 'nuid';
-import * as events from 'events';
-import * as util from 'util';
-import {Server, Socket} from "net";
-import {EventEmitter} from "events";
+import {EventEmitter} from 'events';
 
 
 const MAX_CONTROL = 1048576;

@@ -18,11 +18,11 @@
 'use strict';
 
 import * as NATS from '../src/nats';
+import {NatsConnectionOptions} from '../src/nats';
 import * as nsc from './support/nats_server_control';
+import {Server} from './support/nats_server_control';
 import * as crypto from 'crypto';
 import {expect} from 'chai'
-import {Server} from "../lib/test/support/nats_server_control";
-import {NatsConnectionOptions} from "../lib/src/nats";
 
 
 describe('Binary', () => {
