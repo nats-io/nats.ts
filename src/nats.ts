@@ -24,7 +24,7 @@ import Timer = NodeJS.Timer;
 import {ConnectionOptions, TLSSocket} from "tls";
 import {isNumber} from "util";
 
-export const VERSION = '0.8.6';
+export const VERSION = '1.0.0';
 
 export const BAD_AUTHENTICATION = 'BAD_AUTHENTICATION';
 export const BAD_JSON = 'BAD_JSON';

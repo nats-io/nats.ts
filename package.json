@@ -1,7 +1,7 @@
 {
-  "name": "nats",
-  "version": "0.8.6",
-  "description": "Node.js client for NATS, a lightweight, high-performance cloud native messaging system",
+  "name": "ts-nats",
+  "version": "1.0.0",
+  "description": "Typescript Node.js client for NATS, a lightweight, high-performance cloud native messaging system",
   "keywords": [
     "nats",
     "messaging",
@@ -15,10 +15,10 @@
   "homepage": "https://nats.io",
   "repository": {
     "type": "git",
-    "url": "git@github.com:nats-io/node-nats.git"
+    "url": "git@github.com:nats-io/ts-nats.git"
   },
   "bugs": {
-    "url": "https://github.com/nats-io/node-nats/issues"
+    "url": "https://github.com/nats-io/ts-nats/issues"
   },
   "license": "Apache-2.0",
   "private": false,
@@ -28,7 +28,12 @@
   "contributors": [],
   "main": "./index.js",
   "scripts": {
-    "test": "mocha --exit --timeout 15000 -r ts-node/register test/*"
+    "build": "npm run clean:dist && tsc && npm run copy:dist",
+    "clean": "npm run clean:dist",
+    "copy:dist": "cp lib/src/nats.{d.ts,js} lib/",
+    "clean:dist": "rm -rf lib",
+    "test": "mocha --exit --timeout 15000 -r ts-node/register test/*",
+    "pack": "npm pack"
   },
   "engines": {
     "node": ">= 6.13.1"
@@ -50,5 +55,5 @@
     "ts-node": "^6.0.0",
     "typescript": "^2.8.1"
   },
-  "typings": "./index.d.ts"
+  "typings": "./lib/nats.d.ts"
 }

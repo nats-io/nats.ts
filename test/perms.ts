@@ -45,7 +45,7 @@ describe('Auth Basics', () => {
             }
         };
         let cf = path.resolve(os.tmpdir(), 'conf-' + next() + '.conf');
-        console.log(cf);
+        // console.log(cf);
         fs.writeFile(cf, ncu.jsonToYaml(conf), (err) => {
             if (err) {
                 done(err);
