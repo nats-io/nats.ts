@@ -3,6 +3,9 @@ npm-debug.log
 .DS_Store
 .idea
 .settings/
+lib/src/*
+lib/test/*
+src/*
 
 *.log
 *.heapsnapshot
@@ -21,8 +24,6 @@ examples/
 test/
 .istanbul.yml
 .travis.yml
-.eslintrc.js
-.eslintignore
-crockford.jscsrc
+tsconfig.json
 Makefile
 TODO
