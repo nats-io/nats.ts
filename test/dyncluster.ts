@@ -66,7 +66,7 @@ describe('Dynamic Cluster - Connect URLs', () => {
                 });
             });
         });
-    }).timeout(10000);
+    });
 
     it('servers are shuffled', (done) => {
         let route_port = 54320;
@@ -104,7 +104,7 @@ describe('Dynamic Cluster - Connect URLs', () => {
                 done();
             });
         });
-    }).timeout(10000);
+    });
 
     it('added servers not shuffled when noRandomize is set', (done) => {
         let route_port = 54320;
@@ -158,7 +158,7 @@ describe('Dynamic Cluster - Connect URLs', () => {
                 connectAndRecordPorts(check);
             }
         });
-    }).timeout(10000);
+    });
 
 
     it('joins url and servers', (done) => {
@@ -188,7 +188,7 @@ describe('Dynamic Cluster - Connect URLs', () => {
                 done();
             });
         });
-    }).timeout(10000);
+    });
 
     it('discovered servers', (done) => {
         let route_port = 12892;

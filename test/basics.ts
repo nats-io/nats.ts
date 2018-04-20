@@ -420,13 +420,13 @@ describe('Basics', function () {
     it('should do requestone-will-unsubscribe', (done) => {
         let nc = NATS.connect(PORT);
         requestOneWillUnsubscribe(nc, done);
-    }).timeout(3000);
+    });
 
 
     it('oldRequest: should do requestone-will-unsubscribe', (done) => {
         let nc = NATS.connect({port: PORT, useOldRequestStyle: true} as NatsConnectionOptions);
         requestOneWillUnsubscribe(nc, done);
-    }).timeout(3000);
+    });
 
     function requestTimeoutTest(nc: NATS.Client, done: Function) {
         nc.requestOne('a.b.c', '', {}, 1000, (reply) => {
@@ -485,12 +485,12 @@ describe('Basics', function () {
     it('should unsubscribe when request one timesout', (done) => {
         let nc = NATS.connect(PORT);
         shouldUnsubscribeWhenRequestOneTimeout(nc, done);
-    }).timeout(3000);
+    });
 
     it('old requestOne should unsubscribe when request one timesout', (done) => {
         let nc = NATS.connect({port: PORT, useOldRequestStyle: true} as NatsConnectionOptions);
         shouldUnsubscribeWhenRequestOneTimeout(nc, done);
-    }).timeout(3000);
+    });
 
     it('requestone has negative sids', function (done) {
         let nc = NATS.connect(PORT);

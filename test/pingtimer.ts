@@ -20,7 +20,6 @@ import * as mockserver from './support/mock_server';
 import {expect} from 'chai'
 
 describe('Ping Timer', function () {
-    this.timeout(10000);
     let PORT = 1966;
     let server: mockserver.ScriptedServer;
 
