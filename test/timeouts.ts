@@ -111,7 +111,7 @@ describe('Timeout and max received events for subscriptions', () => {
         let nc = NATS.connect(PORT);
         nc.on('connect', () => {
             nc.request('foo', "", {max: 1, timeout: 1000}, (err) => {
-                expect(err).to.be.instanceOf(NATS.NatsError);
+                expect(err).to.exist;
                 //@ts-ignore
                 expect(err.code).to.be.equal(NATS.REQ_TIMEOUT);
                 nc.close();
@@ -134,7 +134,7 @@ describe('Timeout and max received events for subscriptions', () => {
                     return;
                 }
                 expect(responses).to.be.equal(1);
-                expect(err).to.be.instanceOf(NATS.NatsError);
+                expect(err).to.exist;
                 //@ts-ignore
                 expect(err.code).to.be.equal(NATS.REQ_TIMEOUT);
                 nc.close();

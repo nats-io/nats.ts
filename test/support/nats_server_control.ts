@@ -231,3 +231,21 @@ export function find_server(pn: number, servers: Server[]): Server | void {
         return s.args[1] === port;
     });
 }
+
+let startPort = 6000;
+export const nonAllocatedPort = 65000;
+
+export function alloc(): number {
+    console.log('alloc', startPort);
+    return startPort++;
+}
+
+export function allocn(count: number): number[] {
+    let a: number[] = [];
+    if(count) {
+        for(let i=0; i < count; i++) {
+            a.push(alloc());
+        }
+    }
+    return a;
+}

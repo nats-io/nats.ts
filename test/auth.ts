@@ -41,7 +41,7 @@ describe('Authorization', () => {
         let nc = NATS.connect(PORT);
         nc.on('error', function(err) {
             expect(err).to.exist;
-            expect(err).to.match(/Authorization/);
+            expect(err.message).to.match(/Authorization/);
             nc.close();
             done();
         });
