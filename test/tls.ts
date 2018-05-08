@@ -84,7 +84,7 @@ describe('TLS', () => {
         } as NatsConnectionOptions);
         nc.on('error', function(err) {
             expect(err).to.exist;
-            expect(err).to.match(/unable to verify the first certificate/);
+            expect(err.message).to.match(/unable to verify the first certificate/);
             nc.close();
             done();
         });
