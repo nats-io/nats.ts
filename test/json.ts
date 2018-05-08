@@ -34,56 +34,97 @@ describe('JSON payloads', () => {
         nsc.stop_server(server, done);
     });
 
-    it('should pub/sub with json', (done) => {
-        let nc = NATS.connect({
-            json: true,
-            port: PORT
-        } as NatsConnectionOptions);
+    function testPubSub(input: any, expected?: any) {
+        if (expected === undefined) {
+            expected = input;
+        }
 
-        let payload = {
-            field: 'hello',
-            body: 'world'
+        return (done: Function) => {
+            const nc = NATS.connect({
+                json: true,
+                port: PORT
+            } as NatsConnectionOptions);
+
+            nc.subscribe('pubsub', {}, (msg: any, reply, subj, sid) => {
+                expect(msg).to.deep.equal(expected);
+                nc.unsubscribe(sid);
+                nc.close();
+
+                done();
+            });
+
+            nc.publish('pubsub', input);
         };
+    }
 
-        nc.subscribe('foo', {}, (msg, reply, subj, sid) => {
-            expect(msg).to.be.eql(payload);
-            nc.unsubscribe(sid);
-            nc.close();
-            done();
-        });
+    function testReqRep(input: any, expected?: any, useOldRequestStyle = false) {
+        if (expected === undefined) {
+            expected = input;
+        }
 
-        nc.publish('foo', payload);
-    });
+        return (done: Function) => {
+            const nc = NATS.connect({
+                json: true,
+                port: PORT,
+                useOldRequestStyle: useOldRequestStyle
+            } as NatsConnectionOptions);
 
-    it('should pub/sub fail not json', (done) => {
-        let nc = NATS.connect({
+            nc.subscribe('reqrep', { max: 1 }, (msg, reply) => {
+                nc.publish(reply, msg);
+            });
+
+            nc.request('reqrep', input, {max: 1}, (msg: any) => {
+                expect(msg).to.deep.equal(expected);
+                nc.close();
+
+                done();
+            });
+        };
+    }
+
+    it('should pub/sub fail with circular json', function(done) {
+        let a = {};
+        // @ts-ignore
+        a.a = a;
+        const nc = NATS.connect({
             json: true,
             port: PORT
         } as NatsConnectionOptions);
+
         try {
-            nc.publish('foo', 'hi');
+            nc.publish('foo', a);
         } catch (err) {
             nc.close();
-            expect(err.message).to.be.equal('Message should be a JSON object');
+            expect(err.message).to.be.equal('Message should be a non-circular JSON-serializable value');
             done();
         }
     });
 
-    it('should pub/sub array with json', (done) => {
-        let nc = NATS.connect({
-            json: true,
-            port: PORT
-        } as NatsConnectionOptions);
+    const testInputs = {
+        json: {
+            field: 'hello',
+            body: 'world'
+        },
+        'empty array': [],
+        array: [1, -2.3, 'foo', false],
+        true: true,
+        false: false,
+        null: null,
+        number: -123.45,
+        'empty string': '',
+        string: 'abc'
+    };
 
-        let payload = ['one', 'two', 'three'];
+    // Cannot use Object.entries because it's behind a flag in Node 6
+    Object.getOwnPropertyNames(testInputs).forEach(function(name: string) {
+        let data = (testInputs as any)[name];
+        it(`should pub/sub with ${name}`, testPubSub(data));
+        it(`should req/rep with ${name}`, testReqRep(data));
+        it(`should req/rep with ${name} oldrr`, testReqRep(data, undefined, true));
 
-        nc.subscribe('foo', {}, (msg, reply, subj, sid) => {
-            expect(msg).to.be.eql(payload);
-            nc.unsubscribe(sid);
-            nc.close();
-            done();
-        });
-
-        nc.publish('foo', payload);
+        // undefined must be serialized as null
+        it('should pub/sub with undefined', testPubSub(undefined, null));
+        it('should req/rep with undefined', testReqRep(undefined, null));
+        it('should req/rep with undefined oldrr', testReqRep(undefined, null, true));
     });
 });
