@@ -50,7 +50,7 @@ const DEFAULT_PORT = 4222,
     DEFAULT_PRE = 'nats://localhost:',
     DEFAULT_URI = DEFAULT_PRE + DEFAULT_PORT,
 
-    MAX_CONTROL_LINE_SIZE = 512,
+    MAX_CONTROL_LINE_SIZE = 1024,
 
     // Reconnect Parameters, 2 sec wait, 10 tries
     DEFAULT_RECONNECT_TIME_WAIT = 2 * 1000,
@@ -88,7 +88,7 @@ const DEFAULT_PORT = 4222,
 
     // Errors
     BAD_AUTHENTICATION_MSG = 'User and Token can not both be provided',
-    BAD_JSON_MSG = 'Message should be a JSON object',
+    BAD_JSON_MSG = 'Message should be a non-circular JSON-serializable value',
     BAD_MSG_MSG = 'Message can\'t be a function',
     BAD_REPLY_MSG = 'Reply can\'t be a function',
     BAD_SUBJECT_MSG = 'Subject must be supplied',
@@ -1178,14 +1178,17 @@ export class Client extends events.EventEmitter {
      * @param {Function} [opt_callback]
      * @api public
      */
-    publish(subject: string, msg?: string | Buffer | object, opt_reply?: string, opt_callback?: FlushCallback):void {
+    publish(subject: string, msg?: any, opt_reply?: string, opt_callback?: FlushCallback):void {
         // They only supplied a callback function.
         if (typeof subject === 'function') {
             opt_callback = subject;
             subject = "";
         }
-        if (!msg) {
-            msg = EMPTY;
+        if (!this.options.json) {
+            msg = msg || EMPTY;
+        } else {
+            // undefined is not a valid JSON-serializable value, but null is
+            msg = msg === undefined ? null : msg;
         }
         if (!subject) {
             if (opt_callback) {
@@ -1228,18 +1231,13 @@ export class Client extends events.EventEmitter {
 
         // Need to treat sending buffers different.
         if (!Buffer.isBuffer(msg)) {
-            let str = "";
+            let str = msg;
             if (this.options.json) {
-                if (typeof msg !== 'object') {
-                    throw (new NatsError(BAD_JSON_MSG, BAD_JSON));
-                }
                 try {
                     str = JSON.stringify(msg);
                 } catch (e) {
                     throw (new NatsError(BAD_JSON_MSG, BAD_JSON));
                 }
-            } else {
-                str = msg.toString();
             }
             this.sendCommand(psub + Buffer.byteLength(str) + CR_LF + str + CR_LF);
         } else {
@@ -1650,7 +1648,7 @@ export interface RequestCallback {
 }
 
 export interface SubscriptionCallback {
-    (msg: string | Buffer | object, inbox: string, subject: string, sid: number):void;
+    (msg: any, inbox: string, subject: string, sid: number):void;
 }
 
 export interface TimeoutCallback {
