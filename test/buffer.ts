@@ -40,7 +40,7 @@ describe('Buffer', () => {
             'preserveBuffers': true
         } as NatsConnectionOptions);
 
-        let validBuffer = new Buffer('foo-bar');
+        let validBuffer = Buffer.from('foo-bar');
 
         nc.subscribe('validBuffer', {}, (msg) => {
             expect(msg).to.be.eql(validBuffer);
@@ -59,7 +59,7 @@ describe('Buffer', () => {
         } as NatsConnectionOptions);
 
         let jsonString = '{ "foo-bar": true }';
-        let validBuffer = new Buffer(jsonString);
+        let validBuffer = Buffer.from(jsonString);
         let obj = JSON.parse(jsonString);
 
         nc.subscribe('validBuffer', {}, (msg) => {

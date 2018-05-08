@@ -43,14 +43,14 @@ describe('Binary', () => {
 
     function binaryDataTests(done: Function, nc: NATS.Client) {
         // try some invalid utf-8 byte sequences
-        let invalid2octet = new Buffer('\xc3\x28', 'binary');
-        let invalidsequenceidentifier = new Buffer('\xa0\xa1', 'binary');
-        let invalid3octet = new Buffer('\xe2\x28\xa1', 'binary');
-        let invalid4octet = new Buffer('\xf0\x90\x28\xbc', 'binary');
+        let invalid2octet = Buffer.from('\xc3\x28', 'binary');
+        let invalidsequenceidentifier = Buffer.from('\xa0\xa1', 'binary');
+        let invalid3octet = Buffer.from('\xe2\x28\xa1', 'binary');
+        let invalid4octet = Buffer.from('\xf0\x90\x28\xbc', 'binary');
         let bigBuffer = crypto.randomBytes(128 * 1024);
 
         // make sure embedded nulls don't cause truncation
-        let embeddednull = new Buffer('\x00\xf0\x00\x28\x00\x00\xf0\x9f\x92\xa9\x00', 'binary');
+        let embeddednull = Buffer.from('\x00\xf0\x00\x28\x00\x00\xf0\x9f\x92\xa9\x00', 'binary');
 
         let count = 6;
 

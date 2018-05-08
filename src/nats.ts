@@ -674,7 +674,7 @@ export class Client extends events.EventEmitter {
         // otherwise in addition to the leak events will fire fire
         if (this.stream) {
             this.stream.removeAllListeners();
-            this.stream.end();
+            this.stream.destroy();
         }
         // Create the stream
         if(this.url && this.url.hostname && this.url.port) {
@@ -724,7 +724,6 @@ export class Client extends events.EventEmitter {
      */
     private closeStream(): void {
         if (this.stream !== null) {
-            this.stream.end();
             this.stream.destroy();
             this.stream = null;
         }
@@ -965,7 +964,6 @@ export class Client extends events.EventEmitter {
                                 // if we have a stream, this is from an old connection, reap it
                                 if (client.stream) {
                                     client.stream.removeAllListeners();
-                                    client.stream.end();
                                 }
                                 client.stream = tls.connect(tlsOpts, function() {
                                     client.flushPending();
@@ -1245,7 +1243,7 @@ export class Client extends events.EventEmitter {
             }
             this.sendCommand(psub + Buffer.byteLength(str) + CR_LF + str + CR_LF);
         } else {
-            let b = new Buffer(psub.length + msg.length + (2 * CR_LF_LEN) + msg.length.toString().length);
+            let b = Buffer.allocUnsafe(psub.length + msg.length + (2 * CR_LF_LEN) + msg.length.toString().length);
             let len = b.write(psub + msg.length + CR_LF);
             msg.copy(b, len);
             b.write(CR_LF, len + msg.length);

@@ -1,20 +1,16 @@
 .DEFAULT_GOAL := build
 
 build:
-	tsc
+	npm run clean:dist && tsc && npm run copy:dist
 
 clean:
-	rm lib/nats.js
-	rm lib/nats.js.map
+	npm run clean:dist
 
 lint:
 	./node_modules/.bin/eslint ./test ./lib/nats.js ./examples ./benchmark
 
 test: clean build
-	@NODE_ENV=test ./node_modules/.bin/mocha -c\
-	  --reporter list \
-	  --slow 5000 \
-	  --timeout 10000
+	npm run test
 
 # Use 'npm run cover' instead
 #test-cov:

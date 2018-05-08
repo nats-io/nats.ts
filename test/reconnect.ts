@@ -250,7 +250,7 @@ describe('Reconnect functionality', () => {
                     server = nsc.start_server(PORT);
                 });
             });
-            let b = new Buffer(4096).toString();
+            let b = Buffer.allocUnsafe(4096).toString();
             for (let i = 0; i < 1000; i++) {
                 nc.publish('foo', b);
             }
