@@ -16,13 +16,11 @@
 
 
 import * as net from "net";
-import * as tls from "tls";
-import {ConnectionOptions, TLSSocket} from "tls";
 import {Transport, TransportHandlers} from "./transport";
 import {UrlObject} from "url";
 
-export class TCPTransport implements Transport {
-    stream: net.Socket | TLSSocket | null = null;
+export class WSTransport implements Transport {
+    stream: net.Socket | null = null;
     handlers: TransportHandlers;
     closed: boolean = false;
 
@@ -41,14 +39,12 @@ export class TCPTransport implements Transport {
     }
 
     connect(url: UrlObject) : void {
-        // Create the stream
         // See #45 if we have a stream release the listeners
         // otherwise in addition to the leak events will fire fire
         if(this.stream) {
             this.destroy();
         }
-        // @ts-ignore typescript requires this parsed to a number
-        this.stream = net.createConnection(parseInt(url.port,10), url.hostname);
+        this.stream = WebSocket
         this.setupHandlers();
     }
 
@@ -57,34 +53,18 @@ export class TCPTransport implements Transport {
     }
 
     isConnected() : boolean {
-        return this.stream != null && !this.stream.connecting;
+        return this.stream != null;
     }
 
     isEncrypted(): boolean {
-        return this.stream instanceof TLSSocket && this.stream.encrypted;
+        return false;
     }
 
     isAuthorized() : boolean {
-        return this.stream instanceof TLSSocket && this.stream.authorized;
+        return false;
     }
 
     upgrade(tlsOptions: any, done: Function) : void {
-        if(! this.stream) {
-            return
-        }
-
-        let opts: ConnectionOptions;
-        if('object' === typeof tlsOptions) {
-            opts = tlsOptions as ConnectionOptions;
-        } else {
-            opts = {} as ConnectionOptions;
-        }
-        opts.socket = this.stream;
-        this.stream.removeAllListeners();
-        this.stream = tls.connect(opts, () => {
-            done();
-        });
-        this.setupHandlers();
     }
 
     write(data: Buffer|string): void {
@@ -95,14 +75,6 @@ export class TCPTransport implements Transport {
     }
 
     destroy() : void {
-        if(! this.stream) {
-            return;
-        }
-        if(this.closed) {
-            this.stream.removeAllListeners();
-        }
-        this.stream.destroy();
-        this.stream = null;
     }
 
     close() : void {
@@ -111,16 +83,8 @@ export class TCPTransport implements Transport {
     }
 
     pause() : void {
-        if(! this.stream) {
-            return;
-        }
-        this.stream.pause()
     }
 
     resume() : void {
-        if(! this.stream) {
-            return;
-        }
-        this.stream.resume();
     }
 }

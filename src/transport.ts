@@ -14,6 +14,8 @@
  *
  */
 import {TCPTransport} from "./tcptransport";
+import * as url from "url";
+import {UrlObject} from "url";
 
 
 export interface ErrorCallback {
@@ -44,7 +46,8 @@ export function NewTransport(type: string, handlers: TransportHandlers) : Transp
 
 export interface Transport {
     close(): void;
-    connect(port: number, hostname: string): void;
+
+    connect(url: url.UrlObject): void;
     destroy(): void;
     isAuthorized(): boolean;
     isClosed(): boolean;

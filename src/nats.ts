@@ -667,13 +667,7 @@ export class Client extends events.EventEmitter {
 
         // Select a server to connect to.
         this.selectServer();
-
-        // Create the stream
-        if(this.url && this.url.hostname && this.url.port) {
-            // ts compiler requires this to be a number
-            let port = isNumber(this.url.port) ? this.url.port : parseInt(this.url.port, 10);
-            this.stream.connect(port, this.url.hostname);
-        }
+        this.stream.connect(this.url);
     };
 
     /**
