@@ -16,13 +16,13 @@
 import url = require('url');
 import events = require('events');
 import util = require('util');
-import net = require('net');
 import tls = require('tls');
 import nuid = require('nuid');
 import _ = require('lodash');
 import Timer = NodeJS.Timer;
-import {ConnectionOptions, TLSSocket} from "tls";
+import {ConnectionOptions} from "tls";
 import {isNumber} from "util";
+import {Transport, TransportHandlers, NewTransport} from "./transport";
 
 export const VERSION = '1.0.0';
 
@@ -337,7 +337,8 @@ export class Client extends events.EventEmitter {
     private reconnects: number = 0;
     private servers: Servers;
     private ssid: number = 1;
-    private stream!: net.Socket | TLSSocket | null;
+    private stream: Transport;
+    // private stream!: net.Socket | TLSSocket | null;
     private subs: {[key: number]: Subscription} | null = {};
     private token?: string;
     private url!: url.UrlObject;
@@ -369,7 +370,7 @@ export class Client extends events.EventEmitter {
         } else {
             throw new NatsError(INVALID_ENCODING_MSG_PREFIX + this.options.encoding, INVALID_ENCODING);
         }
-
+        this.stream = NewTransport("tcp", this.getTransportHandlers());
         this.servers = new Servers(!this.options.noRandomize, this.options.servers || [], this.options.url);
         this.initState();
         this.createConnection();
@@ -487,7 +488,7 @@ export class Client extends events.EventEmitter {
                 return;
             }
             // we could be waiting on the socket to connect
-            if (client.stream && !client.stream.connecting) {
+            if (client.stream.isConnected()) {
                 client.emit('pingcount', client.pout);
                 client.pout++;
                 if (client.pout > client.options.maxPingOut) {
@@ -515,24 +516,19 @@ export class Client extends events.EventEmitter {
      *
      * @api private
      */
-    private setupHandlers():void {
+    private getTransportHandlers(): TransportHandlers {
         let client = this;
-        let stream = client.stream;
-
-        if (stream === null) {
-            return;
-        }
-
-        stream.on('connect', () => {
+        let handlers = {} as TransportHandlers;
+        handlers.connect = () => {
             if (client.pingTimer) {
                 clearTimeout(client.pingTimer);
                 delete client.pingTimer;
             }
             client.connected = true;
             client.scheduleHeartbeat();
-        });
+        };
 
-        stream.on('close', () => {
+        handlers.close = () => {
             client.closeStream();
             client.emit('disconnect');
             if (client.closed === true ||
@@ -542,9 +538,9 @@ export class Client extends events.EventEmitter {
             } else {
                 client.scheduleReconnect();
             }
-        });
+        };
 
-        stream.on('error', (exception) => {
+        handlers.error = (exception: Error) => {
             // If we were connected just return, close event will process
             if (client.wasConnected === true && client.currentServer.didConnect === true) {
                 return;
@@ -570,9 +566,9 @@ export class Client extends events.EventEmitter {
                 client.emit('error', new NatsError(CONN_ERR_MSG_PREFIX + exception, CONN_ERR, exception));
             }
             client.closeStream();
-        });
+        };
 
-        stream.on('data', (data) => {
+        handlers.data = (data: Buffer) => {
             // If inbound exists, concat them together. We try to avoid this for split
             // messages, so this should only really happen for a split control line.
             // Long term answer is hand rolled parser and not regexp.
@@ -584,7 +580,9 @@ export class Client extends events.EventEmitter {
 
             // Process the inbound queue.
             client.processInbound();
-        });
+        };
+
+        return handlers;
     }
 
     /**
@@ -615,9 +613,8 @@ export class Client extends events.EventEmitter {
         // If we enqueued requests before we received INFO from the server, or we
         // reconnected, there be other data pending, write this immediately instead
         // of adding it to the queue.
-        if(this.stream !== null) {
-            this.stream.write(CONNECT + SPC + JSON.stringify(cs) + CR_LF);
-        }
+        this.stream.write(CONNECT + SPC + JSON.stringify(cs) + CR_LF);
+
     }
 
     /**
@@ -670,20 +667,7 @@ export class Client extends events.EventEmitter {
 
         // Select a server to connect to.
         this.selectServer();
-        // See #45 if we have a stream release the listeners
-        // otherwise in addition to the leak events will fire fire
-        if (this.stream) {
-            this.stream.removeAllListeners();
-            this.stream.destroy();
-        }
-        // Create the stream
-        if(this.url && this.url.hostname && this.url.port) {
-            // ts compiler requires this to be a number
-            let port = isNumber(this.url.port) ? this.url.port : parseInt(this.url.port, 10);
-            this.stream = net.createConnection(port, this.url.hostname);
-            // Setup the proper handlers.
-            this.setupHandlers();
-        }
+        this.stream.connect(this.url);
     };
 
     /**
@@ -723,10 +707,7 @@ export class Client extends events.EventEmitter {
      * @api private
      */
     private closeStream(): void {
-        if (this.stream !== null) {
-            this.stream.destroy();
-            this.stream = null;
-        }
+        this.stream.destroy();
         if (this.connected === true || this.closed === true) {
             this.pongs = null;
             this.pout = 0;
@@ -743,7 +724,7 @@ export class Client extends events.EventEmitter {
             this.pending === null ||
             this.pending.length === 0 ||
             this.infoReceived !== true ||
-            this.stream === null) {
+            ! this.stream.isConnected()) {
             return;
         }
 
@@ -851,7 +832,7 @@ export class Client extends events.EventEmitter {
      * @api private
      */
     private sendSubscriptions():void {
-        if(!this.subs || !this.stream) {
+        if(!this.subs || !this.stream.isConnected()) {
             return;
         }
 
@@ -947,28 +928,11 @@ export class Client extends events.EventEmitter {
                             // Switch over to TLS as needed.
 
                             // are we a tls socket?
-                            let encrypted = false;
-                            if(client.stream instanceof TLSSocket) {
-                                encrypted = client.stream.encrypted;
-                            }
-
+                            let encrypted = client.stream.isEncrypted();
                             if (client.options.tls !== false && encrypted !== true) {
-                                let tlsOpts;
-                                if ('object' === typeof client.options.tls) {
-                                    tlsOpts = client.options.tls as ConnectionOptions
-                                } else {
-                                    tlsOpts = {} as ConnectionOptions
-                                }
-                                tlsOpts.socket = client.stream;
-
-                                // if we have a stream, this is from an old connection, reap it
-                                if (client.stream) {
-                                    client.stream.removeAllListeners();
-                                }
-                                client.stream = tls.connect(tlsOpts, function() {
+                                this.stream.upgrade(client.options.tls, function() {
                                     client.flushPending();
                                 });
-                                client.setupHandlers();
                             }
 
                             // Send the connect message and subscriptions immediately

@@ -103,7 +103,7 @@ describe('TLS', () => {
         nc.on('connect', function(client) {
             expect(client).to.be.eql(nc);
             //@ts-ignore
-            expect(nc.stream.authorized).to.be.false;
+            expect(nc.stream.isAuthorized()).to.be.false;
             nc.close();
             done();
         });
@@ -122,7 +122,7 @@ describe('TLS', () => {
         nc.on('connect', function(client) {
             expect(client).to.be.eql(nc);
             //@ts-ignore
-            expect(nc.stream.authorized).to.be.true;
+            expect(nc.stream.isAuthorized()).to.be.true;
             nc.close();
             done();
         });
@@ -155,7 +155,7 @@ describe('TLS', () => {
         nc.on('connect', function(client) {
             expect(client).to.be.eql(nc);
             //@ts-ignore
-            expect(nc.stream.authorized).to.be.true;
+            expect(nc.stream.isAuthorized()).to.be.true;
             nc.close();
             done();
         });
