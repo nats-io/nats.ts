@@ -50,7 +50,7 @@ describe('Dynamic Cluster - Connect URLs', () => {
                     let others = nsc.add_member_with_delay([port + 1, port + 2], route_port, 250, [], () => {
                         // verify that 2 servers were added
                         expect(others).to.have.lengthOf(2);
-                        others.forEach(function(o) {
+                        others.forEach(function (o) {
                             // add them so they can be reaped
                             servers.push(o);
                         });
@@ -81,7 +81,7 @@ describe('Dynamic Cluster - Connect URLs', () => {
 
             // added in order
             let uris: string[] = [];
-            ports.forEach(function(p) {
+            ports.forEach(function (p) {
                 uris.push(`nats://127.0.0.1:${p}`);
             });
 
@@ -129,7 +129,7 @@ describe('Dynamic Cluster - Connect URLs', () => {
                 nc.on('connect', () => {
                     let have: string[] = [];
                     //@ts-ignore
-                    nc.servers.getServers().forEach(function(s) {
+                    nc.servers.getServers().forEach(function (s) {
                         //@ts-ignore
                         have.push(parseInt(s.url.port, 10));
                     });
@@ -238,7 +238,7 @@ describe('Dynamic Cluster - Connect URLs', () => {
                 process.nextTick(() => {
                     let s2 = nsc.find_server(port + 2, servers);
                     if (s2) {
-                        nsc.stop_server(s2,  () => {
+                        nsc.stop_server(s2, () => {
                             // add another
                             let added = nsc.add_member(port + 3, route_port, port + 1003);
                             servers.push(added);

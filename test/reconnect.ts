@@ -89,7 +89,7 @@ describe('Reconnect functionality', () => {
         let startTime: number;
         let numAttempts = 0;
         nc.on('connect', () => {
-            nsc.stop_server(server, function(){
+            nsc.stop_server(server, function () {
                 startTime = Date.now();
             });
         });
@@ -158,7 +158,7 @@ describe('Reconnect functionality', () => {
         } as NatsConnectionOptions);
         // Kill server after first successful contact
         nc.flush(() => {
-            nsc.stop_server(server, function(){
+            nsc.stop_server(server, function () {
                 server = null;
             });
         });

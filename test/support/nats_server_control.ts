@@ -213,6 +213,7 @@ export function add_member(port: number, route_port: number, cluster_port: numbe
 
 export function stop_cluster(servers: Server[], done: Function): void {
     let count = servers.length;
+
     function latch() {
         count--;
         if (count === 0) {
@@ -242,8 +243,8 @@ export function alloc(): number {
 
 export function allocn(count: number): number[] {
     let a: number[] = [];
-    if(count) {
-        for(let i=0; i < count; i++) {
+    if (count) {
+        for (let i = 0; i < count; i++) {
             a.push(alloc());
         }
     }

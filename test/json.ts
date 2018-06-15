@@ -69,7 +69,7 @@ describe('JSON payloads', () => {
                 useOldRequestStyle: useOldRequestStyle
             } as NatsConnectionOptions);
 
-            nc.subscribe('reqrep', { max: 1 }, (msg, reply) => {
+            nc.subscribe('reqrep', {max: 1}, (msg, reply) => {
                 nc.publish(reply, msg);
             });
 
@@ -82,7 +82,7 @@ describe('JSON payloads', () => {
         };
     }
 
-    it('should pub/sub fail with circular json', function(done) {
+    it('should pub/sub fail with circular json', function (done) {
         let a = {};
         // @ts-ignore
         a.a = a;
@@ -116,7 +116,7 @@ describe('JSON payloads', () => {
     };
 
     // Cannot use Object.entries because it's behind a flag in Node 6
-    Object.getOwnPropertyNames(testInputs).forEach(function(name: string) {
+    Object.getOwnPropertyNames(testInputs).forEach(function (name: string) {
         let data = (testInputs as any)[name];
         it(`should pub/sub with ${name}`, testPubSub(data));
         it(`should req/rep with ${name}`, testReqRep(data));

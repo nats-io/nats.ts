@@ -30,33 +30,23 @@ export class TCPTransport implements Transport {
         this.handlers = handlers;
     }
 
-    private setupHandlers() : void {
-        if(! this.stream) {
-            return;
-        }
-        this.stream.on('connect', this.handlers.connect);
-        this.stream.on('close', this.handlers.close);
-        this.stream.on('error', this.handlers.error);
-        this.stream.on('data', this.handlers.data);
-    }
-
-    connect(url: UrlObject) : void {
+    connect(url: UrlObject): void {
         // Create the stream
         // See #45 if we have a stream release the listeners
         // otherwise in addition to the leak events will fire fire
-        if(this.stream) {
+        if (this.stream) {
             this.destroy();
         }
         // @ts-ignore typescript requires this parsed to a number
-        this.stream = net.createConnection(parseInt(url.port,10), url.hostname);
+        this.stream = net.createConnection(parseInt(url.port, 10), url.hostname);
         this.setupHandlers();
     }
 
-    isClosed() : boolean {
+    isClosed(): boolean {
         return this.closed;
     }
 
-    isConnected() : boolean {
+    isConnected(): boolean {
         return this.stream != null && !this.stream.connecting;
     }
 
@@ -64,17 +54,17 @@ export class TCPTransport implements Transport {
         return this.stream instanceof TLSSocket && this.stream.encrypted;
     }
 
-    isAuthorized() : boolean {
+    isAuthorized(): boolean {
         return this.stream instanceof TLSSocket && this.stream.authorized;
     }
 
-    upgrade(tlsOptions: any, done: Function) : void {
-        if(! this.stream) {
+    upgrade(tlsOptions: any, done: Function): void {
+        if (!this.stream) {
             return
         }
 
         let opts: ConnectionOptions;
-        if('object' === typeof tlsOptions) {
+        if ('object' === typeof tlsOptions) {
             opts = tlsOptions as ConnectionOptions;
         } else {
             opts = {} as ConnectionOptions;
@@ -87,40 +77,50 @@ export class TCPTransport implements Transport {
         this.setupHandlers();
     }
 
-    write(data: Buffer|string): void {
-        if(! this.stream) {
+    write(data: Buffer | string): void {
+        if (!this.stream) {
             return;
         }
         this.stream.write(data);
     }
 
-    destroy() : void {
-        if(! this.stream) {
+    destroy(): void {
+        if (!this.stream) {
             return;
         }
-        if(this.closed) {
+        if (this.closed) {
             this.stream.removeAllListeners();
         }
         this.stream.destroy();
         this.stream = null;
     }
 
-    close() : void {
+    close(): void {
         this.closed = true;
         this.destroy();
     }
 
-    pause() : void {
-        if(! this.stream) {
+    pause(): void {
+        if (!this.stream) {
             return;
         }
         this.stream.pause()
     }
 
-    resume() : void {
-        if(! this.stream) {
+    resume(): void {
+        if (!this.stream) {
             return;
         }
         this.stream.resume();
+    }
+
+    private setupHandlers(): void {
+        if (!this.stream) {
+            return;
+        }
+        this.stream.on('connect', this.handlers.connect);
+        this.stream.on('close', this.handlers.close);
+        this.stream.on('error', this.handlers.error);
+        this.stream.on('data', this.handlers.data);
     }
 }

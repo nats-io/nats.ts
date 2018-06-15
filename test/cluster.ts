@@ -94,7 +94,7 @@ describe('Cluster', () => {
         let nc = NATS.connect({
             'servers': ['nats://localhost:21022', s1Url, s2Url]
         } as NatsConnectionOptions);
-        nc.on('error', function(err) {
+        nc.on('error', function (err) {
             done(err);
         });
         nc.on('connect', () => {
@@ -149,7 +149,7 @@ describe('Cluster', () => {
         let startTime: number;
         let numAttempts = 0;
         nc.on('connect', () => {
-            nsc.stop_server(s1, function(){
+            nsc.stop_server(s1, function () {
                 startTime = Date.now();
             });
         });

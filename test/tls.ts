@@ -59,7 +59,7 @@ describe('TLS', () => {
             port: PORT,
             tls: true
         } as NatsConnectionOptions);
-        nc.on('error', function(err) {
+        nc.on('error', function (err) {
             expect(err).to.exist;
             expect(err).to.match(/Server does not support a secure/);
             nc.close();
@@ -69,7 +69,7 @@ describe('TLS', () => {
 
     it('should error if server requires TLS', (done) => {
         let nc = NATS.connect(TLSPORT);
-        nc.on('error', function(err) {
+        nc.on('error', function (err) {
             expect(err).to.exist;
             expect(err).to.match(/Server requires a secure/);
             nc.close();
@@ -82,7 +82,7 @@ describe('TLS', () => {
             port: TLSPORT,
             tls: true
         } as NatsConnectionOptions);
-        nc.on('error', function(err) {
+        nc.on('error', function (err) {
             expect(err).to.exist;
             expect(err.message).to.match(/unable to verify the first certificate/);
             nc.close();
@@ -100,7 +100,7 @@ describe('TLS', () => {
         } as NatsConnectionOptions);
 
         expect(nc).to.exist;
-        nc.on('connect', function(client) {
+        nc.on('connect', function (client) {
             expect(client).to.be.eql(nc);
             //@ts-ignore
             expect(nc.stream.isAuthorized()).to.be.false;
@@ -119,7 +119,7 @@ describe('TLS', () => {
         } as NatsConnectionOptions);
 
         expect(nc).to.exist;
-        nc.on('connect', function(client) {
+        nc.on('connect', function (client) {
             expect(client).to.be.eql(nc);
             //@ts-ignore
             expect(nc.stream.isAuthorized()).to.be.true;
@@ -133,7 +133,7 @@ describe('TLS', () => {
             port: TLSVERIFYPORT,
             tls: true
         } as NatsConnectionOptions);
-        nc.on('error', function(err) {
+        nc.on('error', function (err) {
             expect(err).to.exist;
             expect(err).to.match(/Server requires a client certificate/);
             nc.close();
@@ -152,7 +152,7 @@ describe('TLS', () => {
             port: TLSPORT,
             tls: tlsOptions
         } as NatsConnectionOptions);
-        nc.on('connect', function(client) {
+        nc.on('connect', function (client) {
             expect(client).to.be.eql(nc);
             //@ts-ignore
             expect(nc.stream.isAuthorized()).to.be.true;

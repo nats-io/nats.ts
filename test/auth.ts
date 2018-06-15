@@ -39,7 +39,7 @@ describe('Authorization', () => {
 
     it('should fail to connect with no credentials ', (done) => {
         let nc = NATS.connect(PORT);
-        nc.on('error', function(err) {
+        nc.on('error', function (err) {
             expect(err).to.exist;
             expect(err.message).to.match(/Authorization/);
             nc.close();

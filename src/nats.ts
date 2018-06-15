@@ -21,8 +21,7 @@ import nuid = require('nuid');
 import _ = require('lodash');
 import Timer = NodeJS.Timer;
 import {ConnectionOptions} from "tls";
-import {isNumber} from "util";
-import {Transport, TransportHandlers, NewTransport} from "./transport";
+import {NewTransport, Transport, TransportHandlers} from "./transport";
 
 export const VERSION = '1.0.0';
 
@@ -175,18 +174,18 @@ class Servers {
 
     constructor(randomize: boolean, urls: string[], firstServer?: string) {
         this.servers = [] as Server[];
-        if(urls) {
+        if (urls) {
             urls.forEach(element => {
                 this.servers.push(new Server(element));
             });
-            if(randomize) {
+            if (randomize) {
                 this.servers = _.shuffle(this.servers);
             }
         }
 
-        if(firstServer) {
+        if (firstServer) {
             let index = urls.indexOf(firstServer);
-            if(index === -1) {
+            if (index === -1) {
                 this.addServer(firstServer, false);
             } else {
                 let fs = this.servers[index];
@@ -194,7 +193,7 @@ class Servers {
                 this.servers.unshift(fs);
             }
         } else {
-            if(this.servers.length === 0) {
+            if (this.servers.length === 0) {
                 this.addServer(DEFAULT_URI, false);
             }
         }
@@ -207,7 +206,7 @@ class Servers {
 
     selectServer(): Server | undefined {
         let t = this.servers.shift();
-        if(t) {
+        if (t) {
             this.servers.push(this.currentServer);
             this.currentServer = t;
         }
@@ -219,17 +218,17 @@ class Servers {
     }
 
     removeServer(server: Server | undefined) {
-        if(server) {
+        if (server) {
             let index = this.servers.indexOf(server);
             this.servers.splice(index, 1);
         }
     }
 
-    length():number {
+    length(): number {
         return this.servers.length;
     }
 
-    next() : Server | undefined {
+    next(): Server | undefined {
         return this.servers.length ? this.servers[0] : undefined;
     }
 
@@ -241,8 +240,8 @@ class Servers {
     processServerUpdate(info: ServerInfo): string[] {
         let newURLs = [];
 
-        if(info.connect_urls && info.connect_urls.length > 0) {
-            let discovered : {[key: string]: Server} = {};
+        if (info.connect_urls && info.connect_urls.length > 0) {
+            let discovered: { [key: string]: Server } = {};
 
             info.connect_urls.forEach(server => {
                 let u = `nats://${server}`;
@@ -254,7 +253,7 @@ class Servers {
             let toDelete: number[] = [];
             this.servers.forEach((s, index) => {
                 let u = s.toString();
-                if(s.implicit && this.currentServer.url.href !== u && discovered[u] === undefined) {
+                if (s.implicit && this.currentServer.url.href !== u && discovered[u] === undefined) {
                     // server was removed
                     toDelete.push(index);
                 }
@@ -269,8 +268,8 @@ class Servers {
             });
 
             // remaining servers are new
-            for(let k in discovered) {
-                if(discovered.hasOwnProperty(k)) {
+            for (let k in discovered) {
+                if (discovered.hasOwnProperty(k)) {
                     this.servers.push(discovered[k]);
                     newURLs.push(k);
                 }
@@ -308,14 +307,20 @@ export interface NatsConnectionOptions {
 interface Payload {
     subj: string;
     sid: number;
-    reply:string;
+    reply: string;
     size: number;
     psize: number;
     chunks?: Buffer[];
-    msg:string|Buffer;
+    msg: string | Buffer;
 }
 
 export class Client extends events.EventEmitter {
+    /**
+     * Allow createInbox to be called on a client.
+     *
+     * @api public
+     */
+    createInbox = createInbox;
     private closed?: boolean;
     private connected: boolean = false;
     private currentServer!: Server;
@@ -330,7 +335,7 @@ export class Client extends events.EventEmitter {
     private pending: any[] | null = [];
     private pingTimer?: Timer;
     private pongs: any[] | null = [];
-    private pout:number = 0;
+    private pout: number = 0;
     private pSize: number = 0;
     private pstate: ParserState = ParserState.CLOSED;
     private reconnecting: boolean = false;
@@ -339,13 +344,12 @@ export class Client extends events.EventEmitter {
     private ssid: number = 1;
     private stream: Transport;
     // private stream!: net.Socket | TLSSocket | null;
-    private subs: {[key: number]: Subscription} | null = {};
+    private subs: { [key: number]: Subscription } | null = {};
     private token?: string;
     private url!: url.UrlObject;
     private user?: string;
     private wasConnected: boolean = false;
-    private respmux?:RespMux;
-
+    private respmux?: RespMux;
 
     constructor(arg?: string | number | NatsConnectionOptions | void) {
         super();
@@ -377,16 +381,16 @@ export class Client extends events.EventEmitter {
     }
 
     private static parseOptions(args?: string | number | NatsConnectionOptions | void): NatsConnectionOptions {
-        if(args === undefined || args === null) {
+        if (args === undefined || args === null) {
             args = {url: DEFAULT_URI} as NatsConnectionOptions;
         }
 
-        if(typeof args === 'number') {
+        if (typeof args === 'number') {
             args = {url: DEFAULT_PRE + args} as NatsConnectionOptions;
-        } else if(typeof args === 'string') {
+        } else if (typeof args === 'string') {
             args = {url: args.toString()} as NatsConnectionOptions;
-        } else if(typeof args === 'object') {
-            if(args.port !== undefined) {
+        } else if (typeof args === 'object') {
+            if (args.port !== undefined) {
                 args.url = DEFAULT_PRE + args.port;
             }
         }
@@ -397,6 +401,412 @@ export class Client extends events.EventEmitter {
         return _.extend(Client.defaultOptions(), args);
     }
 
+    private static defaultOptions(): ConnectionOptions {
+        return {
+            encoding: "utf8",
+            maxPingOut: DEFAULT_MAX_PING_OUT,
+            maxReconnectAttempts: DEFAULT_MAX_RECONNECT_ATTEMPTS,
+            noRandomize: false,
+            pedantic: false,
+            pingInterval: DEFAULT_PING_INTERVAL,
+            reconnect: true,
+            reconnectTimeWait: DEFAULT_RECONNECT_TIME_WAIT,
+            tls: false,
+            useOldRequestStyle: false,
+            verbose: false,
+            waitOnFirstConnect: false,
+        } as ConnectionOptions
+    }
+
+    /**
+     * Close the connection to the server.
+     *
+     * @api public
+     */
+    close(): void {
+        if (this.pingTimer) {
+            clearTimeout(this.pingTimer);
+            delete this.pingTimer;
+        }
+        this.closed = true;
+        this.removeAllListeners();
+        this.closeStream();
+        this.ssid = -1;
+        this.subs = null;
+        this.pstate = ParserState.CLOSED;
+        this.pongs = null;
+        this.pending = null;
+        this.pSize = 0;
+    };
+
+    /**
+     * Flush outbound queue to server and call optional callback when server has processed
+     * all data.
+     *
+     * @param {Function} [opt_callback]
+     * @api public
+     */
+    flush(opt_callback?: FlushCallback) {
+        if (this.closed) {
+            if (typeof opt_callback === 'function') {
+                opt_callback(new NatsError(CONN_CLOSED_MSG, CONN_CLOSED));
+                return;
+            } else {
+                throw (new NatsError(CONN_CLOSED_MSG, CONN_CLOSED));
+            }
+        }
+        if (this.pongs) {
+            this.pongs.push(opt_callback);
+            this.sendCommand(PING_REQUEST);
+            this.flushPending();
+        }
+    }
+
+    /**
+     * Publish a message to the given subject, with optional reply and callback.
+     *
+     * @param {String} subject
+     * @param {String} [msg]
+     * @param {String} [opt_reply]
+     * @param {Function} [opt_callback]
+     * @api public
+     */
+    publish(subject: string, msg?: any, opt_reply?: string, opt_callback?: FlushCallback): void {
+        // They only supplied a callback function.
+        if (typeof subject === 'function') {
+            opt_callback = subject;
+            subject = "";
+        }
+        if (!this.options.json) {
+            msg = msg || EMPTY;
+        } else {
+            // undefined is not a valid JSON-serializable value, but null is
+            msg = msg === undefined ? null : msg;
+        }
+        if (!subject) {
+            if (opt_callback) {
+                opt_callback(new NatsError(BAD_SUBJECT_MSG, BAD_SUBJECT));
+            } else {
+                throw (new NatsError(BAD_SUBJECT_MSG, BAD_SUBJECT));
+            }
+        }
+        if (typeof msg === 'function') {
+            if (opt_callback || opt_reply) {
+                let err = new NatsError(BAD_MSG_MSG, BAD_MSG);
+                if (typeof opt_callback === 'function') {
+                    opt_callback(err);
+                    return;
+                } else {
+                    throw err;
+                }
+            }
+            opt_callback = msg;
+            msg = EMPTY;
+            opt_reply = "";
+        }
+        if (typeof opt_reply === 'function') {
+            if (opt_callback) {
+                // function value for message - test is actually providing a callback
+                opt_callback(new NatsError(BAD_REPLY_MSG, BAD_REPLY));
+                return;
+            }
+            opt_callback = opt_reply;
+            opt_reply = "";
+        }
+
+        // Hold PUB SUB [REPLY]
+        let psub;
+        if (opt_reply === undefined) {
+            psub = 'PUB ' + subject + SPC;
+        } else {
+            psub = 'PUB ' + subject + SPC + opt_reply + SPC;
+        }
+
+        // Need to treat sending buffers different.
+        if (!Buffer.isBuffer(msg)) {
+            let str = msg;
+            if (this.options.json) {
+                try {
+                    str = JSON.stringify(msg);
+                } catch (e) {
+                    throw (new NatsError(BAD_JSON_MSG, BAD_JSON));
+                }
+            }
+            this.sendCommand(psub + Buffer.byteLength(str) + CR_LF + str + CR_LF);
+        } else {
+            let b = Buffer.allocUnsafe(psub.length + msg.length + (2 * CR_LF_LEN) + msg.length.toString().length);
+            let len = b.write(psub + msg.length + CR_LF);
+            msg.copy(b, len);
+            b.write(CR_LF, len + msg.length);
+            this.sendCommand(b);
+        }
+
+        if (opt_callback !== undefined) {
+            this.flush(opt_callback);
+        } else if (this.closed) {
+            throw (new NatsError(CONN_CLOSED_MSG, CONN_CLOSED));
+        }
+    }
+
+    /**
+     * Subscribe to a given subject, with optional options and callback. opts can be
+     * ommitted, even with a callback. The Subscriber Id is returned.
+     *
+     * @param {String} subject
+     * @param {Object} [opts]
+     * @param {Function} callback
+     * @return {Number}
+     * @api public
+     */
+    subscribe(subject: string, opts?: SubscribeOptions, callback?: SubscriptionCallback): number {
+        if (this.closed) {
+            throw (new NatsError(CONN_CLOSED_MSG, CONN_CLOSED));
+        }
+        let qgroup, max;
+        if (typeof opts === 'function') {
+            callback = opts;
+            opts = {} as SubscribeOptions;
+        } else if (opts && typeof opts === 'object') {
+            // FIXME, check exists, error otherwise..
+            qgroup = opts.queue;
+            max = opts.max;
+        }
+
+        this.subs = this.subs || [];
+        this.ssid += 1;
+        this.subs[this.ssid] = {
+            subject: subject,
+            callback: callback,
+            received: 0
+        } as Subscription;
+
+        let proto;
+        if (typeof qgroup === 'string') {
+            this.subs[this.ssid].qgroup = qgroup;
+            proto = [SUB, subject, qgroup, this.ssid + CR_LF];
+        } else {
+            proto = [SUB, subject, this.ssid + CR_LF];
+        }
+
+        this.sendCommand(proto.join(SPC));
+        this.emit('subscribe', this.ssid, subject, opts);
+
+        if (max) {
+            this.unsubscribe(this.ssid, max);
+        }
+        return this.ssid;
+    }
+
+    /**
+     * Unsubscribe to a given Subscriber Id, with optional max parameter.
+     * Unsubscribing to a subscription that already yielded the specified number of messages
+     * will clear any pending timeout callbacks.
+     *
+     * @param {Number} sid
+     * @param {Number} [opt_max]
+     * @api public
+     */
+    unsubscribe(sid: number, opt_max?: number) {
+        if (!sid || this.closed) {
+            return;
+        }
+
+        // in the case of new muxRequest, it is possible they want perform
+        // an unsubscribe with the returned 'sid'. Intercept that and clear
+        // the request configuration. Mux requests are always negative numbers
+        if (sid < 0) {
+            if (this.respmux) {
+                this.respmux.cancelMuxRequest(sid);
+            }
+            return;
+        }
+
+        let proto;
+        if (opt_max) {
+            proto = [UNSUB, sid, opt_max + CR_LF];
+        } else {
+            proto = [UNSUB, sid + CR_LF];
+        }
+        this.sendCommand(proto.join(SPC));
+
+        this.subs = this.subs || [];
+        let sub = this.subs[sid];
+        if (sub === undefined) {
+            return;
+        }
+        sub.max = opt_max;
+        if (sub.max === undefined || (sub.received >= sub.max)) {
+            // remove any timeouts that may be pending
+            if (sub.timeout) {
+                clearTimeout(sub.timeout);
+                sub.timeout = null;
+            }
+            delete this.subs[sid];
+            this.emit('unsubscribe', sid, sub.subject);
+        }
+    };
+
+    /**
+     * Set a timeout on a subscription. The subscription is cancelled if the
+     * expected number of messages is reached or the timeout is reached.
+     * If this function is called with an SID from a multiplexed
+     * request call, the original timeout handler associated with the multiplexed
+     * request is replaced with the one provided to this function.
+     *
+     * @param {Number} sid
+     * @param {Number} timeout
+     * @param {Number} expected
+     * @param {Function} callback
+     * @api public
+     */
+    timeout(sid: number, timeout: number, expected: number, callback: TimeoutCallback): void {
+        if (!sid) {
+            return;
+        }
+        let sub = null;
+        // check the sid is not a mux sid - which is always negative
+        if (sid < 0) {
+            if (this.respmux) {
+                let conf = this.respmux.getMuxRequestConfig(sid);
+                if (conf && conf.timeout) {
+                    // clear auto-set timeout
+                    clearTimeout(conf.timeout);
+                }
+                sub = conf;
+            }
+        } else if (this.subs) {
+            sub = this.subs[sid];
+        }
+
+        if (sub) {
+            sub.expected = expected;
+            sub.timeout = setTimeout(() => {
+                callback(sid);
+                // if callback fails unsubscribe will leak
+                this.unsubscribe(sid);
+            }, timeout);
+        }
+    }
+
+    /**
+     * Publish a message with an implicit inbox listener as the reply. Message is optional.
+     * This should be treated as a subscription. You can optionally indicate how many
+     * messages you only want to receive using opt_options = {max:N}. Otherwise you
+     * will need to unsubscribe to stop the message stream.
+     *
+     * You can also optionally specify the number of milliseconds to wait for the messages
+     * to receive using opt_options = {timeout: N}. When the number of messages specified
+     * is received before a timeout, the subscription auto-cancels. If the number of messages
+     * is not specified, it is the responsibility of the client to unsubscribe to prevent
+     * a timeout.
+     *
+     * The Subscriber Id is returned.
+     *
+     * @param {String} subject
+     * @param {String} [opt_msg]
+     * @param {Object} [opt_options]
+     * @param {Function} [callback]
+     * @return {Number}
+     * @api public
+     */
+    request(subject: string, opt_msg?: string | Buffer | object, opt_options?: RequestOptions, callback?: RequestCallback): number {
+        if (this.options.useOldRequestStyle) {
+            return this.oldRequest(subject, opt_msg, opt_options, callback);
+        }
+        if (typeof opt_msg === 'function') {
+            callback = opt_msg;
+            opt_msg = EMPTY;
+            opt_options = undefined;
+        }
+        if (typeof opt_options === 'function') {
+            callback = opt_options;
+            opt_options = undefined;
+        }
+
+        if (!this.respmux) {
+            this.respmux = new RespMux(this);
+        }
+
+        opt_options = opt_options || {} as RequestOptions;
+        let conf = this.respmux.initMuxRequestDetails(callback, opt_options.max);
+        this.publish(subject, opt_msg, conf.inbox);
+
+        if (opt_options.timeout) {
+            conf.timeout = setTimeout(() => {
+                if (conf.callback) {
+                    conf.callback(new NatsError(REQ_TIMEOUT_MSG_PREFIX + conf.id, REQ_TIMEOUT));
+                }
+                if (this.respmux) {
+                    this.respmux.cancelMuxRequest(conf.token);
+                }
+            }, opt_options.timeout);
+        }
+
+        return conf.id;
+    }
+
+    /**
+     * Publish a message with an implicit inbox listener as the reply. Message is optional.
+     * This should be treated as a subscription. The subscription is auto-cancelled after the
+     * first reply is received or the timeout in millisecond is reached.
+     *
+     * If a timeout is reached, the callback is invoked with a NatsError with it's code set to
+     * `REQ_TIMEOUT` on the first argument of the callback function, and the subscription is
+     * cancelled.
+     *
+     * The Subscriber Id is returned.
+     *
+     * @param {String} subject
+     * @param {String} [opt_msg]
+     * @param {Object} [opt_options]
+     * @param {Number} timeout
+     * @param {Function} callback - can be called with message or NatsError if the request timed out.
+     * @return {Number}
+     * @api public
+     */
+    requestOne(subject: string, opt_msg: string | Buffer | object, opt_options: RequestOptions, timeout: number, callback: RequestCallback) {
+        if (this.options.useOldRequestStyle) {
+            return this.oldRequestOne(subject, opt_msg, opt_options, timeout, callback);
+        }
+
+        if (typeof opt_msg === 'number') {
+            if (typeof opt_options === 'function') {
+                callback = opt_options;
+            }
+            timeout = opt_msg;
+            //@ts-ignore
+            opt_options = undefined;
+            opt_msg = EMPTY;
+        }
+
+        if (typeof opt_options === 'number') {
+            if (typeof timeout === 'function') {
+                callback = timeout;
+            }
+            timeout = opt_options;
+            //@ts-ignore
+            opt_options = undefined;
+        }
+
+        opt_options = opt_options || {};
+        opt_options.max = 1;
+        opt_options.timeout = timeout;
+
+        return this.request(subject, opt_msg, opt_options, callback);
+    };
+
+    /**
+     * Report number of outstanding subscriptions on this connection.
+     *
+     * @return {Number}
+     * @api public
+     */
+    numSubscriptions(): number {
+        if (this.subs) {
+            return Object.keys(this.subs).length;
+        }
+        return 0;
+    }
 
     /**
      * Properly select the next server.
@@ -406,9 +816,9 @@ export class Client extends events.EventEmitter {
      *
      * @api private
      */
-    private selectServer():void {
+    private selectServer(): void {
         let server = this.servers.selectServer();
-        if(server === undefined) {
+        if (server === undefined) {
             return;
         }
 
@@ -416,7 +826,7 @@ export class Client extends events.EventEmitter {
         this.currentServer = server;
         this.url = server.url;
         let auth = server.getCredentials();
-        if(auth) {
+        if (auth) {
             if (auth.length !== 1) {
                 if (this.options.user === undefined) {
                     this.user = auth[0];
@@ -452,7 +862,7 @@ export class Client extends events.EventEmitter {
 
 
         let cert = false;
-        if(this.options.tls && typeof this.options.tls === 'object') {
+        if (this.options.tls && typeof this.options.tls === 'object') {
             cert = this.options.tls.cert != null;
         }
         if (this.info.tls_verify === true && !cert) {
@@ -468,21 +878,20 @@ export class Client extends events.EventEmitter {
      *
      * @api private
      */
-    private connectCB():void {
+    private connectCB(): void {
         let event = this.reconnecting ? 'reconnect' : 'connect';
         this.reconnecting = false;
         this.reconnects = 0;
         this.wasConnected = true;
-        if(this.currentServer) {
+        if (this.currentServer) {
             this.currentServer.didConnect = true;
         }
         this.emit(event, this);
         this.flushPending();
     }
 
-
-    private scheduleHeartbeat():void {
-        this.pingTimer = setTimeout(function(client: Client) {
+    private scheduleHeartbeat(): void {
+        this.pingTimer = setTimeout(function (client: Client) {
             client.emit('pingtimer');
             if (client.closed) {
                 return;
@@ -591,9 +1000,9 @@ export class Client extends events.EventEmitter {
      *
      * @api private
      */
-    private sendConnect():void{
+    private sendConnect(): void {
         // Queue the connect command.
-        let cs : {[key: string]: any} = {
+        let cs: { [key: string]: any } = {
             'lang': 'node',
             'version': VERSION,
             'verbose': this.options.verbose,
@@ -681,27 +1090,6 @@ export class Client extends events.EventEmitter {
     };
 
     /**
-     * Close the connection to the server.
-     *
-     * @api public
-     */
-    close(): void {
-        if(this.pingTimer) {
-            clearTimeout(this.pingTimer);
-            delete this.pingTimer;
-        }
-        this.closed = true;
-        this.removeAllListeners();
-        this.closeStream();
-        this.ssid = -1;
-        this.subs = null;
-        this.pstate = ParserState.CLOSED;
-        this.pongs = null;
-        this.pending = null;
-        this.pSize = 0;
-    };
-
-    /**
      * Close down the stream and clear state.
      *
      * @api private
@@ -718,19 +1106,18 @@ export class Client extends events.EventEmitter {
         this.inbound = null;
     };
 
-
-    private flushPending():void {
+    private flushPending(): void {
         if (this.connected === false ||
             this.pending === null ||
             this.pending.length === 0 ||
             this.infoReceived !== true ||
-            ! this.stream.isConnected()) {
+            !this.stream.isConnected()) {
             return;
         }
 
         let client = this;
-        let write = function(data: string | Buffer):void {
-            if(! client.stream) {
+        let write = function (data: string | Buffer): void {
+            if (!client.stream) {
                 return;
             }
             client.pending = [];
@@ -743,7 +1130,7 @@ export class Client extends events.EventEmitter {
             write(this.pending.join(EMPTY));
             return
         } else {
-            if(this.pending) {
+            if (this.pending) {
                 // We have some or all Buffers. Figure out if we can optimize.
                 let allBuffs = true;
                 for (let i = 0; i < this.pending.length; i++) {
@@ -777,7 +1164,7 @@ export class Client extends events.EventEmitter {
      * @api private
      */
     private stripPendingSubs() {
-        if(!this.pending) {
+        if (!this.pending) {
             return;
         }
         let pending = this.pending;
@@ -816,7 +1203,7 @@ export class Client extends events.EventEmitter {
             // First one let's setup flush..
             if (this.pending.length === 1) {
                 let self = this;
-                setImmediate(function() {
+                setImmediate(function () {
                     self.flushPending();
                 });
             } else if (this.pSize > FLUSH_THRESHOLD) {
@@ -831,8 +1218,8 @@ export class Client extends events.EventEmitter {
      *
      * @api private
      */
-    private sendSubscriptions():void {
-        if(!this.subs || !this.stream.isConnected()) {
+    private sendSubscriptions(): void {
+        if (!this.subs || !this.stream.isConnected()) {
             return;
         }
 
@@ -919,7 +1306,7 @@ export class Client extends events.EventEmitter {
 
                         // Always try to read the connect_urls from info
                         let newServers = client.servers.processServerUpdate(client.info);
-                        if(newServers.length > 0) {
+                        if (newServers.length > 0) {
                             client.emit('serversDiscovered', newServers);
                         }
 
@@ -930,7 +1317,7 @@ export class Client extends events.EventEmitter {
                             // are we a tls socket?
                             let encrypted = client.stream.isEncrypted();
                             if (client.options.tls !== false && encrypted !== true) {
-                                this.stream.upgrade(client.options.tls, function() {
+                                this.stream.upgrade(client.options.tls, function () {
                                     client.flushPending();
                                 });
                             }
@@ -940,7 +1327,7 @@ export class Client extends events.EventEmitter {
                             client.sendSubscriptions();
 
                             client.pongs = client.pongs || [];
-                            client.pongs.unshift(function() {
+                            client.pongs.unshift(function () {
                                 client.connectCB();
                             });
                             client.stream.write(PING_REQUEST);
@@ -958,7 +1345,7 @@ export class Client extends events.EventEmitter {
                     break;
 
                 case ParserState.AWAITING_MSG_PAYLOAD:
-                    if(! client.payload) {
+                    if (!client.payload) {
                         break;
                     }
 
@@ -1040,18 +1427,17 @@ export class Client extends events.EventEmitter {
         }
     }
 
-
     /**
      * Process a delivered message and deliver to appropriate subscriber.
      *
      * @api private
      */
-    private processMsg() : void {
-        if(!this.subs || !this.payload) {
+    private processMsg(): void {
+        if (!this.subs || !this.payload) {
             return;
         }
         let sub = this.subs[this.payload.sid];
-        if(!sub) {
+        if (!sub) {
             return;
         }
         sub.received += 1;
@@ -1076,7 +1462,7 @@ export class Client extends events.EventEmitter {
         if (sub.callback) {
             let msg = this.payload.msg;
             if (this.options.json && msg) {
-                if(msg instanceof Buffer) {
+                if (msg instanceof Buffer) {
                     msg = msg.toString(this.options.encoding);
                 }
                 try {
@@ -1109,315 +1495,6 @@ export class Client extends events.EventEmitter {
         }
     };
 
-
-    /**
-     * Flush outbound queue to server and call optional callback when server has processed
-     * all data.
-     *
-     * @param {Function} [opt_callback]
-     * @api public
-     */
-    flush(opt_callback?: FlushCallback) {
-        if (this.closed) {
-            if (typeof opt_callback === 'function') {
-                opt_callback(new NatsError(CONN_CLOSED_MSG, CONN_CLOSED));
-                return;
-            } else {
-                throw (new NatsError(CONN_CLOSED_MSG, CONN_CLOSED));
-            }
-        }
-        if (this.pongs) {
-            this.pongs.push(opt_callback);
-            this.sendCommand(PING_REQUEST);
-            this.flushPending();
-        }
-    }
-
-    /**
-     * Publish a message to the given subject, with optional reply and callback.
-     *
-     * @param {String} subject
-     * @param {String} [msg]
-     * @param {String} [opt_reply]
-     * @param {Function} [opt_callback]
-     * @api public
-     */
-    publish(subject: string, msg?: any, opt_reply?: string, opt_callback?: FlushCallback):void {
-        // They only supplied a callback function.
-        if (typeof subject === 'function') {
-            opt_callback = subject;
-            subject = "";
-        }
-        if (!this.options.json) {
-            msg = msg || EMPTY;
-        } else {
-            // undefined is not a valid JSON-serializable value, but null is
-            msg = msg === undefined ? null : msg;
-        }
-        if (!subject) {
-            if (opt_callback) {
-                opt_callback(new NatsError(BAD_SUBJECT_MSG, BAD_SUBJECT));
-            } else {
-                throw (new NatsError(BAD_SUBJECT_MSG, BAD_SUBJECT));
-            }
-        }
-        if (typeof msg === 'function') {
-            if (opt_callback || opt_reply) {
-                let err = new NatsError(BAD_MSG_MSG, BAD_MSG);
-                if(typeof opt_callback === 'function') {
-                    opt_callback(err);
-                    return;
-                } else {
-                    throw err;
-                }
-            }
-            opt_callback = msg;
-            msg = EMPTY;
-            opt_reply = "";
-        }
-        if (typeof opt_reply === 'function') {
-            if (opt_callback) {
-                // function value for message - test is actually providing a callback
-                opt_callback(new NatsError(BAD_REPLY_MSG, BAD_REPLY));
-                return;
-            }
-            opt_callback = opt_reply;
-            opt_reply = "";
-        }
-
-        // Hold PUB SUB [REPLY]
-        let psub;
-        if (opt_reply === undefined) {
-            psub = 'PUB ' + subject + SPC;
-        } else {
-            psub = 'PUB ' + subject + SPC + opt_reply + SPC;
-        }
-
-        // Need to treat sending buffers different.
-        if (!Buffer.isBuffer(msg)) {
-            let str = msg;
-            if (this.options.json) {
-                try {
-                    str = JSON.stringify(msg);
-                } catch (e) {
-                    throw (new NatsError(BAD_JSON_MSG, BAD_JSON));
-                }
-            }
-            this.sendCommand(psub + Buffer.byteLength(str) + CR_LF + str + CR_LF);
-        } else {
-            let b = Buffer.allocUnsafe(psub.length + msg.length + (2 * CR_LF_LEN) + msg.length.toString().length);
-            let len = b.write(psub + msg.length + CR_LF);
-            msg.copy(b, len);
-            b.write(CR_LF, len + msg.length);
-            this.sendCommand(b);
-        }
-
-        if (opt_callback !== undefined) {
-            this.flush(opt_callback);
-        } else if (this.closed) {
-            throw (new NatsError(CONN_CLOSED_MSG, CONN_CLOSED));
-        }
-    }
-
-    /**
-     * Subscribe to a given subject, with optional options and callback. opts can be
-     * ommitted, even with a callback. The Subscriber Id is returned.
-     *
-     * @param {String} subject
-     * @param {Object} [opts]
-     * @param {Function} callback
-     * @return {Number}
-     * @api public
-     */
-    subscribe(subject: string, opts?: SubscribeOptions, callback?: SubscriptionCallback):number {
-        if (this.closed) {
-            throw (new NatsError(CONN_CLOSED_MSG, CONN_CLOSED));
-        }
-        let qgroup, max;
-        if (typeof opts === 'function') {
-            callback = opts;
-            opts = {} as SubscribeOptions;
-        } else if (opts && typeof opts === 'object') {
-            // FIXME, check exists, error otherwise..
-            qgroup = opts.queue;
-            max = opts.max;
-        }
-
-        this.subs = this.subs || [];
-        this.ssid += 1;
-        this.subs[this.ssid] = {
-            subject: subject,
-            callback: callback,
-            received: 0
-        } as Subscription;
-
-        let proto;
-        if (typeof qgroup === 'string') {
-            this.subs[this.ssid].qgroup = qgroup;
-            proto = [SUB, subject, qgroup, this.ssid + CR_LF];
-        } else {
-            proto = [SUB, subject, this.ssid + CR_LF];
-        }
-
-        this.sendCommand(proto.join(SPC));
-        this.emit('subscribe', this.ssid, subject, opts);
-
-        if (max) {
-            this.unsubscribe(this.ssid, max);
-        }
-        return this.ssid;
-    }
-
-    /**
-     * Unsubscribe to a given Subscriber Id, with optional max parameter.
-     * Unsubscribing to a subscription that already yielded the specified number of messages
-     * will clear any pending timeout callbacks.
-     *
-     * @param {Number} sid
-     * @param {Number} [opt_max]
-     * @api public
-     */
-    unsubscribe(sid: number, opt_max?: number) {
-        if (!sid || this.closed) {
-            return;
-        }
-
-        // in the case of new muxRequest, it is possible they want perform
-        // an unsubscribe with the returned 'sid'. Intercept that and clear
-        // the request configuration. Mux requests are always negative numbers
-        if(sid < 0) {
-            if(this.respmux) {
-                this.respmux.cancelMuxRequest(sid);
-            }
-            return;
-        }
-
-        let proto;
-        if (opt_max) {
-            proto = [UNSUB, sid, opt_max + CR_LF];
-        } else {
-            proto = [UNSUB, sid + CR_LF];
-        }
-        this.sendCommand(proto.join(SPC));
-
-        this.subs = this.subs || [];
-        let sub = this.subs[sid];
-        if (sub === undefined) {
-            return;
-        }
-        sub.max = opt_max;
-        if (sub.max === undefined || (sub.received >= sub.max)) {
-            // remove any timeouts that may be pending
-            if (sub.timeout) {
-                clearTimeout(sub.timeout);
-                sub.timeout = null;
-            }
-            delete this.subs[sid];
-            this.emit('unsubscribe', sid, sub.subject);
-        }
-    };
-
-    /**
-     * Set a timeout on a subscription. The subscription is cancelled if the
-     * expected number of messages is reached or the timeout is reached.
-     * If this function is called with an SID from a multiplexed
-     * request call, the original timeout handler associated with the multiplexed
-     * request is replaced with the one provided to this function.
-     *
-     * @param {Number} sid
-     * @param {Number} timeout
-     * @param {Number} expected
-     * @param {Function} callback
-     * @api public
-     */
-    timeout(sid: number, timeout: number, expected: number, callback: TimeoutCallback):void {
-        if (!sid) {
-            return;
-        }
-        let sub = null;
-        // check the sid is not a mux sid - which is always negative
-        if(sid < 0) {
-            if(this.respmux) {
-                let conf = this.respmux.getMuxRequestConfig(sid);
-                if (conf && conf.timeout) {
-                    // clear auto-set timeout
-                    clearTimeout(conf.timeout);
-                }
-                sub = conf;
-            }
-        } else if(this.subs) {
-            sub = this.subs[sid];
-        }
-
-        if(sub) {
-            sub.expected = expected;
-            sub.timeout = setTimeout(()=> {
-                callback(sid);
-                // if callback fails unsubscribe will leak
-                this.unsubscribe(sid);
-            }, timeout);
-        }
-    }
-
-
-    /**
-     * Publish a message with an implicit inbox listener as the reply. Message is optional.
-     * This should be treated as a subscription. You can optionally indicate how many
-     * messages you only want to receive using opt_options = {max:N}. Otherwise you
-     * will need to unsubscribe to stop the message stream.
-     *
-     * You can also optionally specify the number of milliseconds to wait for the messages
-     * to receive using opt_options = {timeout: N}. When the number of messages specified
-     * is received before a timeout, the subscription auto-cancels. If the number of messages
-     * is not specified, it is the responsibility of the client to unsubscribe to prevent
-     * a timeout.
-     *
-     * The Subscriber Id is returned.
-     *
-     * @param {String} subject
-     * @param {String} [opt_msg]
-     * @param {Object} [opt_options]
-     * @param {Function} [callback]
-     * @return {Number}
-     * @api public
-     */
-    request(subject: string, opt_msg?: string | Buffer | object, opt_options?: RequestOptions, callback?: RequestCallback): number {
-        if(this.options.useOldRequestStyle) {
-            return this.oldRequest(subject, opt_msg, opt_options, callback);
-        }
-        if (typeof opt_msg === 'function') {
-            callback = opt_msg;
-            opt_msg = EMPTY;
-            opt_options = undefined;
-        }
-        if (typeof opt_options === 'function') {
-            callback = opt_options;
-            opt_options = undefined;
-        }
-
-        if(!this.respmux) {
-            this.respmux = new RespMux(this);
-        }
-
-        opt_options = opt_options || {} as RequestOptions;
-        let conf = this.respmux.initMuxRequestDetails(callback, opt_options.max);
-        this.publish(subject, opt_msg, conf.inbox);
-
-        if(opt_options.timeout) {
-            conf.timeout = setTimeout(() => {
-                if(conf.callback) {
-                    conf.callback(new NatsError(REQ_TIMEOUT_MSG_PREFIX + conf.id, REQ_TIMEOUT));
-                }
-                if(this.respmux) {
-                    this.respmux.cancelMuxRequest(conf.token);
-                }
-            }, opt_options.timeout);
-        }
-
-        return conf.id;
-    }
-
-
     /**
      * @deprecated
      * @api private
@@ -1437,57 +1514,6 @@ export class Client extends events.EventEmitter {
         this.publish(subject, opt_msg, inbox);
         return s;
     }
-
-    /**
-     * Publish a message with an implicit inbox listener as the reply. Message is optional.
-     * This should be treated as a subscription. The subscription is auto-cancelled after the
-     * first reply is received or the timeout in millisecond is reached.
-     *
-     * If a timeout is reached, the callback is invoked with a NatsError with it's code set to
-     * `REQ_TIMEOUT` on the first argument of the callback function, and the subscription is
-     * cancelled.
-     *
-     * The Subscriber Id is returned.
-     *
-     * @param {String} subject
-     * @param {String} [opt_msg]
-     * @param {Object} [opt_options]
-     * @param {Number} timeout
-     * @param {Function} callback - can be called with message or NatsError if the request timed out.
-     * @return {Number}
-     * @api public
-     */
-    requestOne(subject: string, opt_msg:string | Buffer | object, opt_options: RequestOptions, timeout: number, callback: RequestCallback) {
-        if(this.options.useOldRequestStyle) {
-            return this.oldRequestOne(subject, opt_msg, opt_options, timeout, callback);
-        }
-
-        if (typeof opt_msg === 'number') {
-            if(typeof opt_options === 'function') {
-                callback = opt_options;
-            }
-            timeout = opt_msg;
-            //@ts-ignore
-            opt_options = undefined;
-            opt_msg = EMPTY;
-        }
-
-        if (typeof opt_options === 'number') {
-            if(typeof timeout === 'function') {
-                callback = timeout;
-            }
-            timeout = opt_options;
-            //@ts-ignore
-            opt_options = undefined;
-        }
-
-        opt_options = opt_options || {};
-        opt_options.max = 1;
-        opt_options.timeout = timeout;
-
-        return this.request(subject, opt_msg, opt_options, callback);
-    };
-
 
     /**
      * @deprecated
@@ -1514,26 +1540,13 @@ export class Client extends events.EventEmitter {
         opt_options.max = 1;
 
         let sid = this.request(subject, opt_msg, opt_options, callback);
-        this.timeout(sid, timeout, 1, function() {
-            if(callback) {
+        this.timeout(sid, timeout, 1, function () {
+            if (callback) {
                 callback(new NatsError(REQ_TIMEOUT_MSG_PREFIX + sid, REQ_TIMEOUT));
             }
         });
         return sid;
     };
-
-    /**
-     * Report number of outstanding subscriptions on this connection.
-     *
-     * @return {Number}
-     * @api public
-     */
-    numSubscriptions(): number {
-        if(this.subs) {
-            return Object.keys(this.subs).length;
-        }
-        return 0;
-    }
 
     /**
      * Reconnect to the server.
@@ -1556,7 +1569,7 @@ export class Client extends events.EventEmitter {
      *
      * @api private
      */
-    private scheduleReconnect():void {
+    private scheduleReconnect(): void {
         let client = this;
         // Just return if no more servers
         if (client.servers.length() === 0) {
@@ -1573,33 +1586,9 @@ export class Client extends events.EventEmitter {
         if (s && s.didConnect === true && this.options.reconnectTimeWait !== undefined) {
             wait = this.options.reconnectTimeWait;
         }
-        setTimeout(function() {
+        setTimeout(function () {
             client.reconnect();
         }, wait);
-    }
-
-    /**
-     * Allow createInbox to be called on a client.
-     *
-     * @api public
-     */
-    createInbox = createInbox;
-
-    private static defaultOptions() : ConnectionOptions {
-        return {
-            encoding: "utf8",
-            maxPingOut: DEFAULT_MAX_PING_OUT,
-            maxReconnectAttempts: DEFAULT_MAX_RECONNECT_ATTEMPTS,
-            noRandomize: false,
-            pedantic: false,
-            pingInterval: DEFAULT_PING_INTERVAL,
-            reconnect: true,
-            reconnectTimeWait: DEFAULT_RECONNECT_TIME_WAIT,
-            tls: false,
-            useOldRequestStyle: false,
-            verbose: false,
-            waitOnFirstConnect: false,
-        } as ConnectionOptions
     }
 }
 
@@ -1608,11 +1597,11 @@ export interface FlushCallback {
 }
 
 export interface RequestCallback {
-    (msg: string | Buffer | object, inbox?: string):void;
+    (msg: string | Buffer | object, inbox?: string): void;
 }
 
 export interface SubscriptionCallback {
-    (msg: any, inbox: string, subject: string, sid: number):void;
+    (msg: any, inbox: string, subject: string, sid: number): void;
 }
 
 export interface TimeoutCallback {
@@ -1654,7 +1643,7 @@ class RespMux {
     inbox: string;
     inboxPrefixLen: number;
     subscriptionID: number;
-    requestMap: {[key: string]:RequestConfiguration} = {};
+    requestMap: { [key: string]: RequestConfiguration } = {};
     nextID: number = -1;
 
     constructor(client: Client) {
@@ -1665,14 +1654,14 @@ class RespMux {
         this.subscriptionID = client.subscribe(ginbox, {} as SubscribeOptions, (msg: string | Buffer | object, reply: string, subject: string) => {
             let token = this.extractToken(subject);
             let conf = this.getMuxRequestConfig(token);
-            if(conf) {
-                if(conf.hasOwnProperty('expected')) {
+            if (conf) {
+                if (conf.hasOwnProperty('expected')) {
                     conf.received++;
                     if (conf.expected !== undefined && conf.received >= conf.expected) {
                         this.cancelMuxRequest(token);
                     }
                 }
-                if(conf.callback) {
+                if (conf.callback) {
                     conf.callback(msg, reply);
                 }
             }
@@ -1684,7 +1673,7 @@ class RespMux {
      * @param token
      * @returns Object
      */
-    getMuxRequestConfig(token: string | number):RequestConfiguration {
+    getMuxRequestConfig(token: string | number): RequestConfiguration {
         // if the token is a number, we have a fake sid, find the request
         if (typeof token === 'number') {
             let entry = null;
@@ -1710,8 +1699,8 @@ class RespMux {
      * @api private
      */
     initMuxRequestDetails(callback?: Function, expected?: number): RequestConfiguration {
-        if(arguments.length === 1) {
-            if(typeof callback === 'number') {
+        if (arguments.length === 1) {
+            if (typeof callback === 'number') {
                 expected = callback;
                 callback = undefined;
             }
@@ -1719,13 +1708,14 @@ class RespMux {
         let token = nuid.next();
         let inbox = this.inbox + '.' + token;
 
-        let conf = {token: token,
+        let conf = {
+            token: token,
             callback: callback,
             inbox: inbox,
             id: this.nextID--,
             received: 0
         } as RequestConfiguration;
-        if(expected !== undefined && expected > 0) {
+        if (expected !== undefined && expected > 0) {
             conf.expected = expected;
         }
 
@@ -1741,7 +1731,7 @@ class RespMux {
     cancelMuxRequest(token: string | number) {
         let conf = this.getMuxRequestConfig(token);
         if (conf) {
-            if(conf.timeout) {
+            if (conf.timeout) {
                 clearTimeout(conf.timeout);
             }
             // the token could be sid, so use the one in the conf
