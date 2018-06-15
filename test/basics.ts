@@ -449,11 +449,11 @@ describe('Basics', function () {
 
             // this cancel returns the config
             //@ts-ignore
-            let conf = nc.respmux.cancelMuxRequest(sid);
+            let conf = nc.muxSubscriptions.cancelMuxRequest(sid);
 
             // after cancel it shouldn't exit
             //@ts-ignore
-            expect(nc.respmux.requestMap).to.not.have.ownProperty(conf.token);
+            expect(nc.muxSubscriptions.requestMap).to.not.have.ownProperty(conf.token);
             nc.close();
             done();
         });

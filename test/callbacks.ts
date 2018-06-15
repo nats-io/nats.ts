@@ -17,6 +17,7 @@ import * as NATS from '../src/nats';
 import * as nsc from './support/nats_server_control';
 import {Server} from './support/nats_server_control';
 import {expect} from 'chai'
+import {NatsError} from "../src/error";
 
 describe('Callbacks', () => {
 
@@ -61,7 +62,7 @@ describe('Callbacks', () => {
 
         nc.flush(() => {
             nc.requestOne("rr", "", {}, 5000, function (msg, reply) {
-                if (msg instanceof NATS.NatsError) {
+                if (msg instanceof NatsError) {
                     nc.close();
                     done(new Error("Error making request " + msg));
                     return;

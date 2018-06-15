@@ -19,6 +19,7 @@ import {expect} from 'chai'
 import * as _ from 'lodash';
 import * as nsc from "./support/nats_server_control";
 import {Server} from "./support/nats_server_control";
+import {createInbox} from "../src/util";
 
 describe('Base Properties', () => {
 
@@ -36,7 +37,7 @@ describe('Base Properties', () => {
     });
 
     it('should have a createInbox function', () => {
-        expect(NATS.createInbox).to.be.a('function');
+        expect(createInbox).to.be.a('function');
     });
 });
 

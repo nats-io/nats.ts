@@ -15,13 +15,14 @@
 
 import url = require('url');
 import events = require('events');
-import util = require('util');
 import tls = require('tls');
-import nuid = require('nuid');
 import _ = require('lodash');
 import Timer = NodeJS.Timer;
 import {ConnectionOptions} from "tls";
 import {NewTransport, Transport, TransportHandlers} from "./transport";
+import {NatsError} from "./error";
+import {MuxSubscriptions} from "./muxsubscriptions";
+import {createInbox} from "./util";
 
 export const VERSION = '1.0.0';
 
@@ -112,30 +113,6 @@ enum ParserState {
     AWAITING_MSG_PAYLOAD = 1
 }
 
-export class NatsError implements Error {
-    name: string;
-    message: string;
-    code: string;
-    chainedError?: Error;
-
-    /**
-     * @param {String} message
-     * @param {String} code
-     * @param {Error} [chainedError]
-     * @constructor
-     *
-     * @api private
-     */
-    constructor(message: string, code: string, chainedError?: Error) {
-        Error.captureStackTrace(this, this.constructor);
-        this.name = "NatsError";
-        this.message = message;
-        this.code = code;
-        this.chainedError = chainedError;
-
-        util.inherits(NatsError, Error);
-    }
-}
 
 interface ServerInfo {
     tls_required: boolean;
@@ -349,7 +326,7 @@ export class Client extends events.EventEmitter {
     private url!: url.UrlObject;
     private user?: string;
     private wasConnected: boolean = false;
-    private respmux?: RespMux;
+    private muxSubscriptions?: MuxSubscriptions;
 
     constructor(arg?: string | number | NatsConnectionOptions | void) {
         super();
@@ -615,8 +592,8 @@ export class Client extends events.EventEmitter {
         // an unsubscribe with the returned 'sid'. Intercept that and clear
         // the request configuration. Mux requests are always negative numbers
         if (sid < 0) {
-            if (this.respmux) {
-                this.respmux.cancelMuxRequest(sid);
+            if (this.muxSubscriptions) {
+                this.muxSubscriptions.cancelMuxRequest(sid);
             }
             return;
         }
@@ -666,8 +643,8 @@ export class Client extends events.EventEmitter {
         let sub = null;
         // check the sid is not a mux sid - which is always negative
         if (sid < 0) {
-            if (this.respmux) {
-                let conf = this.respmux.getMuxRequestConfig(sid);
+            if (this.muxSubscriptions) {
+                let conf = this.muxSubscriptions.getMuxRequestConfig(sid);
                 if (conf && conf.timeout) {
                     // clear auto-set timeout
                     clearTimeout(conf.timeout);
@@ -723,12 +700,12 @@ export class Client extends events.EventEmitter {
             opt_options = undefined;
         }
 
-        if (!this.respmux) {
-            this.respmux = new RespMux(this);
+        if (!this.muxSubscriptions) {
+            this.muxSubscriptions = new MuxSubscriptions(this);
         }
 
         opt_options = opt_options || {} as RequestOptions;
-        let conf = this.respmux.initMuxRequestDetails(callback, opt_options.max);
+        let conf = this.muxSubscriptions.initMuxRequestDetails(callback, opt_options.max);
         this.publish(subject, opt_msg, conf.inbox);
 
         if (opt_options.timeout) {
@@ -736,8 +713,8 @@ export class Client extends events.EventEmitter {
                 if (conf.callback) {
                     conf.callback(new NatsError(REQ_TIMEOUT_MSG_PREFIX + conf.id, REQ_TIMEOUT));
                 }
-                if (this.respmux) {
-                    this.respmux.cancelMuxRequest(conf.token);
+                if (this.muxSubscriptions) {
+                    this.muxSubscriptions.cancelMuxRequest(conf.token);
                 }
             }, opt_options.timeout);
         }
@@ -1618,15 +1595,7 @@ interface Subscription {
     expected?: number;
 }
 
-interface RequestConfiguration {
-    token: string
-    callback: Function;
-    inbox: string;
-    id: number;
-    received: number;
-    expected?: number;
-    timeout?: Timer;
-}
+
 
 export interface SubscribeOptions {
     queue?: string;
@@ -1638,127 +1607,6 @@ export interface RequestOptions {
     timeout?: number;
 }
 
-class RespMux {
-    client: Client;
-    inbox: string;
-    inboxPrefixLen: number;
-    subscriptionID: number;
-    requestMap: { [key: string]: RequestConfiguration } = {};
-    nextID: number = -1;
-
-    constructor(client: Client) {
-        this.client = client;
-        this.inbox = client.createInbox();
-        this.inboxPrefixLen = this.inbox.length + 1;
-        let ginbox = this.inbox + ".*";
-        this.subscriptionID = client.subscribe(ginbox, {} as SubscribeOptions, (msg: string | Buffer | object, reply: string, subject: string) => {
-            let token = this.extractToken(subject);
-            let conf = this.getMuxRequestConfig(token);
-            if (conf) {
-                if (conf.hasOwnProperty('expected')) {
-                    conf.received++;
-                    if (conf.expected !== undefined && conf.received >= conf.expected) {
-                        this.cancelMuxRequest(token);
-                    }
-                }
-                if (conf.callback) {
-                    conf.callback(msg, reply);
-                }
-            }
-        });
-    }
-
-    /**
-     * Returns the mux request configuration
-     * @param token
-     * @returns Object
-     */
-    getMuxRequestConfig(token: string | number): RequestConfiguration {
-        // if the token is a number, we have a fake sid, find the request
-        if (typeof token === 'number') {
-            let entry = null;
-            for (let p in this.requestMap) {
-                if (this.requestMap.hasOwnProperty(p)) {
-                    let v = this.requestMap[p];
-                    if (v.id === token) {
-                        entry = v;
-                        break;
-                    }
-                }
-            }
-            if (entry) {
-                token = entry.token;
-            }
-        }
-        return this.requestMap[token];
-    }
-
-    /**
-     * Stores the request callback and other details
-     *
-     * @api private
-     */
-    initMuxRequestDetails(callback?: Function, expected?: number): RequestConfiguration {
-        if (arguments.length === 1) {
-            if (typeof callback === 'number') {
-                expected = callback;
-                callback = undefined;
-            }
-        }
-        let token = nuid.next();
-        let inbox = this.inbox + '.' + token;
-
-        let conf = {
-            token: token,
-            callback: callback,
-            inbox: inbox,
-            id: this.nextID--,
-            received: 0
-        } as RequestConfiguration;
-        if (expected !== undefined && expected > 0) {
-            conf.expected = expected;
-        }
-
-        this.requestMap[token] = conf;
-        return conf;
-    };
-
-    /**
-     * Cancels the mux request
-     *
-     * @api private
-     */
-    cancelMuxRequest(token: string | number) {
-        let conf = this.getMuxRequestConfig(token);
-        if (conf) {
-            if (conf.timeout) {
-                clearTimeout(conf.timeout);
-            }
-            // the token could be sid, so use the one in the conf
-            delete this.requestMap[conf.token];
-        }
-        return conf;
-    };
-
-    /**
-     * Strips the prefix of the request reply to derive the token.
-     * This is internal and only used by the new requestOne.
-     *
-     * @api private
-     */
-    extractToken(subject: string) {
-        return subject.substr(this.inboxPrefixLen);
-    }
-}
-
-/**
- * Create a properly formatted inbox subject.
- *
- * @api public
- */
-export function createInbox() {
-    return (`_INBOX.${nuid.next()}`);
-}
 
 /**
  * Connect to a nats-server and return the client.

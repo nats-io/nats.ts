@@ -18,6 +18,7 @@ import {FlushCallback, NatsConnectionOptions} from '../src/nats';
 import * as nsc from './support/nats_server_control';
 import {Server} from './support/nats_server_control';
 import {expect} from 'chai'
+import {NatsError} from "../src/error";
 
 describe('Errors', () => {
 
@@ -117,14 +118,14 @@ describe('Errors', () => {
     });
 
     it('NatsErrors have code', () => {
-        let err = new NATS.NatsError("hello", "helloid");
+        let err = new NatsError("hello", "helloid");
         expect(err.message).to.be.equal('hello');
         expect(err.code).to.be.equal('helloid');
     });
 
     it('NatsErrors can chain an error', () => {
         let srcErr = new Error('foo');
-        let err = new NATS.NatsError("hello", "helloid", srcErr);
+        let err = new NatsError("hello", "helloid", srcErr);
         expect(err.message).to.be.equal('hello');
         expect(err.code).to.be.equal('helloid');
         expect(err.name).to.be.equal('NatsError');
