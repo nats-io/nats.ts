@@ -16,10 +16,11 @@
  */
 import * as NATS from '../../src/nats';
 import * as fs from 'fs';
+import {NatsConnectionOptions} from "../../src/nats";
 
 let count = process.argv.length;
 let port = parseInt(process.argv[count - 1], 10);
-let nc = NATS.connect({port: port} as NATS.NatsConnectionOptions);
+let nc = NATS.connect({port: port} as NatsConnectionOptions);
 
 
 nc.on('connect', function () {

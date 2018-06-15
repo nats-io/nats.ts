@@ -14,11 +14,12 @@
  */
 
 import * as NATS from '../src/nats';
-import {FlushCallback, NatsConnectionOptions} from '../src/nats';
+import {NatsConnectionOptions} from '../src/nats';
 import * as nsc from './support/nats_server_control';
 import {Server} from './support/nats_server_control';
 import {expect} from 'chai'
 import {NatsError} from "../src/error";
+import {FlushCallback} from "../src/nats";
 
 describe('Errors', () => {
 

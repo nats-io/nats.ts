@@ -13,16 +13,21 @@
  * limitations under the License.
  */
 
+import _ = require('lodash');
 import url = require('url');
 import events = require('events');
 import tls = require('tls');
-import _ = require('lodash');
 import Timer = NodeJS.Timer;
+
 import {ConnectionOptions} from "tls";
 import {NewTransport, Transport, TransportHandlers} from "./transport";
+import {ServerInfo} from "./types";
+import {Server, Servers} from "./servers";
 import {NatsError} from "./error";
 import {MuxSubscriptions} from "./muxsubscriptions";
 import {createInbox} from "./util";
+import {DEFAULT_PRE, DEFAULT_URI} from "./const";
+
 
 export const VERSION = '1.0.0';
 
@@ -46,11 +51,7 @@ export const STALE_CONNECTION_ERR = "stale connection";
 /**
  * Constants
  */
-const DEFAULT_PORT = 4222,
-    DEFAULT_PRE = 'nats://localhost:',
-    DEFAULT_URI = DEFAULT_PRE + DEFAULT_PORT,
-
-    MAX_CONTROL_LINE_SIZE = 1024,
+const MAX_CONTROL_LINE_SIZE = 1024,
 
     // Reconnect Parameters, 2 sec wait, 10 tries
     DEFAULT_RECONNECT_TIME_WAIT = 2 * 1000,
@@ -113,147 +114,52 @@ enum ParserState {
     AWAITING_MSG_PAYLOAD = 1
 }
 
-
-interface ServerInfo {
-    tls_required: boolean;
-    tls_verify: boolean;
-    connect_urls?: string[];
+interface Payload {
+    subj: string;
+    sid: number;
+    reply: string;
+    size: number;
+    psize: number;
+    chunks?: Buffer[];
+    msg: string | Buffer;
 }
 
-class Server {
-    url: url.Url;
-    didConnect: boolean;
-    reconnects: number;
-    implicit: boolean;
 
-    constructor(u: string, implicit = false) {
-        this.url = url.parse(u);
-        this.didConnect = false;
-        this.reconnects = 0;
-        this.implicit = implicit;
-    }
-
-    toString(): string {
-        return this.url.href || "";
-    }
-
-    getCredentials(): string[] | undefined {
-        if ('auth' in this.url && !!this.url.auth) {
-            return this.url.auth.split(':');
-        }
-        return undefined;
-    }
+export interface FlushCallback {
+    (err?: NatsError): void;
 }
 
-class Servers {
-    private readonly servers: Server[];
-    private currentServer: Server;
+export interface RequestCallback {
+    (msg: string | Buffer | object, inbox?: string): void;
+}
 
-    constructor(randomize: boolean, urls: string[], firstServer?: string) {
-        this.servers = [] as Server[];
-        if (urls) {
-            urls.forEach(element => {
-                this.servers.push(new Server(element));
-            });
-            if (randomize) {
-                this.servers = _.shuffle(this.servers);
-            }
-        }
+export interface SubscriptionCallback {
+    (msg: any, inbox: string, subject: string, sid: number): void;
+}
 
-        if (firstServer) {
-            let index = urls.indexOf(firstServer);
-            if (index === -1) {
-                this.addServer(firstServer, false);
-            } else {
-                let fs = this.servers[index];
-                this.servers.splice(index, 1);
-                this.servers.unshift(fs);
-            }
-        } else {
-            if (this.servers.length === 0) {
-                this.addServer(DEFAULT_URI, false);
-            }
-        }
-        this.currentServer = this.servers[0];
-    }
+export interface TimeoutCallback {
+    (sid: number): void;
+}
 
-    addServer(u: string, implicit = false) {
-        this.servers.push(new Server(u, implicit));
-    }
-
-    selectServer(): Server | undefined {
-        let t = this.servers.shift();
-        if (t) {
-            this.servers.push(this.currentServer);
-            this.currentServer = t;
-        }
-        return t;
-    }
-
-    removeCurrentServer() {
-        this.removeServer(this.currentServer);
-    }
-
-    removeServer(server: Server | undefined) {
-        if (server) {
-            let index = this.servers.indexOf(server);
-            this.servers.splice(index, 1);
-        }
-    }
-
-    length(): number {
-        return this.servers.length;
-    }
-
-    next(): Server | undefined {
-        return this.servers.length ? this.servers[0] : undefined;
-    }
-
-    getServers(): Server[] {
-        return this.servers;
-    }
+interface Subscription {
+    subject: string;
+    callback?: SubscriptionCallback | null;
+    received: number;
+    qgroup: string;
+    timeout?: Timer | null;
+    max?: number;
+    expected?: number;
+}
 
 
-    processServerUpdate(info: ServerInfo): string[] {
-        let newURLs = [];
+export interface SubscribeOptions {
+    queue?: string;
+    max?: number;
+}
 
-        if (info.connect_urls && info.connect_urls.length > 0) {
-            let discovered: { [key: string]: Server } = {};
-
-            info.connect_urls.forEach(server => {
-                let u = `nats://${server}`;
-                let s = new Server(u, true);
-                discovered[s.toString()] = s;
-            });
-
-            // remove implicit servers that are no longer reported
-            let toDelete: number[] = [];
-            this.servers.forEach((s, index) => {
-                let u = s.toString();
-                if (s.implicit && this.currentServer.url.href !== u && discovered[u] === undefined) {
-                    // server was removed
-                    toDelete.push(index);
-                }
-                // remove this entry from reported
-                delete discovered[u];
-            });
-
-            // perform the deletion
-            toDelete.reverse();
-            toDelete.forEach(index => {
-                this.servers.splice(index, 1);
-            });
-
-            // remaining servers are new
-            for (let k in discovered) {
-                if (discovered.hasOwnProperty(k)) {
-                    this.servers.push(discovered[k]);
-                    newURLs.push(k);
-                }
-            }
-        }
-        return newURLs;
-    }
+export interface RequestOptions {
+    max?: number;
+    timeout?: number;
 }
 
 export interface NatsConnectionOptions {
@@ -279,16 +185,6 @@ export interface NatsConnectionOptions {
     verbose?: boolean;
     waitOnFirstConnect?: boolean;
     yieldTime?: number;
-}
-
-interface Payload {
-    subj: string;
-    sid: number;
-    reply: string;
-    size: number;
-    psize: number;
-    chunks?: Buffer[];
-    msg: string | Buffer;
 }
 
 export class Client extends events.EventEmitter {
@@ -1569,44 +1465,6 @@ export class Client extends events.EventEmitter {
     }
 }
 
-export interface FlushCallback {
-    (err?: NatsError): void;
-}
-
-export interface RequestCallback {
-    (msg: string | Buffer | object, inbox?: string): void;
-}
-
-export interface SubscriptionCallback {
-    (msg: any, inbox: string, subject: string, sid: number): void;
-}
-
-export interface TimeoutCallback {
-    (sid: number): void;
-}
-
-interface Subscription {
-    subject: string;
-    callback?: SubscriptionCallback | null;
-    received: number;
-    qgroup: string;
-    timeout?: Timer | null;
-    max?: number;
-    expected?: number;
-}
-
-
-
-export interface SubscribeOptions {
-    queue?: string;
-    max?: number;
-}
-
-export interface RequestOptions {
-    max?: number;
-    timeout?: number;
-}
-
 
 /**
  * Connect to a nats-server and return the client.
@@ -1620,5 +1478,3 @@ export interface RequestOptions {
 export function connect(opts?: NatsConnectionOptions | number | string) {
     return new Client(opts);
 }
-
-
