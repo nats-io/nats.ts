@@ -20,7 +20,8 @@ import {ErrorCode, INVALID_ENCODING_MSG_PREFIX, NatsError} from "./error";
 import {createInbox, extend} from "./util";
 import {ProtocolHandler} from "./protocolhandler";
 import {
-    DEFAULT_MAX_PING_OUT, DEFAULT_MAX_RECONNECT_ATTEMPTS,
+    DEFAULT_MAX_PING_OUT,
+    DEFAULT_MAX_RECONNECT_ATTEMPTS,
     DEFAULT_PING_INTERVAL,
     DEFAULT_PRE,
     DEFAULT_RECONNECT_TIME_WAIT,
@@ -33,7 +34,6 @@ import {ConnectionOptions} from "tls";
 export const VERSION = '1.0.0';
 
 const EMPTY = "";
-
 
 
 export interface FlushCallback {
@@ -158,7 +158,7 @@ export class Client extends events.EventEmitter {
 
         // Encoding - make sure its valid.
         let bufEncoding = options.encoding as BufferEncoding;
-        if (! Buffer.isEncoding(bufEncoding)) {
+        if (!Buffer.isEncoding(bufEncoding)) {
             throw new NatsError(INVALID_ENCODING_MSG_PREFIX + options.encoding, ErrorCode.INVALID_ENCODING);
         }
 
@@ -174,8 +174,8 @@ export class Client extends events.EventEmitter {
                     client.protocolHandler = ph;
                     resolve(client);
                 }).catch((ex) => {
-                    reject(ex);
-                });
+                reject(ex);
+            });
         });
     }
 
@@ -187,7 +187,7 @@ export class Client extends events.EventEmitter {
      * @param {Function} [cb]
      * @api public
      */
-    flush(cb?: FlushCallback) : void {
+    flush(cb?: FlushCallback): void {
         this.protocolHandler.flush(cb);
     }
 
@@ -338,7 +338,7 @@ export class Client extends events.EventEmitter {
      * @return {Number}
      * @api public
      */
-    request(subject: string, opt_msg: string | Buffer | object, opt_options: RequestOptions, timeout: number, callback: RequestCallback) : void {
+    request(subject: string, opt_msg: string | Buffer | object, opt_options: RequestOptions, timeout: number, callback: RequestCallback): void {
         if (typeof opt_msg === 'number') {
             if (typeof opt_options === 'function') {
                 callback = opt_options;
@@ -387,6 +387,6 @@ export class Client extends events.EventEmitter {
  *
  * @api public
  */
-export function connect(opts?: NatsConnectionOptions | number | string) : Promise<Client> {
+export function connect(opts?: NatsConnectionOptions | number | string): Promise<Client> {
     return Client.connect(opts);
 }
