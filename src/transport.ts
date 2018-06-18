@@ -36,17 +36,10 @@ export interface TransportHandlers {
     data: DataCallback
 }
 
-export function NewTransport(type: string, handlers: TransportHandlers): Transport {
-    if (type === "tcp") {
-        return new TCPTransport(handlers);
-    }
-    throw new Error(`no such transport: '${type}'`);
-}
-
 export interface Transport {
     close(): void;
 
-    connect(url: url.UrlObject): void;
+    connect(url: url.UrlObject): Promise<Transport>;
 
     destroy(): void;
 

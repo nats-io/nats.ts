@@ -30,16 +30,30 @@ export class TCPTransport implements Transport {
         this.handlers = handlers;
     }
 
-    connect(url: UrlObject): void {
-        // Create the stream
-        // See #45 if we have a stream release the listeners
-        // otherwise in addition to the leak events will fire fire
-        if (this.stream) {
-            this.destroy();
-        }
-        // @ts-ignore typescript requires this parsed to a number
-        this.stream = net.createConnection(parseInt(url.port, 10), url.hostname);
-        this.setupHandlers();
+    connect(url: UrlObject): Promise<any> {
+        return new Promise((resolve, reject) => {
+            // Create the stream
+            // See #45 if we have a stream release the listeners
+            // otherwise in addition to the leak events will fire fire
+            if (this.stream) {
+                this.destroy();
+            }
+            let connected = false;
+            // @ts-ignore typescript requires this parsed to a number
+            this.stream = net.createConnection(parseInt(url.port, 10), url.hostname, () => {
+                connected = true;
+                resolve(this);
+                this.handlers.connect();
+            });
+            this.stream.on('error', (error) => {
+                if(!connected) {
+                    reject(error);
+                } else {
+                    this.handlers.error(error);
+                }
+            });
+            this.setupHandlers();
+        });
     }
 
     isClosed(): boolean {
@@ -118,9 +132,7 @@ export class TCPTransport implements Transport {
         if (!this.stream) {
             return;
         }
-        this.stream.on('connect', this.handlers.connect);
         this.stream.on('close', this.handlers.close);
-        this.stream.on('error', this.handlers.error);
         this.stream.on('data', this.handlers.data);
     }
 }

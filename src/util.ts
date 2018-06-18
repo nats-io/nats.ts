@@ -24,3 +24,14 @@ import nuid = require('nuid');
 export function createInbox() {
     return (`_INBOX.${nuid.next()}`);
 }
+
+
+export function extend(a: any, ...b: any[]): any {
+    for (let i = 0; i < b.length; i++) {
+        let o = b[i];
+        Object.keys(o).forEach(function (k) {
+            a[k] = o[k];
+        });
+    }
+    return a;
+}

@@ -16,6 +16,60 @@
 
 import util = require('util');
 
+export enum ErrorCode {
+    BAD_AUTHENTICATION = 'BAD_AUTHENTICATION',
+    BAD_JSON = 'BAD_JSON',
+    BAD_MSG = 'BAD_MSG',
+    BAD_REPLY = 'BAD_REPLY',
+    BAD_SUBJECT = 'BAD_SUBJECT',
+    CLIENT_CERT_REQ = 'CLIENT_CERT_REQ',
+    CONN_CLOSED = 'CONN_CLOSED',
+    NON_SECURE_CONN_REQ = 'NON_SECURE_CONN_REQ',
+    SECURE_CONN_REQ = 'SECURE_CONN_REQ',
+    REQ_TIMEOUT = 'REQ_TIMEOUT',
+    INVALID_ENCODING = 'INVALID_ENCODING',
+    CONN_ERR = 'CONN_ERR',
+    NATS_PROTOCOL_ERR = 'NATS_PROTOCOL_ERR',
+}
+
+// Error templates
+export const REQ_TIMEOUT_MSG_PREFIX = 'The request timed out for subscription id: ';
+export const INVALID_ENCODING_MSG_PREFIX = 'Invalid Encoding:';
+export const CONN_ERR_PREFIX = 'Could not connect to server: ';
+
+
+
+
+export class Messages {
+    static messages = new Messages();
+    messages: { [key: string]: string } = {};
+
+    private constructor() {
+        this.messages[ErrorCode.BAD_AUTHENTICATION] = 'User and Token can not both be provided';
+        this.messages[ErrorCode.BAD_JSON] = 'Message should be a non-circular JSON-serializable value';
+        this.messages[ErrorCode.BAD_MSG] = 'Message can\'t be a function';
+        this.messages[ErrorCode.BAD_REPLY] = 'Reply can\'t be a function';
+        this.messages[ErrorCode.BAD_SUBJECT] = 'Subject must be supplied';
+        this.messages[ErrorCode.CLIENT_CERT_REQ] = 'Server requires a client certificate.';
+        this.messages[ErrorCode.CONN_CLOSED] = 'Connection closed';
+        this.messages[ErrorCode.NON_SECURE_CONN_REQ] = 'Server does not support a secure connection.';
+        this.messages[ErrorCode.SECURE_CONN_REQ] = 'Server requires a secure connection.';
+    }
+
+    static getMessage(s: string): string {
+        return Messages.messages.getMessage(s);
+    }
+
+    getMessage(s: string): string {
+        let v = this.messages[s];
+        if (!v) {
+            v = s;
+        }
+        return v;
+    }
+}
+
+
 export class NatsError implements Error {
     name: string;
     message: string;
@@ -38,5 +92,10 @@ export class NatsError implements Error {
         this.chainedError = chainedError;
 
         util.inherits(NatsError, Error);
+    }
+
+    static errorForCode(code: string, chainedError?: Error): NatsError {
+        let m = Messages.getMessage(code);
+        return new NatsError(m, code, chainedError);
     }
 }

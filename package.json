@@ -28,12 +28,14 @@
   "contributors": [],
   "main": "./index.js",
   "scripts": {
-    "build": "npm run clean:dist && tsc && npm run copy:dist",
+    "build": "npm run clean:dist && tsc",
     "clean": "npm run clean:dist",
-    "copy:dist": "cp lib/src/nats.{d.ts,js} lib/",
     "clean:dist": "rm -rf lib",
-    "test": "mocha --exit --timeout 15000 -r ts-node/register test/*",
-    "pack": "npm pack"
+    "copy:dist": "cp lib/src/nats.{d.ts,js} lib/",
+    "cover": "nyc report --reporter=html && open coverage/index.html",
+    "pack": "npm pack",
+    "debugtest": "tsc && node $NODE_DEBUG_OPTION node_modules/.bin/ava --verbose -T 6500000 -m",
+    "test": "tsc && ava --verbose -T 15000"
   },
   "engines": {
     "node": ">= 4.5.0"
@@ -43,17 +45,26 @@
     "nuid": "^1.0.0"
   },
   "devDependencies": {
-    "@types/chai": "^4.1.3",
     "@types/lodash": "^4.14.108",
-    "@types/mocha": "^5.2.0",
     "@types/node": "^9.6.13",
+    "ava": "^1.0.0-beta.6",
     "chai": "^4.1.2",
     "dependency-check": "2.5.x",
     "if-node-version": "^1.1.1",
-    "mocha": "^5.1.1",
-    "should": ">= 9.0.0",
+    "nyc": "^12.0.2",
     "ts-node": "^6.0.3",
     "typescript": "^2.8.3"
   },
-  "typings": "./lib/nats.d.ts"
+  "typings": "./lib/nats.d.ts",
+  "ava": {
+    "require": [
+    ],
+    "files": [
+      "./lib/test/**/*.js",
+      "!./lib/test/helpers/**/*.js"
+    ],
+    "sources": [
+      "**/*.js"
+    ]
+  }
 }
