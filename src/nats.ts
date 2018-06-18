@@ -35,6 +35,12 @@ export const VERSION = '1.0.0';
 
 const EMPTY = "";
 
+export interface Msg {
+    subject: string;
+    reply?: string;
+    data: string | Buffer | object;
+    sid?: number;
+}
 
 export interface FlushCallback {
     (err?: NatsError): void;
@@ -195,54 +201,18 @@ export class Client extends events.EventEmitter {
      * Publish a message to the given subject, with optional reply and callback.
      *
      * @param {String} subject
-     * @param {String} [msg]
-     * @param {String} [opt_reply]
+     * @param {String} [data]
+     * @param {String} [reply]
      * @param {Function} [opt_callback]
      * @api public
+     * @throws NatsError - if the subject is missing
      */
-    publish(subject: string, msg?: any, opt_reply?: string, opt_callback?: FlushCallback): void {
-        // They only supplied a callback function.
-        if (typeof subject === 'function') {
-            opt_callback = subject;
-            subject = "";
+    publish(subject: string, data: any = undefined, reply: string = "") : void {
+        if(! subject) {
+            throw NatsError.errorForCode(ErrorCode.BAD_SUBJECT);
         }
-        if (!this.protocolHandler.options.json) {
-            msg = msg || EMPTY;
-        } else {
-            // undefined is not a valid JSON-serializable value, but null is
-            msg = msg === undefined ? null : msg;
-        }
-        if (!subject) {
-            if (opt_callback) {
-                opt_callback(NatsError.errorForCode(ErrorCode.BAD_SUBJECT));
-            } else {
-                throw (NatsError.errorForCode(ErrorCode.BAD_SUBJECT));
-            }
-        }
-        if (typeof msg === 'function') {
-            if (opt_callback || opt_reply) {
-                let err = NatsError.errorForCode(ErrorCode.BAD_MSG);
-                if (typeof opt_callback === 'function') {
-                    opt_callback(err);
-                    return;
-                } else {
-                    throw err;
-                }
-            }
-            opt_callback = msg;
-            msg = EMPTY;
-            opt_reply = "";
-        }
-        if (typeof opt_reply === 'function') {
-            if (opt_callback) {
-                // function value for message - test is actually providing a callback
-                opt_callback(NatsError.errorForCode(ErrorCode.BAD_REPLY));
-                return;
-            }
-            opt_callback = opt_reply;
-            opt_reply = "";
-        }
-        this.protocolHandler.publish(subject, msg, opt_reply, opt_callback);
+
+        this.protocolHandler.publish(subject, data, reply);
     }
 
     /**
@@ -319,6 +289,8 @@ export class Client extends events.EventEmitter {
     // }
 
 
+
+
     /**
      * Publish a message with an implicit inbox listener as the reply. Message is optional.
      * This should be treated as a subscription. The subscription is auto-cancelled after the
@@ -331,38 +303,30 @@ export class Client extends events.EventEmitter {
      * The Subscriber Id is returned.
      *
      * @param {String} subject
-     * @param {String} [opt_msg]
-     * @param {Object} [opt_options]
      * @param {Number} timeout
-     * @param {Function} callback - can be called with message or NatsError if the request timed out.
-     * @return {Number}
+     * @param {any} [data]
+     * @return {Promise<Msg>}
      * @api public
      */
-    request(subject: string, opt_msg: string | Buffer | object, opt_options: RequestOptions, timeout: number, callback: RequestCallback): void {
-        if (typeof opt_msg === 'number') {
-            if (typeof opt_options === 'function') {
-                callback = opt_options;
+    request(subject: string, timeout: number = 1000, data: any = undefined): Promise<Msg> {
+        return new Promise<Msg>((resolve, reject) => {
+            if(this.isClosed()) {
+                reject(NatsError.errorForCode(ErrorCode.CONN_CLOSED));
             }
-            timeout = opt_msg;
-            //@ts-ignore
-            opt_options = undefined;
-            opt_msg = EMPTY;
-        }
 
-        if (typeof opt_options === 'number') {
-            if (typeof timeout === 'function') {
-                callback = timeout;
-            }
-            timeout = opt_options;
-            //@ts-ignore
-            opt_options = undefined;
-        }
-
-        opt_options = opt_options || {};
-        opt_options.max = 1;
-        opt_options.timeout = timeout;
-        this.protocolHandler.request(subject, opt_msg, opt_options, callback);
+            this.protocolHandler.request(subject, timeout, data, (msg: any, inbox?: string) => {
+                if(msg instanceof Error) {
+                    reject(msg as Error)
+                } else {
+                    resolve({data: msg, reply: inbox} as Msg);
+                }
+            });
+        });
     };
+
+    isClosed() : boolean {
+        return this.protocolHandler.isClosed();
+    }
 
     /**
      * Report number of outstanding subscriptions on this connection.
@@ -373,8 +337,6 @@ export class Client extends events.EventEmitter {
     numSubscriptions(): number {
         return this.protocolHandler.numSubscriptions();
     }
-
-
 }
 
 

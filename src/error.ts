@@ -30,6 +30,7 @@ export enum ErrorCode {
     INVALID_ENCODING = 'INVALID_ENCODING',
     CONN_ERR = 'CONN_ERR',
     NATS_PROTOCOL_ERR = 'NATS_PROTOCOL_ERR',
+    API_ERROR = 'API_ERROR'
 }
 
 // Error templates

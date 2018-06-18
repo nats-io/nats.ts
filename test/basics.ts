@@ -142,7 +142,6 @@ test('subscription message has sid', async (t) => {
 
 test('request reply', async (t) => {
     t.plan(2);
-    let lock = new Lock(1);
     let sc = t.context as SC;
     let nc = await connect(sc.server.nats);
     let subj = createInbox();
@@ -154,10 +153,6 @@ test('request reply', async (t) => {
         nc.publish(inbox, response);
     });
 
-    nc.request(subj, payload, {}, 1000, (msg) => {
-        t.is(msg, response);
-        lock.unlock();
-    });
-
-    return lock.latch;
+    let msg = await nc.request(subj, 1000, payload);
+    t.is(msg.data, response);
 });

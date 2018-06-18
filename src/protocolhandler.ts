@@ -215,6 +215,19 @@ export class ProtocolHandler extends EventEmitter {
         }
     }
 
+
+    private buildProtocolMessage(protocol: string, a?: Buffer) : Buffer {
+        let pb = Buffer.from(protocol, "utf8");
+        let len = pb.length + 2;
+        let buffers = [pb];
+        if(a) {
+            buffers.push(a);
+            len += a.length;
+        }
+        buffers.push(Buffer.from(CR_LF, "utf8"));
+        return Buffer.concat(buffers, len);
+    }
+
     /**
      * Send commands to the server or queue them up if connection pending.
      *
@@ -272,39 +285,19 @@ export class ProtocolHandler extends EventEmitter {
         this.pSize = 0;
     };
 
-    publish(subject: string, msg?: any, opt_reply?: string, opt_callback?: FlushCallback): void {
-        // Hold PUB SUB [REPLY]
-        let psub;
-        if (opt_reply === undefined) {
-            psub = 'PUB ' + subject + SPC;
-        } else {
-            psub = 'PUB ' + subject + SPC + opt_reply + SPC;
-        }
-
-        // Need to treat sending buffers different.
-        if (!Buffer.isBuffer(msg)) {
-            let str = msg;
-            if (this.options.json) {
-                try {
-                    str = JSON.stringify(msg);
-                } catch (e) {
-                    throw (NatsError.errorForCode(ErrorCode.BAD_JSON));
-                }
-            }
-            this.sendCommand(psub + Buffer.byteLength(str) + CR_LF + str + CR_LF);
-        } else {
-            let b = Buffer.allocUnsafe(psub.length + msg.length + (2 * CR_LF_LEN) + msg.length.toString().length);
-            let len = b.write(psub + msg.length + CR_LF);
-            msg.copy(b, len);
-            b.write(CR_LF, len + msg.length);
-            this.sendCommand(b);
-        }
-
-        if (opt_callback !== undefined) {
-            this.flush(opt_callback);
-        } else if (this.closed) {
+    publish(subject: string, data: any, reply: string = ""): void {
+        if (this.closed) {
             throw (NatsError.errorForCode(ErrorCode.CONN_CLOSED));
         }
+        data = this.normalizeData(data);
+        let len = data.length;
+        let proto: string;
+        if (reply) {
+            proto = `PUB ${subject} ${reply} ${len}\r\n`;
+        } else {
+            proto = `PUB ${subject} ${len}\r\n`;
+        }
+        this.sendCommand(this.buildProtocolMessage(proto, data))
     }
 
     subscribe(subject: string, opts: SubscribeOptions, callback?: SubscriptionCallback): number {
@@ -392,31 +385,26 @@ export class ProtocolHandler extends EventEmitter {
      * The Subscriber Id is returned.
      *
      * @param {String} subject
-     * @param {String} [opt_msg]
+     * @param {String} [data]
      * @param {Object} [opt_options]
      * @param {Function} [callback]
      * @return {Number}
      * @api public
      */
-    request(subject: string, opt_msg?: string | Buffer | object, opt_options?: RequestOptions, callback?: RequestCallback): number {
-        if (typeof opt_msg === 'function') {
-            callback = opt_msg;
-            opt_msg = EMPTY;
-            opt_options = undefined;
-        }
-        if (typeof opt_options === 'function') {
-            callback = opt_options;
-            opt_options = undefined;
+    request(subject: string, timeout: number, data: any = undefined, callback: RequestCallback): number {
+        if (this.closed) {
+            throw (NatsError.errorForCode(ErrorCode.CONN_CLOSED));
         }
 
-        opt_options = opt_options || {} as RequestOptions;
         if(!this.muxSubscriptions) {
             this.muxSubscriptions = new MuxSubscriptions(this.client);
         }
-        let conf = this.muxSubscriptions.initMuxRequestDetails(callback, opt_options.max);
-        this.publish(subject, opt_msg, conf.inbox);
+        let opts = {max: 1, timeout: timeout} as RequestOptions;
+        let conf = this.muxSubscriptions.initMuxRequestDetails(callback, opts.max);
+        this.publish(subject, data, conf.inbox);
 
-        if (opt_options.timeout) {
+        // FIXME: changes field from number to timer
+        if (opts.timeout) {
             conf.timeout = setTimeout(() => {
                 if (conf.callback) {
                     conf.callback(new NatsError(REQ_TIMEOUT_MSG_PREFIX + conf.id, ErrorCode.REQ_TIMEOUT));
@@ -424,7 +412,7 @@ export class ProtocolHandler extends EventEmitter {
                 if (this.muxSubscriptions) {
                     this.muxSubscriptions.cancelMuxRequest(conf.token);
                 }
-            }, opt_options.timeout);
+            }, opts.timeout);
         }
 
         return conf.id;
@@ -1085,6 +1073,29 @@ export class ProtocolHandler extends EventEmitter {
         return 0;
     }
 
+    isClosed() : boolean {
+        return this.closed;
+    }
 
 
+
+    private normalizeData(data: any = undefined) : Buffer {
+        if(! this.options.json) {
+            data = data || EMPTY;
+        } else {
+            // undefined is not a valid JSON-serializable value, but null is
+            data = data === undefined ? null : data;
+            try {
+                data = JSON.stringify(data);
+            } catch (e) {
+                throw (NatsError.errorForCode(ErrorCode.BAD_JSON));
+            }
+        }
+
+        // if we don't have a buffer, it is already serialized json or a string
+        if(! Buffer.isBuffer(data)) {
+            data = Buffer.from(data, "utf8");
+        }
+        return data;
+    }
 }
