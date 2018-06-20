@@ -13,7 +13,6 @@
  * limitations under the License.
  *
  */
-import {TCPTransport} from "./tcptransport";
 import * as url from "url";
 
 

@@ -32,13 +32,3 @@ export interface RequestConfiguration {
     expected?: number;
     timeout?: Timer;
 }
-
-export interface Payload {
-    subj: string;
-    sid: number;
-    reply: string;
-    size: number;
-    psize: number;
-    chunks?: Buffer[];
-    msg: string | Buffer;
-}

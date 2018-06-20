@@ -46,7 +46,7 @@ export class TCPTransport implements Transport {
                 this.handlers.connect();
             });
             this.stream.on('error', (error) => {
-                if(!connected) {
+                if (!connected) {
                     reject(error);
                 } else {
                     this.handlers.error(error);

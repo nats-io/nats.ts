@@ -29,25 +29,59 @@ import {
 } from "./const";
 
 import {ConnectionOptions} from "tls";
+import {Callback} from "./transport";
+import {next} from 'nuid';
 
 
 export const VERSION = '1.0.0';
 
-const EMPTY = "";
+
+export interface Base {
+    subject: string;
+    callback: MsgCallback;
+    received: number;
+    timeout?: Timer;
+    max?: number | undefined;
+}
+
+export function defaultSub(): Sub {
+    return {sid: 0, subject: "", received: 0} as Sub;
+}
+
+export interface Sub extends Base {
+    sid: number;
+    queueGroup?: string | null;
+}
+
+export interface Req extends Base {
+    token: string;
+}
+
 
 export interface Msg {
     subject: string;
     reply?: string;
     data: string | Buffer | object;
-    sid?: number;
+    sid: number;
+    size: number;
+}
+
+export enum Payload {
+    STRING = "string",
+    JSON = "json",
+    BINARY = "binary"
 }
 
 export interface FlushCallback {
-    (err?: NatsError): void;
+    (err: NatsError | null): void;
 }
 
 export interface RequestCallback {
     (msg: string | Buffer | object, inbox?: string): void;
+}
+
+export interface MsgCallback {
+    (err: NatsError | null, msg?: Msg): void;
 }
 
 export interface SubscriptionCallback {
@@ -68,7 +102,6 @@ export interface Subscription {
     expected?: number;
 }
 
-
 export interface SubscribeOptions {
     queue?: string;
     max?: number;
@@ -80,14 +113,13 @@ export interface RequestOptions {
 }
 
 export interface NatsConnectionOptions {
-    url: string;
     encoding?: BufferEncoding;
-    json?: boolean;
     maxPingOut: number;
     maxReconnectAttempts: number;
     name?: string;
     noRandomize: boolean;
     pass?: string;
+    payload?: Payload;
     pedantic?: boolean;
     pingInterval?: number;
     port?: number;
@@ -97,6 +129,7 @@ export interface NatsConnectionOptions {
     servers?: Array<string>;
     tls?: boolean | tls.TlsOptions;
     token?: string;
+    url: string;
     useOldRequestStyle?: boolean;
     user?: string;
     verbose?: boolean;
@@ -104,6 +137,9 @@ export interface NatsConnectionOptions {
     yieldTime?: number;
 }
 
+function defaultReq(): Req {
+    return {token: "", subject: "", received: 0, max: 1} as Req;
+}
 
 export class Client extends events.EventEmitter {
     /**
@@ -117,6 +153,20 @@ export class Client extends events.EventEmitter {
     constructor() {
         super();
         events.EventEmitter.call(this);
+    }
+
+    static connect(opts?: NatsConnectionOptions | number | string | void): Promise<Client> {
+        return new Promise((resolve, reject) => {
+            let options = Client.parseOptions(opts);
+            let client = new Client();
+            ProtocolHandler.connect(client, options)
+                .then((ph) => {
+                    client.protocolHandler = ph;
+                    resolve(client);
+                }).catch((ex) => {
+                reject(ex);
+            });
+        });
     }
 
     private static defaultOptions(): ConnectionOptions {
@@ -135,7 +185,6 @@ export class Client extends events.EventEmitter {
             waitOnFirstConnect: false,
         } as ConnectionOptions
     }
-
 
     private static parseOptions(args?: string | number | NatsConnectionOptions | void): NatsConnectionOptions {
         if (args === undefined || args === null) {
@@ -171,21 +220,6 @@ export class Client extends events.EventEmitter {
         return options;
     }
 
-    static connect(opts?: NatsConnectionOptions | number | string | void): Promise<Client> {
-        return new Promise((resolve, reject) => {
-            let options = Client.parseOptions(opts);
-            let client = new Client();
-            ProtocolHandler.connect(client, options)
-                .then((ph) => {
-                    client.protocolHandler = ph;
-                    resolve(client);
-                }).catch((ex) => {
-                reject(ex);
-            });
-        });
-    }
-
-
     /**
      * Flush outbound queue to server and call optional callback when server has processed
      * all data.
@@ -193,8 +227,16 @@ export class Client extends events.EventEmitter {
      * @param {Function} [cb]
      * @api public
      */
-    flush(cb?: FlushCallback): void {
-        this.protocolHandler.flush(cb);
+    flush(cb?: FlushCallback): Promise<void> | void {
+        if (cb === undefined) {
+            return new Promise((resolve) => {
+                this.protocolHandler.flush(() => {
+                    resolve();
+                });
+            });
+        } else {
+            this.protocolHandler.flush(cb);
+        }
     }
 
     /**
@@ -207,8 +249,8 @@ export class Client extends events.EventEmitter {
      * @api public
      * @throws NatsError - if the subject is missing
      */
-    publish(subject: string, data: any = undefined, reply: string = "") : void {
-        if(! subject) {
+    publish(subject: string, data: any = undefined, reply: string = ""): void {
+        if (!subject) {
             throw NatsError.errorForCode(ErrorCode.BAD_SUBJECT);
         }
 
@@ -220,17 +262,26 @@ export class Client extends events.EventEmitter {
      * ommitted, even with a callback. The Subscriber Id is returned.
      *
      * @param {String} subject
-     * @param {Object} [opts]
-     * @param {Function} callback
+     * @param {Function} cb?
+     * @param {Object} [opts?]
      * @return {Number}
      * @api public
      */
-    subscribe(subject: string, opts?: SubscribeOptions, callback?: SubscriptionCallback): number {
-        if (typeof opts === 'function') {
-            callback = opts;
-            opts = {} as SubscribeOptions;
-        }
-        return this.protocolHandler.subscribe(subject, opts as SubscribeOptions, callback);
+    subscribe(subject: string, cb: MsgCallback, opts: SubscribeOptions = {}): Promise<Subscription> {
+        return new Promise<Subscription>((resolve, reject) => {
+            if (this.isClosed()) {
+                reject(NatsError.errorForCode(ErrorCode.CONN_CLOSED));
+            }
+            if (!cb) {
+                reject(new NatsError("subscribe requires a callback", ErrorCode.API_ERROR));
+            }
+
+            let s = defaultSub();
+            extend(s, opts);
+            s.subject = subject;
+            s.callback = cb;
+            resolve(this.protocolHandler.subscribe(s));
+        });
     }
 
     /**
@@ -289,8 +340,6 @@ export class Client extends events.EventEmitter {
     // }
 
 
-
-
     /**
      * Publish a message with an implicit inbox listener as the reply. Message is optional.
      * This should be treated as a subscription. The subscription is auto-cancelled after the
@@ -310,21 +359,37 @@ export class Client extends events.EventEmitter {
      */
     request(subject: string, timeout: number = 1000, data: any = undefined): Promise<Msg> {
         return new Promise<Msg>((resolve, reject) => {
-            if(this.isClosed()) {
+            if (this.isClosed()) {
                 reject(NatsError.errorForCode(ErrorCode.CONN_CLOSED));
             }
 
-            this.protocolHandler.request(subject, timeout, data, (msg: any, inbox?: string) => {
-                if(msg instanceof Error) {
-                    reject(msg as Error)
+            let r = defaultReq();
+            let opts = {max: 1} as RequestOptions;
+            extend(r, opts);
+            r.token = next();
+            //@ts-ignore
+            r.timeout = setTimeout(() => {
+                request.cancel();
+                reject(NatsError.errorForCode(ErrorCode.REQ_TIMEOUT));
+            }, timeout);
+            r.callback = (error: Error | null, msg?: Msg) => {
+                if (error) {
+                    reject(error);
                 } else {
-                    resolve({data: msg, reply: inbox} as Msg);
+                    resolve(msg);
                 }
-            });
+            };
+
+            let request = this.protocolHandler.request(r);
+            this.publish(subject, data, `${this.protocolHandler.muxSubscriptions.baseInbox}${r.token}`);
         });
     };
 
-    isClosed() : boolean {
+    close(): void {
+        this.protocolHandler.close();
+    }
+
+    isClosed(): boolean {
         return this.protocolHandler.isClosed();
     }
 
@@ -351,4 +416,54 @@ export class Client extends events.EventEmitter {
  */
 export function connect(opts?: NatsConnectionOptions | number | string): Promise<Client> {
     return Client.connect(opts);
+}
+
+
+export class Subscription {
+    sid: number;
+    private protocol: ProtocolHandler;
+
+    constructor(sub: Sub, protocol: ProtocolHandler) {
+        this.sid = sub.sid;
+        this.protocol = protocol;
+    }
+
+    static cancelTimeout(s: Sub | null): void {
+        if (s && s.timeout) {
+            clearTimeout(s.timeout);
+            delete s.timeout;
+        }
+    }
+
+    unsubscribe(max?: number): void {
+        this.protocol.unsubscribe(this.sid, max);
+    }
+
+    hasTimeout(): boolean {
+        let sub = this.protocol.subscriptions.get(this.sid);
+        return sub !== null && sub.timeout !== null;
+    }
+
+    cancelTimeout(): void {
+        let sub = this.protocol.subscriptions.get(this.sid);
+        Subscription.cancelTimeout(sub);
+    }
+
+    setTimeout(millis: number, cb: Callback): boolean {
+        let sub = this.protocol.subscriptions.get(this.sid);
+        Subscription.cancelTimeout(sub);
+        if (sub) {
+            sub.timeout = setTimeout(cb, millis);
+            return true;
+        }
+        return false;
+    }
+
+    getReceived(): number {
+        let sub = this.protocol.subscriptions.get(this.sid);
+        if (sub) {
+            return sub.received;
+        }
+        return 0;
+    }
 }

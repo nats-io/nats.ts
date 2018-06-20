@@ -14,9 +14,9 @@
  *
  */
 import url = require('url');
+import _ = require('lodash');
 import {DEFAULT_URI} from "./const";
 import {ServerInfo} from "./types";
-import _ = require('lodash');
 
 export class Server {
     url: url.Url;

@@ -57,8 +57,7 @@
   },
   "typings": "./lib/nats.d.ts",
   "ava": {
-    "require": [
-    ],
+    "require": [],
     "files": [
       "./lib/test/**/*.js",
       "!./lib/test/helpers/**/*.js"

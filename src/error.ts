@@ -39,8 +39,6 @@ export const INVALID_ENCODING_MSG_PREFIX = 'Invalid Encoding:';
 export const CONN_ERR_PREFIX = 'Could not connect to server: ';
 
 
-
-
 export class Messages {
     static messages = new Messages();
     messages: { [key: string]: string } = {};
@@ -55,6 +53,7 @@ export class Messages {
         this.messages[ErrorCode.CONN_CLOSED] = 'Connection closed';
         this.messages[ErrorCode.NON_SECURE_CONN_REQ] = 'Server does not support a secure connection.';
         this.messages[ErrorCode.SECURE_CONN_REQ] = 'Server requires a secure connection.';
+        this.messages[ErrorCode.REQ_TIMEOUT] = 'Request timed out.';
     }
 
     static getMessage(s: string): string {

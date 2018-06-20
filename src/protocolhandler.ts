@@ -15,25 +15,30 @@
  */
 
 import {
-    Client, FlushCallback, NatsConnectionOptions, RequestCallback, RequestOptions,
-    SubscribeOptions, Subscription, SubscriptionCallback, VERSION
+    Client,
+    defaultSub,
+    FlushCallback,
+    Msg,
+    NatsConnectionOptions,
+    Payload,
+    Req,
+    Sub,
+    Subscription,
+    VERSION
 } from "./nats";
 import {MuxSubscriptions} from "./muxsubscriptions";
-import {Transport, TransportHandlers} from "./transport";
-import {Payload, ServerInfo} from "./types";
-import {CONN_ERR_PREFIX, ErrorCode, INVALID_ENCODING_MSG_PREFIX, NatsError, REQ_TIMEOUT_MSG_PREFIX} from "./error";
-import Timer = NodeJS.Timer;
-import url = require('url');
+import {Callback, Transport, TransportHandlers} from "./transport";
+import {ServerInfo} from "./types";
+import {CONN_ERR_PREFIX, ErrorCode, NatsError} from "./error";
 
 import {EventEmitter} from "events";
-import {
-    DEFAULT_MAX_PING_OUT,
-    DEFAULT_MAX_RECONNECT_ATTEMPTS,
-    DEFAULT_PING_INTERVAL, DEFAULT_PRE,
-    DEFAULT_RECONNECT_TIME_WAIT, DEFAULT_URI
-} from "./const";
+import {DEFAULT_PING_INTERVAL} from "./const";
 import {Server, Servers} from "./servers";
 import {TCPTransport} from "./tcptransport";
+import {Subscriptions} from "./subscriptions";
+import {DataBuffer} from "./databuffer";
+import url = require('url');
+import Timer = NodeJS.Timer;
 
 const PERMISSIONS_ERR = "permissions violation";
 const STALE_CONNECTION_ERR = "stale connection";
@@ -81,37 +86,36 @@ enum ParserState {
 }
 
 export class ProtocolHandler extends EventEmitter {
+
+
+    options: NatsConnectionOptions;
+    subscriptions: Subscriptions;
+    muxSubscriptions = new MuxSubscriptions();
     private client: Client;
     private closed: boolean = false;
     private connected: boolean = false;
-    private inbound!: Buffer | null;
+    private currentServer!: Server;
+    private encoding: BufferEncoding;
+    private inbound = new DataBuffer();
     private info: ServerInfo = {} as ServerInfo;
     private infoReceived: boolean = false;
-    private muxSubscriptions?: MuxSubscriptions;
-    private payload?: Payload | null;
-    private pBufs: boolean = false;
-    private pending: any[] | null = [];
+    private msgBuffer?: MsgBuffer | null;
+    private outbound = new DataBuffer();
+    private pass?: string;
+    private payload: Payload;
     private pingTimer?: Timer;
-    private pongs: any[] | null = [];
+    private pongs: any[] = [];
     private pout: number = 0;
-    private pSize: number = 0;
-    private pstate: ParserState = ParserState.CLOSED;
     private reconnecting: boolean = false;
     private reconnects: number = 0;
-    private ssid: number = 1;
-    private subs: { [key: number]: Subscription } | null = {};
-    private transport: Transport;
-    private wasConnected: boolean = false;
-    private currentServer!: Server;
     private servers: Servers;
-
-    private pass?: string;
+    private ssid: number = 1;
+    private state: ParserState = ParserState.AWAITING_CONTROL;
     private token?: string;
+    private transport: Transport;
     private url!: url.UrlObject;
     private user?: string;
-
-    encoding?: BufferEncoding;
-    options: NatsConnectionOptions;
+    private wasConnected: boolean = false;
 
     constructor(client: Client, options: NatsConnectionOptions) {
         super();
@@ -119,12 +123,14 @@ export class ProtocolHandler extends EventEmitter {
 
         this.client = client;
         this.options = options;
+        this.encoding = options.encoding || "utf8";
+        this.payload = options.payload || Payload.STRING;
 
         // Set user/pass/token as needed if in options.
         this.user = options.user;
         this.pass = options.pass;
         this.token = options.token;
-
+        this.subscriptions = new Subscriptions();
         this.servers = new Servers(!this.options.noRandomize, this.options.servers || [], this.options.url);
         this.transport = new TCPTransport(this.getTransportHandlers());
     }
@@ -133,22 +139,16 @@ export class ProtocolHandler extends EventEmitter {
         return new Promise<ProtocolHandler>((resolve, reject) => {
             let ph = new ProtocolHandler(client, opts);
             ph.connect()
-                .then(()=> {
+                .then(() => {
                     resolve(ph);
                 })
-                .catch((ex)=>{
+                .catch((ex) => {
                     reject(ex);
                 });
         });
     }
 
-    private connect() : Promise<Transport> {
-        this.prepareConnection();
-        return this.transport.connect(this.url);
-    }
-
-
-    flush(cb?: FlushCallback): void {
+    flush(cb: FlushCallback): void {
         if (this.closed) {
             if (typeof cb === 'function') {
                 cb(NatsError.errorForCode(ErrorCode.CONN_CLOSED));
@@ -157,112 +157,9 @@ export class ProtocolHandler extends EventEmitter {
                 throw (NatsError.errorForCode(ErrorCode.CONN_CLOSED));
             }
         }
-        if (this.pongs) {
-            this.pongs.push(cb);
-            this.sendCommand(PING_REQUEST);
-            this.flushPending();
-        }
+        this.pongs.push(cb);
+        this.sendCommand(PING_REQUEST);
     }
-
-    private flushPending(): void {
-        if (this.connected === false ||
-            this.pending === null ||
-            this.pending.length === 0 ||
-            this.infoReceived !== true ||
-            !this.transport.isConnected()) {
-            return;
-        }
-
-        let client = this;
-        let write = function (data: string | Buffer): void {
-            if (!client.transport) {
-                return;
-            }
-            client.pending = [];
-            client.pSize = 0;
-            client.transport.write(data);
-        };
-
-        if (!this.pBufs) {
-            // All strings, fastest for now.
-            write(this.pending.join(EMPTY));
-            return
-        } else {
-            if (this.pending) {
-                // We have some or all Buffers. Figure out if we can optimize.
-                let allBuffs = true;
-                for (let i = 0; i < this.pending.length; i++) {
-                    if (!Buffer.isBuffer(this.pending[i])) {
-                        allBuffs = false;
-                        break;
-                    }
-                }
-
-                // If all buffers, concat together and write once.
-                if (allBuffs) {
-                    return write(Buffer.concat(this.pending, this.pSize));
-                } else {
-                    // We have a mix, so write each one individually.
-                    let pending = this.pending;
-                    this.pending = [];
-                    this.pSize = 0;
-                    for (let i = 0; i < pending.length; i++) {
-                        this.transport.write(pending[i]);
-                    }
-                    return;
-                }
-            }
-        }
-    }
-
-
-    private buildProtocolMessage(protocol: string, a?: Buffer) : Buffer {
-        let pb = Buffer.from(protocol, "utf8");
-        let len = pb.length + 2;
-        let buffers = [pb];
-        if(a) {
-            buffers.push(a);
-            len += a.length;
-        }
-        buffers.push(Buffer.from(CR_LF, "utf8"));
-        return Buffer.concat(buffers, len);
-    }
-
-    /**
-     * Send commands to the server or queue them up if connection pending.
-     *
-     * @api private
-     */
-    private sendCommand(cmd: string | Buffer): void {
-        // Buffer to cut down on system calls, increase throughput.
-        // When receive gets faster, should make this Buffer based..
-
-        if (this.closed || this.pending === null) {
-            return;
-        }
-
-        this.pending.push(cmd);
-        if (!Buffer.isBuffer(cmd)) {
-            this.pSize += Buffer.byteLength(cmd);
-        } else {
-            this.pSize += cmd.length;
-            this.pBufs = true;
-        }
-
-        if (this.connected === true) {
-            // First one let's setup flush..
-            if (this.pending.length === 1) {
-                let self = this;
-                setImmediate(function () {
-                    self.flushPending();
-                });
-            } else if (this.pSize > FLUSH_THRESHOLD) {
-                // Flush in place when threshold reached..
-                this.flushPending();
-            }
-        }
-    }
-
 
     /**
      * Close the connection to the server.
@@ -278,18 +175,17 @@ export class ProtocolHandler extends EventEmitter {
         this.removeAllListeners();
         this.closeStream();
         this.ssid = -1;
-        this.subs = null;
-        this.pstate = ParserState.CLOSED;
-        this.pongs = null;
-        this.pending = null;
-        this.pSize = 0;
+        this.subscriptions.close();
+        this.state = ParserState.CLOSED;
+        this.pongs = [];
+        this.outbound.reset();
     };
 
     publish(subject: string, data: any, reply: string = ""): void {
         if (this.closed) {
             throw (NatsError.errorForCode(ErrorCode.CONN_CLOSED));
         }
-        data = this.normalizeData(data);
+        data = this.toBuffer(data);
         let len = data.length;
         let proto: string;
         if (reply) {
@@ -300,73 +196,36 @@ export class ProtocolHandler extends EventEmitter {
         this.sendCommand(this.buildProtocolMessage(proto, data))
     }
 
-    subscribe(subject: string, opts: SubscribeOptions, callback?: SubscriptionCallback): number {
-        if (this.closed) {
-            throw (NatsError.errorForCode(ErrorCode.CONN_CLOSED));
-        }
-
-        this.subs = this.subs || [];
-        this.ssid += 1;
-        this.subs[this.ssid] = {
-            subject: subject,
-            callback: callback,
-            received: 0
-        } as Subscription;
-
-        let proto;
-        if (typeof opts.queue === 'string') {
-            this.subs[this.ssid].qgroup = opts.queue;
-            proto = [SUB, subject, opts.queue, this.ssid + CR_LF];
+    subscribe(s: Sub): Subscription {
+        let sub = this.subscriptions.add(s) as Sub;
+        if (sub.queueGroup) {
+            this.sendCommand(this.buildProtocolMessage(`SUB ${sub.subject} ${sub.queueGroup} ${sub.sid}\r\n`));
         } else {
-            proto = [SUB, subject, this.ssid + CR_LF];
+            this.sendCommand(this.buildProtocolMessage(`SUB ${sub.subject} ${sub.sid}\r\n`));
         }
-
-        this.sendCommand(proto.join(SPC));
-        this.emit('subscribe', this.ssid, subject, opts);
-
-        if (opts.max) {
-            this.unsubscribe(this.ssid, opts.max);
+        if (s.max) {
+            this.unsubscribe(this.ssid, s.max);
         }
-        return this.ssid;
+        this.emit('subscribe', s.sid, s.subject);
+
+        return new Subscription(sub, this);
     }
 
-    unsubscribe(sid: number, opt_max?: number) {
+    unsubscribe(sid: number, max?: number) {
         if (!sid || this.closed) {
             return;
         }
-
-        // in the case of new muxRequest, it is possible they want perform
-        // an unsubscribe with the returned 'sid'. Intercept that and clear
-        // the request configuration. Mux requests are always negative numbers
-        if (sid < 0) {
-            if (this.muxSubscriptions) {
-                this.muxSubscriptions.cancelMuxRequest(sid);
+        let s = this.subscriptions.get(sid);
+        if (s) {
+            if (max) {
+                this.sendCommand(this.toBuffer(`UNSUB ${sid} ${max}\r\n`));
+            } else {
+                this.sendCommand(this.toBuffer(`UNSUB ${sid}\r\n`));
             }
-            return;
-        }
-
-        let proto;
-        if (opt_max) {
-            proto = [UNSUB, sid, opt_max + CR_LF];
-        } else {
-            proto = [UNSUB, sid + CR_LF];
-        }
-        this.sendCommand(proto.join(SPC));
-
-        this.subs = this.subs || [];
-        let sub = this.subs[sid];
-        if (sub === undefined) {
-            return;
-        }
-        sub.max = opt_max;
-        if (sub.max === undefined || (sub.received >= sub.max)) {
-            // remove any timeouts that may be pending
-            if (sub.timeout) {
-                clearTimeout(sub.timeout);
-                sub.timeout = null;
+            s.max = max;
+            if (s.max === undefined || s.received >= s.max) {
+                this.subscriptions.cancel(s);
             }
-            delete this.subs[sid];
-            this.emit('unsubscribe', sid, sub.subject);
         }
     }
 
@@ -391,33 +250,97 @@ export class ProtocolHandler extends EventEmitter {
      * @return {Number}
      * @api public
      */
-    request(subject: string, timeout: number, data: any = undefined, callback: RequestCallback): number {
+    request(r: Req): Request {
         if (this.closed) {
             throw (NatsError.errorForCode(ErrorCode.CONN_CLOSED));
         }
-
-        if(!this.muxSubscriptions) {
-            this.muxSubscriptions = new MuxSubscriptions(this.client);
-        }
-        let opts = {max: 1, timeout: timeout} as RequestOptions;
-        let conf = this.muxSubscriptions.initMuxRequestDetails(callback, opts.max);
-        this.publish(subject, data, conf.inbox);
-
-        // FIXME: changes field from number to timer
-        if (opts.timeout) {
-            conf.timeout = setTimeout(() => {
-                if (conf.callback) {
-                    conf.callback(new NatsError(REQ_TIMEOUT_MSG_PREFIX + conf.id, ErrorCode.REQ_TIMEOUT));
-                }
-                if (this.muxSubscriptions) {
-                    this.muxSubscriptions.cancelMuxRequest(conf.token);
-                }
-            }, opts.timeout);
-        }
-
-        return conf.id;
+        this.initMux();
+        this.muxSubscriptions.add(r);
+        return new Request(r, this);
     }
 
+    numSubscriptions(): number {
+        return this.subscriptions.length;
+    }
+
+    isClosed(): boolean {
+        return this.closed;
+    }
+
+    cancelRequest(token: string, max?: number): void {
+        if (!token || this.isClosed()) {
+            return;
+        }
+        let r = this.muxSubscriptions.get(token);
+        if (r) {
+            r.max = max;
+            if (r.max === undefined || r.received >= r.max) {
+                this.muxSubscriptions.cancel(r);
+            }
+        }
+    }
+
+    private connect(): Promise<Transport> {
+        this.prepareConnection();
+        return this.transport.connect(this.url);
+    }
+
+    private flushPending() {
+        if (!this.infoReceived) {
+            return;
+        }
+
+        if (this.outbound.size()) {
+            let d = this.outbound.drain();
+            this.transport.write(d);
+        }
+    }
+
+    private buildProtocolMessage(protocol: string, a?: Buffer): Buffer {
+        let pb = Buffer.from(protocol, "utf8");
+        let len = pb.length + 2;
+        let buffers = [pb];
+        if (a) {
+            buffers.push(a);
+            len += a.length;
+        }
+        buffers.push(Buffer.from(CR_LF, "utf8"));
+        return Buffer.concat(buffers, len);
+    }
+
+    /**
+     * Send commands to the server or queue them up if connection pending.
+     *
+     * @api private
+     */
+    private sendCommand(cmd: string | Buffer): void {
+        // Buffer to cut down on system calls, increase throughput.
+        // When receive gets faster, should make this Buffer based..
+
+        if (this.closed) {
+            return;
+        }
+
+        let buf: Buffer;
+        if (typeof cmd === 'string') {
+            buf = Buffer.from(cmd, "utf8");
+        } else {
+            buf = cmd as Buffer;
+        }
+
+        if (buf.byteLength === 0) {
+            return;
+        }
+
+        this.outbound.fill(buf);
+        if (this.outbound.length() === 1) {
+            setImmediate(() => {
+                this.flushPending();
+            });
+        } else if (this.outbound.size() > FLUSH_THRESHOLD) {
+            this.flushPending();
+        }
+    }
 
     /**
      * Properly setup a stream event handlers.
@@ -439,7 +362,7 @@ export class ProtocolHandler extends EventEmitter {
         handlers.close = () => {
             client.closeStream();
             client.emit('disconnect');
-            if (client.closed === true ||
+            if (client.closed ||
                 client.options.reconnect === false ||
                 ((client.reconnects >= client.options.maxReconnectAttempts) && client.options.maxReconnectAttempts !== -1)) {
                 client.emit('close');
@@ -450,14 +373,14 @@ export class ProtocolHandler extends EventEmitter {
 
         handlers.error = (exception: Error) => {
             // If we were connected just return, close event will process
-            if (client.wasConnected === true && client.currentServer.didConnect === true) {
+            if (client.wasConnected && client.currentServer.didConnect) {
                 return;
             }
 
             // if the current server did not connect at all, and we in
             // general have not connected to any server, remove it from
             // this list. Unless overidden
-            if (client.wasConnected === false && client.currentServer.didConnect === false) {
+            if (!client.wasConnected && !client.currentServer.didConnect) {
                 // We can override this behavior with waitOnFirstConnect, which will
                 // treat it like a reconnect scenario.
                 if (client.options.waitOnFirstConnect) {
@@ -470,7 +393,7 @@ export class ProtocolHandler extends EventEmitter {
 
             // Only bubble up error if we never had connected
             // to the server and we only have one.
-            if (client.wasConnected === false && client.servers.length() === 0) {
+            if (!client.wasConnected && client.servers.length() === 0) {
                 client.emit('error', new NatsError(CONN_ERR_PREFIX + exception, ErrorCode.CONN_ERR, exception));
             }
             client.closeStream();
@@ -480,11 +403,7 @@ export class ProtocolHandler extends EventEmitter {
             // If inbound exists, concat them together. We try to avoid this for split
             // messages, so this should only really happen for a split control line.
             // Long term answer is hand rolled parser and not regexp.
-            if (client.inbound) {
-                client.inbound = Buffer.concat([client.inbound, data]);
-            } else {
-                client.inbound = data;
-            }
+            this.inbound.fill(data);
 
             // Process the inbound queue.
             client.processInbound();
@@ -501,7 +420,7 @@ export class ProtocolHandler extends EventEmitter {
      */
     private sendConnect(): void {
         // Queue the connect command.
-        let cs: { [key: string]: any } = {
+        let config: { [key: string]: any } = {
             'lang': 'node',
             'version': VERSION,
             'verbose': this.options.verbose,
@@ -509,19 +428,20 @@ export class ProtocolHandler extends EventEmitter {
             'protocol': 1
         };
         if (this.options.user !== undefined) {
-            cs.user = this.options.user;
-            cs.pass = this.options.pass;
+            config.user = this.options.user;
+            config.pass = this.options.pass;
         }
         if (this.options.token !== undefined) {
-            cs.auth_token = this.options.token;
+            config.auth_token = this.options.token;
         }
         if (this.options.name !== undefined) {
-            cs.name = this.options.name;
+            config.name = this.options.name;
         }
         // If we enqueued requests before we received INFO from the server, or we
         // reconnected, there be other data pending, write this immediately instead
         // of adding it to the queue.
-        this.transport.write(CONNECT + SPC + JSON.stringify(cs) + CR_LF);
+        let cs = JSON.stringify(config);
+        this.transport.write(`${CONNECT} ${cs}${CR_LF}`);
     }
 
     /**
@@ -540,33 +460,28 @@ export class ProtocolHandler extends EventEmitter {
         // via callbacks, would have to track the client's internal connection state,
         // and may have to double buffer messages (which we are already doing) if they
         // wanted to ensure their messages reach the server.
-        let pong = [] as string[];
-        let pend = [] as (string & Buffer)[];
-        let pSize = 0;
-        let client = this;
-        if (client.pending !== null) {
+
+        // copy outbound and reset it
+        let buffers = this.outbound.reset();
+        let pongs = [] as Callback[];
+        if (this.outbound.length()) {
             let pongIndex = 0;
-            client.pending.forEach(cmd => {
-                let cmdLen = Buffer.isBuffer(cmd) ? cmd.length : Buffer.byteLength(cmd);
-                if (cmd === PING_REQUEST && client.pongs !== null && pongIndex < client.pongs.length) {
-                    // filter out any useless ping requests (no pong callback, nop flush)
-                    let p = client.pongs[pongIndex++];
-                    if (p !== undefined) {
-                        pend.push(cmd);
-                        pSize += cmdLen;
-                        pong.push(p);
+            // find all the pings with associated callback, and pubs
+            buffers.forEach((buf) => {
+                let cmd = buf.toString('binary');
+                if (PING.test(cmd) && this.pongs !== null && pongIndex < this.pongs.length) {
+                    let f = this.pongs[pongIndex++];
+                    if (f) {
+                        this.outbound.fill(buf);
+                        pongs.push(f);
                     }
                 } else if (cmd.length > 3 && cmd[0] === 'P' && cmd[1] === 'U' && cmd[2] === 'B') {
-                    pend.push(cmd);
-                    pSize += cmdLen;
+                    this.outbound.fill(buf);
                 }
             });
         }
-        this.pongs = pong;
-        this.pending = pend;
-        this.pSize = pSize;
-
-        this.pstate = ParserState.AWAITING_CONTROL;
+        this.pongs = pongs;
+        this.state = ParserState.AWAITING_CONTROL;
 
         // Clear info processing.
         this.info = {} as ServerInfo;
@@ -584,23 +499,12 @@ export class ProtocolHandler extends EventEmitter {
     private closeStream(): void {
         this.transport.destroy();
         if (this.connected === true || this.closed === true) {
-            this.pongs = null;
+            this.pongs = [];
             this.pout = 0;
-            this.pending = null;
-            this.pSize = 0;
             this.connected = false;
+            this.inbound.reset();
+            this.outbound.reset();
         }
-        this.inbound = null;
-    };
-
-    /**
-     * Initialize client state.
-     *
-     * @api private
-     */
-    private initState(): void {
-        this.pending = [];
-        this.pout = 0;
     };
 
     /**
@@ -610,16 +514,17 @@ export class ProtocolHandler extends EventEmitter {
      * @api private
      */
     private stripPendingSubs() {
-        if (!this.pending) {
+        if (this.outbound.size() === 0) {
             return;
         }
-        let pending = this.pending;
-        this.pending = [];
-        this.pSize = 0;
-        for (let i = 0; i < pending.length; i++) {
-            if (!SUBRE.test(pending[i])) {
-                // Re-queue the command.
-                this.sendCommand(pending[i]);
+
+        // FIXME: outbound doesn't peek so there's no packing
+        let buffers = this.outbound.reset();
+        for (let i = 0; i < buffers.length; i++) {
+            let s = buffers[i].toString("binary");
+            if (!SUBRE.test(s)) {
+                // requeue the command
+                this.sendCommand(buffers[i]);
             }
         }
     }
@@ -630,26 +535,21 @@ export class ProtocolHandler extends EventEmitter {
      * @api private
      */
     private sendSubscriptions(): void {
-        if (!this.subs || !this.transport.isConnected()) {
+        if (this.subscriptions.length === 0 || !this.transport.isConnected()) {
             return;
         }
-
-        let protocols = "";
-        for (let sid in this.subs) {
-            if (this.subs.hasOwnProperty(sid)) {
-                let sub = this.subs[sid];
-                if (sub.qgroup) {
-                    protocols += [SUB, sub.subject, sub.qgroup, sid + CR_LF].join(SPC);
-                } else {
-                    protocols += [SUB, sub.subject, sid + CR_LF].join(SPC);
-                }
+        let cmds: string[] = [];
+        this.subscriptions.all().forEach((s) => {
+            if (s.queueGroup) {
+                cmds.push(`${SUB} ${s.subject} ${s.queueGroup} ${s.sid} ${CR_LF}`);
+            } else {
+                cmds.push(`${SUB} ${s.subject} ${s.sid} ${CR_LF}`);
             }
-        }
-        if (protocols.length > 0) {
-            this.transport.write(protocols);
+        });
+        if (cmds.length) {
+            this.transport.write(this.toBuffer(cmds.join('')))
         }
     }
-
 
     /**
      * Process the inbound data queue.
@@ -657,97 +557,90 @@ export class ProtocolHandler extends EventEmitter {
      * @api private
      */
     private processInbound(): void {
-        let client = this;
-
         // Hold any regex matches.
         let m;
 
         // For optional yield
         let start;
 
-        if (!client.transport) {
+        if (!this.transport) {
             // if we are here, the stream was reaped and errors raised
             // if we continue.
             return;
         }
         // unpause if needed.
         // FIXME(dlc) client.stream.isPaused() causes 0.10 to fail
-        client.transport.resume();
+        this.transport.resume();
 
-        /* jshint -W083 */
-
-        if (client.options.yieldTime !== undefined) {
+        if (this.options.yieldTime !== undefined) {
             start = Date.now();
         }
 
-        while (!client.closed && client.inbound && client.inbound.length > 0) {
-            switch (client.pstate) {
+        while (!this.closed && this.inbound.size()) {
+            switch (this.state) {
 
                 case ParserState.AWAITING_CONTROL:
                     // Regex only works on strings, so convert once to be more efficient.
                     // Long term answer is a hand rolled parser, not regex.
-                    let buf = client.inbound.toString('binary', 0, MAX_CONTROL_LINE_SIZE);
+                    let buf = this.inbound.peek().toString('binary', 0, MAX_CONTROL_LINE_SIZE);
+
                     if ((m = MSG.exec(buf)) !== null) {
-                        client.payload = {
-                            subj: m[1],
-                            sid: parseInt(m[2], 10),
-                            reply: m[4],
-                            size: parseInt(m[5], 10)
-                        } as Payload;
-                        client.payload.psize = client.payload.size + CR_LF_LEN;
-                        client.pstate = ParserState.AWAITING_MSG_PAYLOAD;
+                        this.msgBuffer = new MsgBuffer(m, this.payload, this.encoding);
+                        this.state = ParserState.AWAITING_MSG_PAYLOAD;
                     } else if ((m = OK.exec(buf)) !== null) {
                         // Ignore for now..
                     } else if ((m = ERR.exec(buf)) !== null) {
-                        client.processErr(m[1]);
+                        this.processErr(m[1]);
                         return;
                     } else if ((m = PONG.exec(buf)) !== null) {
-                        client.pout = 0;
-                        let cb = client.pongs && client.pongs.shift();
+                        this.pout = 0;
+                        let cb = this.pongs && this.pongs.shift();
                         if (cb) {
-                            cb();
+                            try {
+                                cb();
+                            } catch (err) {
+                                console.error('error while processing pong', err);
+                            }
                         } // FIXME: Should we check for exceptions?
                     } else if ((m = PING.exec(buf)) !== null) {
-                        client.sendCommand(PONG_RESPONSE);
+                        this.sendCommand(PONG_RESPONSE);
                     } else if ((m = INFO.exec(buf)) !== null) {
-                        client.info = JSON.parse(m[1]);
+                        this.info = JSON.parse(m[1]);
                         // Check on TLS mismatch.
-                        if (client.checkTLSMismatch() === true) {
+                        if (this.checkTLSMismatch() === true) {
                             return;
                         }
 
                         // Always try to read the connect_urls from info
-                        let newServers = client.servers.processServerUpdate(client.info);
+                        let newServers = this.servers.processServerUpdate(this.info);
                         if (newServers.length > 0) {
-                            client.emit('serversDiscovered', newServers);
+                            this.emit('serversDiscovered', newServers);
                         }
 
                         // Process first INFO
-                        if (client.infoReceived === false) {
+                        if (!this.infoReceived) {
                             // Switch over to TLS as needed.
 
                             // are we a tls socket?
-                            let encrypted = client.transport.isEncrypted();
-                            if (client.options.tls !== false && encrypted !== true) {
-                                this.transport.upgrade(client.options.tls, function () {
-                                    client.flushPending();
+                            let encrypted = this.transport.isEncrypted();
+                            if (this.options.tls !== false && !encrypted) {
+                                this.transport.upgrade(this.options.tls, () => {
+                                    this.flushPending();
                                 });
                             }
 
                             // Send the connect message and subscriptions immediately
-                            client.sendConnect();
-                            client.sendSubscriptions();
-
-                            client.pongs = client.pongs || [];
-                            client.pongs.unshift(function () {
-                                client.connectCB();
+                            this.sendConnect();
+                            this.sendSubscriptions();
+                            this.pongs.unshift(() => {
+                                this.connectCB();
                             });
-                            client.transport.write(PING_REQUEST);
+                            this.transport.write(PING_REQUEST);
 
                             // Mark as received
-                            client.infoReceived = true;
-                            client.stripPendingSubs();
-                            client.flushPending();
+                            this.infoReceived = true;
+                            this.stripPendingSubs();
+                            this.flushPending();
                         }
                     } else {
                         // FIXME, check line length for something weird.
@@ -757,68 +650,27 @@ export class ProtocolHandler extends EventEmitter {
                     break;
 
                 case ParserState.AWAITING_MSG_PAYLOAD:
-                    if (!client.payload) {
+                    if (!this.msgBuffer) {
                         break;
                     }
-
-                    // If we do not have the complete message, hold onto the chunks
-                    // and assemble when we have all we need. This optimizes for
-                    // when we parse a large buffer down to a small number of bytes,
-                    // then we receive a large chunk. This avoids a big copy with a
-                    // simple concat above.
-                    if (client.inbound.length < client.payload.psize) {
-                        if (undefined === client.payload.chunks) {
-                            client.payload.chunks = [];
-                        }
-                        client.payload.chunks.push(client.inbound);
-                        client.payload.psize -= client.inbound.length;
-                        client.inbound = null;
+                    // drain what we have collected
+                    if (this.inbound.size() < this.msgBuffer.length) {
+                        let d = this.inbound.drain();
+                        this.msgBuffer.fill(d);
                         return;
                     }
-
-                    // If we are here we have the complete message.
-                    // Check to see if we have existing chunks
-                    if (client.payload.chunks) {
-
-                        client.payload.chunks.push(client.inbound.slice(0, client.payload.psize));
-                        // don't append trailing control characters
-                        let mbuf = Buffer.concat(client.payload.chunks, client.payload.size);
-
-                        if (client.options.preserveBuffers) {
-                            client.payload.msg = mbuf;
-                        } else {
-                            client.payload.msg = mbuf.toString(client.encoding);
-                        }
-
-                    } else {
-
-                        if (client.options.preserveBuffers) {
-                            client.payload.msg = client.inbound.slice(0, client.payload.size);
-                        } else {
-                            client.payload.msg = client.inbound.toString(client.encoding, 0, client.payload.size);
-                        }
-
-                    }
-
-                    // Eat the size of the inbound that represents the message.
-                    if (client.inbound.length === client.payload.psize) {
-                        client.inbound = null;
-                    } else {
-                        client.inbound = client.inbound.slice(client.payload.psize);
-                    }
-
-                    // process the message
-                    client.processMsg();
-
-                    // Reset
-                    client.pstate = ParserState.AWAITING_CONTROL;
-                    client.payload = null;
+                    // drain the number of bytes we need
+                    let dd = this.inbound.drain(this.msgBuffer.length);
+                    this.msgBuffer.fill(dd);
+                    this.processMsg();
+                    this.state = ParserState.AWAITING_CONTROL;
+                    this.msgBuffer = null;
 
                     // Check to see if we have an option to yield for other events after yieldTime.
-                    if (start !== undefined && client.options && client.options.yieldTime) {
-                        if ((Date.now() - start) > client.options.yieldTime) {
-                            client.transport.pause();
-                            setImmediate(client.processInbound.bind(this));
+                    if (start !== undefined && this.options && this.options.yieldTime) {
+                        if ((Date.now() - start) > this.options.yieldTime) {
+                            this.transport.pause();
+                            setImmediate(this.processInbound.bind(this));
                             return;
                         }
                     }
@@ -826,16 +678,16 @@ export class ProtocolHandler extends EventEmitter {
             }
 
             // This is applicable for a regex match to eat the bytes we used from a control line.
-            if (m && !this.closed && client.inbound) {
+            if (m) {
                 // Chop inbound
-                let psize = m[0].length;
-                if (psize >= client.inbound.length) {
-                    client.inbound = null;
+                let payloadSize = m[0].length;
+                if (payloadSize >= this.inbound.size()) {
+                    this.inbound.drain();
                 } else {
-                    client.inbound = client.inbound.slice(psize);
+                    this.inbound.drain(payloadSize);
                 }
+                m = null;
             }
-            m = null;
         }
     }
 
@@ -872,55 +724,46 @@ export class ProtocolHandler extends EventEmitter {
         return false;
     }
 
-
     /**
      * Process a delivered message and deliver to appropriate subscriber.
      *
      * @api private
      */
     private processMsg(): void {
-        if (!this.subs || !this.payload) {
+        if (this.subscriptions.length === 0 || !this.msgBuffer) {
             return;
         }
-        let sub = this.subs[this.payload.sid];
+        let sub = this.subscriptions.get(this.msgBuffer.msg.sid);
         if (!sub) {
             return;
         }
         sub.received += 1;
-        // Check for a timeout, and cancel if received >= expected
+
+        // if we received expected number of messages, cancel the timeout
         if (sub.timeout) {
-            if (sub.expected !== undefined && sub.received >= sub.expected) {
-                clearTimeout(sub.timeout);
-                sub.timeout = null;
-            }
+            // we got one message
+            Subscription.cancelTimeout(sub);
         }
-        // Check for auto-unsubscribe
-        if (sub.max !== undefined) {
-            if (sub.received === sub.max) {
-                delete this.subs[this.payload.sid];
-                this.emit('unsubscribe', this.payload.sid, sub.subject);
-            } else if (sub.received > sub.max) {
-                this.unsubscribe(this.payload.sid);
-                sub.callback = null;
-            }
+
+        // if we got max number of messages, unsubscribe
+        if (sub.max !== undefined && sub.received >= sub.max) {
+            this.unsubscribe(sub.sid);
+            this.emit('unsubscribe', sub.sid, sub.subject);
         }
 
         if (sub.callback) {
-            let msg = this.payload.msg;
-            if (this.options.json && msg) {
-                if (msg instanceof Buffer) {
-                    msg = msg.toString(this.options.encoding);
+            try {
+                if (this.msgBuffer.error) {
+                    sub.callback(this.msgBuffer.error);
+                } else {
+                    sub.callback(null, this.msgBuffer.msg);
                 }
-                try {
-                    msg = JSON.parse(msg);
-                } catch (e) {
-                    msg = e;
-                }
+            } catch (error) {
+                // client could have died
+                this.emit('error', error);
             }
-            sub.callback(msg, this.payload.reply, this.payload.subj, this.payload.sid);
         }
     };
-
 
     /**
      * ProcessErr processes any error messages from the server
@@ -941,7 +784,6 @@ export class ProtocolHandler extends EventEmitter {
             this.closeStream();
         }
     };
-
 
     /**
      * Reconnect to the server.
@@ -1065,24 +907,8 @@ export class ProtocolHandler extends EventEmitter {
         }
     }
 
-
-    numSubscriptions(): number {
-        if (this.subs) {
-            return Object.keys(this.subs).length;
-        }
-        return 0;
-    }
-
-    isClosed() : boolean {
-        return this.closed;
-    }
-
-
-
-    private normalizeData(data: any = undefined) : Buffer {
-        if(! this.options.json) {
-            data = data || EMPTY;
-        } else {
+    private toBuffer(data: any = undefined): Buffer {
+        if (this.options.payload === Payload.JSON) {
             // undefined is not a valid JSON-serializable value, but null is
             data = data === undefined ? null : data;
             try {
@@ -1090,12 +916,92 @@ export class ProtocolHandler extends EventEmitter {
             } catch (e) {
                 throw (NatsError.errorForCode(ErrorCode.BAD_JSON));
             }
+        } else {
+            data = data || EMPTY;
         }
 
-        // if we don't have a buffer, it is already serialized json or a string
-        if(! Buffer.isBuffer(data)) {
-            data = Buffer.from(data, "utf8");
+        // if not a buffer, it is already serialized json or a string
+        if (!Buffer.isBuffer(data)) {
+            data = Buffer.from(data, "binary");
         }
         return data;
+    }
+
+    private initMux(): void {
+        let mux = this.subscriptions.getMux();
+        if (!mux) {
+            let inbox = this.muxSubscriptions.init();
+            let sub = defaultSub();
+            // dot is already part of mux
+            sub.subject = `${inbox}*`;
+            sub.callback = this.muxSubscriptions.dispatcher();
+            this.subscriptions.setMux(sub);
+            this.subscribe(sub);
+        }
+    }
+}
+
+
+export class MsgBuffer {
+    msg: Msg;
+    length: number;
+    payload: Payload;
+    error?: NatsError;
+    private encoding: BufferEncoding;
+    private buf!: Buffer | null;
+
+    constructor(chunks: RegExpExecArray, payload: Payload, encoding: BufferEncoding) {
+        this.msg = {} as Msg;
+        this.encoding = encoding;
+        this.msg.subject = chunks[1];
+        this.msg.sid = parseInt(chunks[2], 10);
+        this.msg.reply = chunks[4];
+        this.msg.size = parseInt(chunks[5], 10);
+        this.length = this.msg.size + CR_LF_LEN;
+        this.payload = payload;
+    }
+
+    fill(data: Buffer) {
+        if (!this.buf) {
+            this.buf = data;
+        } else {
+            this.buf = Buffer.concat([this.buf, data]);
+        }
+        this.length -= data.byteLength;
+
+        if (this.length === 0) {
+            this.buf = this.buf.slice(0, this.buf.byteLength - 2);
+            switch (this.payload) {
+                case Payload.JSON:
+                    this.msg.data = this.buf.toString("utf8");
+                    try {
+                        this.msg.data = JSON.parse(this.msg.data);
+                    } catch (ex) {
+                        this.error = NatsError.errorForCode(ErrorCode.BAD_JSON, ex);
+                    }
+                    break;
+                case Payload.STRING:
+                    this.msg.data = this.buf.toString(this.encoding);
+                    break;
+                case Payload.BINARY:
+                    this.msg.data = this.buf;
+                    break;
+            }
+            this.buf = null;
+        }
+    }
+}
+
+export class Request {
+    token: string;
+    private protocol: ProtocolHandler;
+
+    constructor(req: Req, protocol: ProtocolHandler) {
+        this.token = req.token;
+        this.protocol = protocol;
+    }
+
+    cancel(): void {
+        this.protocol.cancelRequest(this.token, 0);
     }
 }

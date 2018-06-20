@@ -15,120 +15,72 @@
  */
 
 
-import {Client, SubscribeOptions} from "./nats";
-import {RequestConfiguration} from "./types";
-import nuid = require('nuid');
-
+import {Msg, Req} from "./nats";
+import {createInbox} from "./util";
+import {NatsError} from "./error";
 
 export class MuxSubscriptions {
-    client: Client;
-    inbox: string;
-    inboxPrefixLen: number;
-    subscriptionID: number;
-    requestMap: { [key: string]: RequestConfiguration } = {};
-    nextID: number = -1;
+    baseInbox!: string;
+    reqs: { [key: string]: Req } = {};
+    length: number = 0;
 
-    constructor(client: Client) {
-        this.client = client;
-        this.inbox = client.createInbox();
-        this.inboxPrefixLen = this.inbox.length + 1;
-        let ginbox = this.inbox + ".*";
-        this.subscriptionID = client.subscribe(ginbox, {} as SubscribeOptions, (msg: string | Buffer | object, reply: string, subject: string) => {
-            let token = this.extractToken(subject);
-            let conf = this.getMuxRequestConfig(token);
-            if (conf) {
-                if (conf.hasOwnProperty('expected')) {
-                    conf.received++;
-                    if (conf.expected !== undefined && conf.received >= conf.expected) {
-                        this.cancelMuxRequest(token);
+    init(): string {
+        this.baseInbox = `${createInbox()}.`;
+        return this.baseInbox;
+    }
+
+    add(r: Req) {
+        if (!isNaN(r.received)) {
+            r.received = 0;
+        }
+        this.length++;
+        this.reqs[r.token] = r;
+    }
+
+    get(token: string): Req | null {
+        if (token in this.reqs) {
+            return this.reqs[token];
+        }
+        return null;
+    }
+
+    cancel(r: Req): void {
+        if (r && r.timeout) {
+            clearTimeout(r.timeout);
+            delete r.timeout;
+        }
+        if (r.token in this.reqs) {
+            delete this.reqs[r.token];
+            this.length--;
+        }
+    }
+
+    getToken(m?: Msg): string | null {
+        let s = "";
+        if (m) {
+            s = m.subject || "";
+        }
+        if (s.indexOf(this.baseInbox) === 0) {
+            return s.substring(this.baseInbox.length);
+        }
+        return null;
+    }
+
+    dispatcher() {
+        let mux = this;
+        return (error: NatsError | null, m?: Msg): void => {
+
+            let token = mux.getToken(m);
+            if (token) {
+                let r = mux.get(token);
+                if (r) {
+                    r.received++;
+                    r.callback(error, m);
+                    if (r.max && r.received >= r.max) {
+                        mux.cancel(r);
                     }
                 }
-                if (conf.callback) {
-                    conf.callback(msg, reply);
-                }
-            }
-        });
-    }
-
-    /**
-     * Returns the mux request configuration
-     * @param token
-     * @returns Object
-     */
-    getMuxRequestConfig(token: string | number): RequestConfiguration {
-        // if the token is a number, we have a fake sid, find the request
-        if (typeof token === 'number') {
-            let entry = null;
-            for (let p in this.requestMap) {
-                if (this.requestMap.hasOwnProperty(p)) {
-                    let v = this.requestMap[p];
-                    if (v.id === token) {
-                        entry = v;
-                        break;
-                    }
-                }
-            }
-            if (entry) {
-                token = entry.token;
             }
         }
-        return this.requestMap[token];
-    }
-
-    /**
-     * Stores the request callback and other details
-     *
-     * @api private
-     */
-    initMuxRequestDetails(callback?: Function, expected?: number): RequestConfiguration {
-        if (arguments.length === 1) {
-            if (typeof callback === 'number') {
-                expected = callback;
-                callback = undefined;
-            }
-        }
-        let token = nuid.next();
-        let inbox = this.inbox + '.' + token;
-
-        let conf = {
-            token: token,
-            callback: callback,
-            inbox: inbox,
-            id: this.nextID--,
-            received: 0
-        } as RequestConfiguration;
-        if (expected !== undefined && expected > 0) {
-            conf.expected = expected;
-        }
-
-        this.requestMap[token] = conf;
-        return conf;
     };
-
-    /**
-     * Cancels the mux request
-     *
-     * @api private
-     */
-    cancelMuxRequest(token: string | number) {
-        let conf = this.getMuxRequestConfig(token);
-        if (conf) {
-            if (conf.timeout) {
-                clearTimeout(conf.timeout);
-            }
-            // the token could be sid, so use the one in the conf
-            delete this.requestMap[conf.token];
-        }
-        return conf;
-    };
-
-    /**
-     * Strips the prefix of the request reply to derive the token.
-     * This is internal and only used by the new requestOne.
-     *
-     * @api private
-     */
-    extractToken(subject: string) {
-        return subject.substr(this.inboxPrefixLen);
-    }
 }
