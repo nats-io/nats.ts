@@ -32,9 +32,7 @@ import {ConnectionOptions} from "tls";
 import {Callback} from "./transport";
 import {next} from 'nuid';
 
-
-export const VERSION = '1.0.0';
-
+export const VERSION = ProtocolHandler.VERSION;
 
 export interface Base {
     subject: string;
@@ -76,25 +74,13 @@ export interface FlushCallback {
     (err: NatsError | null): void;
 }
 
-export interface RequestCallback {
-    (msg: string | Buffer | object, inbox?: string): void;
-}
-
 export interface MsgCallback {
     (err: NatsError | null, msg?: Msg): void;
 }
 
-export interface SubscriptionCallback {
-    (msg: any, inbox: string, subject: string, sid: number): void;
-}
-
-export interface TimeoutCallback {
-    (sid: number): void;
-}
-
 export interface Subscription {
     subject: string;
-    callback?: SubscriptionCallback | null;
+    callback?: MsgCallback | null;
     received: number;
     qgroup: string;
     timeout?: Timer | null;
@@ -283,61 +269,6 @@ export class Client extends events.EventEmitter {
             resolve(this.protocolHandler.subscribe(s));
         });
     }
-
-    /**
-     * Unsubscribe to a given Subscriber Id, with optional max parameter.
-     * Unsubscribing to a subscription that already yielded the specified number of messages
-     * will clear any pending timeout callbacks.
-     *
-     * @param {Number} sid
-     * @param {Number} [opt_max]
-     * @api public
-     */
-    unsubscribe(sid: number, opt_max?: number) {
-        this.protocolHandler.unsubscribe(sid, opt_max);
-    };
-
-    // /**
-    //  * Set a timeout on a subscription. The subscription is cancelled if the
-    //  * expected number of messages is reached or the timeout is reached.
-    //  * If this function is called with an SID from a multiplexed
-    //  * request call, the original timeout handler associated with the multiplexed
-    //  * request is replaced with the one provided to this function.
-    //  *
-    //  * @param {Number} sid
-    //  * @param {Number} timeout
-    //  * @param {Number} expected
-    //  * @param {Function} callback
-    //  * @api public
-    //  */
-    // timeout(sid: number, timeout: number, expected: number, callback: TimeoutCallback): void {
-    //     if (!sid) {
-    //         return;
-    //     }
-    //     let sub = null;
-    //     // check the sid is not a mux sid - which is always negative
-    //     if (sid < 0) {
-    //         if (this.muxSubscriptions) {
-    //             let conf = this.muxSubscriptions.getMuxRequestConfig(sid);
-    //             if (conf && conf.timeout) {
-    //                 // clear auto-set timeout
-    //                 clearTimeout(conf.timeout);
-    //             }
-    //             sub = conf;
-    //         }
-    //     } else if (this.subs) {
-    //         sub = this.subs[sid];
-    //     }
-    //
-    //     if (sub) {
-    //         sub.expected = expected;
-    //         sub.timeout = setTimeout(() => {
-    //             callback(sid);
-    //             // if callback fails unsubscribe will leak
-    //             this.unsubscribe(sid);
-    //         }, timeout);
-    //     }
-    // }
 
 
     /**

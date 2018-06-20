@@ -25,3 +25,8 @@ export const DEFAULT_MAX_RECONNECT_ATTEMPTS = 10;
 // Ping interval
 export const DEFAULT_PING_INTERVAL = 2 * 60 * 1000; // 2 minutes
 export const DEFAULT_MAX_PING_OUT = 2;
+
+
+export const CR_LF = '\r\n';
+export const CR_LF_LEN = CR_LF.length;
+export const EMPTY = '';

@@ -14,37 +14,28 @@
  *
  */
 
-import {
-    Client,
-    defaultSub,
-    FlushCallback,
-    Msg,
-    NatsConnectionOptions,
-    Payload,
-    Req,
-    Sub,
-    Subscription,
-    VERSION
-} from "./nats";
+import {Client, defaultSub, FlushCallback, NatsConnectionOptions, Payload, Req, Sub, Subscription} from "./nats";
 import {MuxSubscriptions} from "./muxsubscriptions";
 import {Callback, Transport, TransportHandlers} from "./transport";
 import {ServerInfo} from "./types";
 import {CONN_ERR_PREFIX, ErrorCode, NatsError} from "./error";
 
 import {EventEmitter} from "events";
-import {DEFAULT_PING_INTERVAL} from "./const";
+import {CR_LF, DEFAULT_PING_INTERVAL, EMPTY} from "./const";
 import {Server, Servers} from "./servers";
 import {TCPTransport} from "./tcptransport";
 import {Subscriptions} from "./subscriptions";
 import {DataBuffer} from "./databuffer";
+import {extend} from "./util";
+import {MsgBuffer} from "./messagebuffer";
 import url = require('url');
 import Timer = NodeJS.Timer;
 
+
 const PERMISSIONS_ERR = "permissions violation";
 const STALE_CONNECTION_ERR = "stale connection";
-
-
 const MAX_CONTROL_LINE_SIZE = 1024,
+
 
     // Protocol
     //CONTROL_LINE = /^(.*)\r\n/, // TODO: remove / never used
@@ -57,10 +48,6 @@ const MAX_CONTROL_LINE_SIZE = 1024,
     INFO = /^INFO\s+([^\r\n]+)\r\n/i,
     SUBRE = /^SUB\s+([^\r\n]+)\r\n/i,
 
-    CR_LF = '\r\n',
-    CR_LF_LEN = CR_LF.length,
-    EMPTY = '',
-    SPC = ' ',
 
     // Protocol
     //PUB     = 'PUB', // TODO: remove / never used
@@ -72,10 +59,6 @@ const MAX_CONTROL_LINE_SIZE = 1024,
     PING_REQUEST = 'PING' + CR_LF,
     PONG_RESPONSE = 'PONG' + CR_LF,
 
-    // Pedantic Mode support
-    //Q_SUB = /^([^\.\*>\s]+|>$|\*)(\.([^\.\*>\s]+|>$|\*))*$/, // TODO: remove / never used
-    //Q_SUB_NO_WC = /^([^\.\*>\s]+)(\.([^\.\*>\s]+))*$/, // TODO: remove / never used
-
     FLUSH_THRESHOLD = 65536;
 
 // Parser state
@@ -86,8 +69,7 @@ enum ParserState {
 }
 
 export class ProtocolHandler extends EventEmitter {
-
-
+    static VERSION = "1.0.0";
     options: NatsConnectionOptions;
     subscriptions: Subscriptions;
     muxSubscriptions = new MuxSubscriptions();
@@ -207,7 +189,6 @@ export class ProtocolHandler extends EventEmitter {
             this.unsubscribe(this.ssid, s.max);
         }
         this.emit('subscribe', s.sid, s.subject);
-
         return new Subscription(sub, this);
     }
 
@@ -413,38 +394,6 @@ export class ProtocolHandler extends EventEmitter {
     }
 
     /**
-     * Send the connect command. This needs to happen after receiving the first
-     * INFO message and after TLS is established if necessary.
-     *
-     * @api private
-     */
-    private sendConnect(): void {
-        // Queue the connect command.
-        let config: { [key: string]: any } = {
-            'lang': 'node',
-            'version': VERSION,
-            'verbose': this.options.verbose,
-            'pedantic': this.options.pedantic,
-            'protocol': 1
-        };
-        if (this.options.user !== undefined) {
-            config.user = this.options.user;
-            config.pass = this.options.pass;
-        }
-        if (this.options.token !== undefined) {
-            config.auth_token = this.options.token;
-        }
-        if (this.options.name !== undefined) {
-            config.name = this.options.name;
-        }
-        // If we enqueued requests before we received INFO from the server, or we
-        // reconnected, there be other data pending, write this immediately instead
-        // of adding it to the queue.
-        let cs = JSON.stringify(config);
-        this.transport.write(`${CONNECT} ${cs}${CR_LF}`);
-    }
-
-    /**
      * Properly setup a stream connection with proper events.
      *
      * @api private
@@ -630,7 +579,8 @@ export class ProtocolHandler extends EventEmitter {
                             }
 
                             // Send the connect message and subscriptions immediately
-                            this.sendConnect();
+                            let cs = JSON.stringify(new Connect(this.options));
+                            this.transport.write(`${CONNECT} ${cs}${CR_LF}`);
                             this.sendSubscriptions();
                             this.pongs.unshift(() => {
                                 this.connectCB();
@@ -697,14 +647,14 @@ export class ProtocolHandler extends EventEmitter {
      * @api private
      */
     private checkTLSMismatch(): boolean {
-        if (this.info.tls_required === true &&
+        if (this.info.tls_required &&
             this.options.tls === false) {
             this.emit('error', NatsError.errorForCode(ErrorCode.SECURE_CONN_REQ));
             this.closeStream();
             return true;
         }
 
-        if (this.info.tls_required === false &&
+        if (!this.info.tls_required &&
             this.options.tls !== false) {
             this.emit('error', NatsError.errorForCode(ErrorCode.NON_SECURE_CONN_REQ));
             this.closeStream();
@@ -716,7 +666,7 @@ export class ProtocolHandler extends EventEmitter {
         if (this.options.tls && typeof this.options.tls === 'object') {
             cert = this.options.tls.cert != null;
         }
-        if (this.info.tls_verify === true && !cert) {
+        if (this.info.tls_verify && !cert) {
             this.emit('error', NatsError.errorForCode(ErrorCode.CLIENT_CERT_REQ));
             this.closeStream();
             return true;
@@ -796,7 +746,7 @@ export class ProtocolHandler extends EventEmitter {
         }
         this.reconnects += 1;
         this.prepareConnection();
-        if (this.currentServer.didConnect === true) {
+        if (this.currentServer.didConnect) {
             this.emit('reconnecting');
         }
     }
@@ -814,13 +764,13 @@ export class ProtocolHandler extends EventEmitter {
         }
         // Don't set reconnecting state if we are just trying
         // for the first time.
-        if (ph.wasConnected === true) {
+        if (ph.wasConnected) {
             ph.reconnecting = true;
         }
         // Only stall if we have connected before.
         let wait = 0;
         let s = ph.servers.next();
-        if (s && s.didConnect === true && this.options.reconnectTimeWait !== undefined) {
+        if (s && s.didConnect && this.options.reconnectTimeWait !== undefined) {
             wait = this.options.reconnectTimeWait;
         }
         setTimeout(() => {
@@ -942,56 +892,6 @@ export class ProtocolHandler extends EventEmitter {
 }
 
 
-export class MsgBuffer {
-    msg: Msg;
-    length: number;
-    payload: Payload;
-    error?: NatsError;
-    private encoding: BufferEncoding;
-    private buf!: Buffer | null;
-
-    constructor(chunks: RegExpExecArray, payload: Payload, encoding: BufferEncoding) {
-        this.msg = {} as Msg;
-        this.encoding = encoding;
-        this.msg.subject = chunks[1];
-        this.msg.sid = parseInt(chunks[2], 10);
-        this.msg.reply = chunks[4];
-        this.msg.size = parseInt(chunks[5], 10);
-        this.length = this.msg.size + CR_LF_LEN;
-        this.payload = payload;
-    }
-
-    fill(data: Buffer) {
-        if (!this.buf) {
-            this.buf = data;
-        } else {
-            this.buf = Buffer.concat([this.buf, data]);
-        }
-        this.length -= data.byteLength;
-
-        if (this.length === 0) {
-            this.buf = this.buf.slice(0, this.buf.byteLength - 2);
-            switch (this.payload) {
-                case Payload.JSON:
-                    this.msg.data = this.buf.toString("utf8");
-                    try {
-                        this.msg.data = JSON.parse(this.msg.data);
-                    } catch (ex) {
-                        this.error = NatsError.errorForCode(ErrorCode.BAD_JSON, ex);
-                    }
-                    break;
-                case Payload.STRING:
-                    this.msg.data = this.buf.toString(this.encoding);
-                    break;
-                case Payload.BINARY:
-                    this.msg.data = this.buf;
-                    break;
-            }
-            this.buf = null;
-        }
-    }
-}
-
 export class Request {
     token: string;
     private protocol: ProtocolHandler;
@@ -1003,5 +903,25 @@ export class Request {
 
     cancel(): void {
         this.protocol.cancelRequest(this.token, 0);
+    }
+}
+
+export class Connect {
+    lang: string = "typescript";
+    version: string = ProtocolHandler.VERSION;
+    verbose: boolean = false;
+    pedantic: boolean = false;
+    protocol: number = 1;
+    user?: string;
+    pass?: string;
+    auth_token?: string;
+    name?: string;
+
+    constructor(opts?: NatsConnectionOptions) {
+        opts = opts || {} as NatsConnectionOptions;
+        if (opts.token) {
+            this.auth_token = opts.token;
+        }
+        extend(this, opts);
     }
 }
