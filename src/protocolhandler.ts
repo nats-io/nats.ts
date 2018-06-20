@@ -171,9 +171,9 @@ export class ProtocolHandler extends EventEmitter {
         let len = data.length;
         let proto: string;
         if (reply) {
-            proto = `PUB ${subject} ${reply} ${len}\r\n`;
+            proto = `PUB ${subject} ${reply} ${len}`;
         } else {
-            proto = `PUB ${subject} ${len}\r\n`;
+            proto = `PUB ${subject} ${len}`;
         }
         this.sendCommand(this.buildProtocolMessage(proto, data))
     }
@@ -181,9 +181,9 @@ export class ProtocolHandler extends EventEmitter {
     subscribe(s: Sub): Subscription {
         let sub = this.subscriptions.add(s) as Sub;
         if (sub.queueGroup) {
-            this.sendCommand(this.buildProtocolMessage(`SUB ${sub.subject} ${sub.queueGroup} ${sub.sid}\r\n`));
+            this.sendCommand(this.buildProtocolMessage(`SUB ${sub.subject} ${sub.queueGroup} ${sub.sid}`));
         } else {
-            this.sendCommand(this.buildProtocolMessage(`SUB ${sub.subject} ${sub.sid}\r\n`));
+            this.sendCommand(this.buildProtocolMessage(`SUB ${sub.subject} ${sub.sid}`));
         }
         if (s.max) {
             this.unsubscribe(this.ssid, s.max);
@@ -199,9 +199,9 @@ export class ProtocolHandler extends EventEmitter {
         let s = this.subscriptions.get(sid);
         if (s) {
             if (max) {
-                this.sendCommand(this.toBuffer(`UNSUB ${sid} ${max}\r\n`));
+                this.sendCommand(this.buildProtocolMessage(`UNSUB ${sid} ${max}`));
             } else {
-                this.sendCommand(this.toBuffer(`UNSUB ${sid}\r\n`));
+                this.sendCommand(this.buildProtocolMessage(`UNSUB ${sid}`));
             }
             s.max = max;
             if (s.max === undefined || s.received >= s.max) {
@@ -277,16 +277,24 @@ export class ProtocolHandler extends EventEmitter {
         }
     }
 
-    private buildProtocolMessage(protocol: string, a?: Buffer): Buffer {
-        let pb = Buffer.from(protocol, "utf8");
-        let len = pb.length + 2;
-        let buffers = [pb];
-        if (a) {
-            buffers.push(a);
-            len += a.length;
+    // protocol shoudn't have crlf
+    // payload shouldn't have crlf
+    private buildProtocolMessage(protocol: string, payload?: Buffer): Buffer {
+        let crlf = Buffer.from('\r\n');
+        let protoLen = Buffer.byteLength(protocol);
+        let cmd = protoLen + 2;
+        let len = cmd;
+        if(payload) {
+            len += payload.byteLength + 2;
         }
-        buffers.push(Buffer.from(CR_LF, "utf8"));
-        return Buffer.concat(buffers, len);
+        let buf = Buffer.allocUnsafe(len);
+        buf.write(protocol);
+        crlf.copy(buf, protoLen);
+        if(payload) {
+            payload.copy(buf, cmd);
+            crlf.copy(buf, buf.byteLength-2);
+        }
+        return buf;
     }
 
     /**
@@ -496,7 +504,7 @@ export class ProtocolHandler extends EventEmitter {
             }
         });
         if (cmds.length) {
-            this.transport.write(this.toBuffer(cmds.join('')))
+            this.transport.write(cmds.join(''));
         }
     }
 
@@ -552,7 +560,7 @@ export class ProtocolHandler extends EventEmitter {
                             }
                         } // FIXME: Should we check for exceptions?
                     } else if ((m = PING.exec(buf)) !== null) {
-                        this.sendCommand(PONG_RESPONSE);
+                        this.sendCommand(this.buildProtocolMessage('PONG'));
                     } else if ((m = INFO.exec(buf)) !== null) {
                         this.info = JSON.parse(m[1]);
                         // Check on TLS mismatch.
@@ -795,7 +803,7 @@ export class ProtocolHandler extends EventEmitter {
                     return;
                 } else {
                     // send the ping
-                    this.sendCommand(PING_REQUEST);
+                    this.sendCommand(this.buildProtocolMessage('PING'));
                     if (this.pongs) {
                         // no callback
                         this.pongs.push(undefined);
@@ -919,9 +927,23 @@ export class Connect {
 
     constructor(opts?: NatsConnectionOptions) {
         opts = opts || {} as NatsConnectionOptions;
+        if(opts.user) {
+            this.user = opts.user;
+            this.pass = opts.pass;
+        }
         if (opts.token) {
             this.auth_token = opts.token;
         }
-        extend(this, opts);
+        if (opts.name) {
+            this.name = opts.name;
+        }
+        if(opts.verbose !== undefined) {
+            this.verbose = opts.verbose;
+        }
+
+        if(opts.pedantic !== undefined) {
+            this.pedantic = opts.pedantic;
+        }
     }
+
 }

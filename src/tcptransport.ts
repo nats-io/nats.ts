@@ -92,6 +92,11 @@ export class TCPTransport implements Transport {
     }
 
     write(data: Buffer | string): void {
+        // if(typeof data === 'string') {
+        //     console.log('>', [data]);
+        // } else {
+        //     console.log('>', [data.toString('binary')]);
+        // }
         if (!this.stream) {
             return;
         }

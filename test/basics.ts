@@ -16,7 +16,7 @@
 
 import test from "ava";
 import {SC, startServer, stopServer} from "./helpers/nats_server_control";
-import {connect} from "../src/nats";
+import {connect, NatsConnectionOptions, Payload} from "../src/nats";
 import {Lock} from "./helpers/latch";
 import {createInbox} from "../src/util";
 
@@ -261,6 +261,25 @@ test('no data after unsubscribe', async (t) => {
     nc.publish(subj);
     await nc.flush();
     t.is(received, 1);
+    nc.close();
+});
+
+test('JSON messages', async (t) => {
+    t.plan(2);
+    let sc = t.context as SC;
+    let nc = await connect({url: sc.server.nats, payload: Payload.JSON} as NatsConnectionOptions);
+    let subj = createInbox();
+    let m = {
+        key: true
+    };
+
+    let sub = nc.subscribe(subj, (err, msg) => {
+        t.is(err, null);
+        // @ts-ignore
+        t.deepEqual(msg.data, m);
+    }, {max: 1});
+    nc.publish(subj, m);
+    await nc.flush();
     nc.close();
 });
 
