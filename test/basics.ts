@@ -17,7 +17,7 @@
 import test from "ava";
 import {SC, startServer, stopServer} from "./helpers/nats_server_control";
 import {connect, NatsConnectionOptions, Payload} from "../src/nats";
-import {Lock} from "./helpers/latch";
+import {Lock, wait} from "./helpers/latch";
 import {createInbox} from "../src/util";
 
 test.before(async (t) => {
@@ -181,13 +181,13 @@ test('wildcard subscriptions', async (t) => {
     let nc = await connect(sc.server.nats);
 
     let s = createInbox();
-    let singleSub = await nc.subscribe(`${s}.*`, () => {
+    nc.subscribe(`${s}.*`, () => {
         singleCounter++;
     });
-    let partialSub = await nc.subscribe(`${s}.foo.bar.*`, () => {
+    nc.subscribe(`${s}.foo.bar.*`, () => {
         partialCounter++;
     });
-    let fullSub = await nc.subscribe(`${s}.foo.>`, () => {
+    nc.subscribe(`${s}.foo.>`, () => {
         fullCounter++;
     });
 
@@ -270,10 +270,11 @@ test('JSON messages', async (t) => {
     let nc = await connect({url: sc.server.nats, payload: Payload.JSON} as NatsConnectionOptions);
     let subj = createInbox();
     let m = {
-        key: true
+        boolean: true,
+        string: 'CEDILA-Ç'
     };
 
-    let sub = nc.subscribe(subj, (err, msg) => {
+    nc.subscribe(subj, (err, msg) => {
         t.is(err, null);
         // @ts-ignore
         t.deepEqual(msg.data, m);
@@ -283,3 +284,121 @@ test('JSON messages', async (t) => {
     nc.close();
 });
 
+test('UTF8 messages', async (t) => {
+    t.plan(2);
+    let sc = t.context as SC;
+    let nc = await connect({url: sc.server.nats, payload: Payload.STRING} as NatsConnectionOptions);
+    let subj = createInbox();
+    let m = 'CEDILA-Ç';
+
+    nc.subscribe(subj, (err, msg) => {
+        t.is(err, null);
+        // @ts-ignore
+        t.is(msg.data, m);
+    }, {max: 1});
+    nc.publish(subj, m);
+    await nc.flush();
+    nc.close();
+});
+
+test('request removes mux', async (t) => {
+    t.plan(3);
+    let sc = t.context as SC;
+    let nc = await connect({url: sc.server.nats, payload: Payload.STRING} as NatsConnectionOptions);
+    let subj = createInbox();
+
+    nc.subscribe(subj, (err, msg) => {
+        t.truthy(msg);
+        //@ts-ignore
+        nc.publish(msg.reply);
+    }, {max: 1});
+
+    let r = await nc.request(subj);
+    t.truthy(r);
+    //@ts-ignore
+    t.is(nc.protocolHandler.muxSubscriptions.length, 0);
+    nc.close();
+});
+
+test('unsubscribe unsubscribes', async (t) => {
+    t.plan(2);
+    let sc = t.context as SC;
+    let nc = await connect({url: sc.server.nats, payload: Payload.STRING} as NatsConnectionOptions);
+    let subj = createInbox();
+
+    let sub = await nc.subscribe(subj, (err, msg) => {
+    });
+    t.is(nc.numSubscriptions(), 1);
+    sub.unsubscribe();
+    t.is(nc.numSubscriptions(), 0);
+    nc.close();
+});
+
+test('subscribe timeout', async (t) => {
+    t.plan(1);
+    let lock = new Lock();
+    let sc = t.context as SC;
+    let nc = await connect({url: sc.server.nats, payload: Payload.STRING} as NatsConnectionOptions);
+    let subj = createInbox();
+
+    let sub = await nc.subscribe(subj, () => {
+    });
+    sub.setTimeout(0, () => {
+        t.pass();
+        lock.unlock();
+    });
+
+    await lock.latch;
+    nc.close();
+});
+
+test('request timeout', async (t) => {
+    t.plan(1);
+    let lock = new Lock();
+    let sc = t.context as SC;
+    let nc = await connect({url: sc.server.nats, payload: Payload.STRING} as NatsConnectionOptions);
+    let subj = createInbox();
+    let sub = await nc.subscribe(subj, () => {
+    });
+    sub.setTimeout(0, () => {
+        t.pass();
+        lock.unlock();
+    });
+    await lock.latch;
+    nc.close();
+});
+
+test('cancels timeout', async (t) => {
+    t.plan(2);
+    let lock = new Lock();
+    let sc = t.context as SC;
+    let nc = await connect({url: sc.server.nats, payload: Payload.STRING} as NatsConnectionOptions);
+    let subj = createInbox();
+    let sub = await nc.subscribe(subj, () => {
+    });
+    sub.setTimeout(500, () => {
+        t.fail();
+    });
+    t.true(sub.hasTimeout());
+    sub.cancelTimeout();
+    await wait(500);
+    t.false(sub.hasTimeout());
+    nc.close();
+});
+
+test('message cancels subscription timeout', async (t) => {
+    t.plan(2);
+    let sc = t.context as SC;
+    let nc = await connect({url: sc.server.nats, payload: Payload.STRING} as NatsConnectionOptions);
+    let subj = createInbox();
+    let sub = await nc.subscribe(subj, () => {
+    });
+    sub.setTimeout(500, () => {
+        t.fail();
+    });
+    t.true(sub.hasTimeout());
+    nc.publish(subj);
+    await wait(500);
+    t.false(sub.hasTimeout());
+    nc.close();
+});

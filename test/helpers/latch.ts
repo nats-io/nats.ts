@@ -31,3 +31,11 @@ export class Lock {
         });
     }
 }
+
+export function wait(millis: number = 100): Promise<any> {
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            resolve();
+        }, millis);
+    });
+}

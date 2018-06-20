@@ -49,7 +49,7 @@ export class MsgBuffer {
             this.buf = this.buf.slice(0, this.buf.byteLength - 2);
             switch (this.payload) {
                 case Payload.JSON:
-                    this.msg.data = this.buf.toString("utf8");
+                    this.msg.data = this.buf.toString();
                     try {
                         this.msg.data = JSON.parse(this.msg.data);
                     } catch (ex) {

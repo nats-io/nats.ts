@@ -26,7 +26,6 @@ import {Server, Servers} from "./servers";
 import {TCPTransport} from "./tcptransport";
 import {Subscriptions} from "./subscriptions";
 import {DataBuffer} from "./databuffer";
-import {extend} from "./util";
 import {MsgBuffer} from "./messagebuffer";
 import url = require('url');
 import Timer = NodeJS.Timer;
@@ -284,15 +283,15 @@ export class ProtocolHandler extends EventEmitter {
         let protoLen = Buffer.byteLength(protocol);
         let cmd = protoLen + 2;
         let len = cmd;
-        if(payload) {
+        if (payload) {
             len += payload.byteLength + 2;
         }
         let buf = Buffer.allocUnsafe(len);
         buf.write(protocol);
         crlf.copy(buf, protoLen);
-        if(payload) {
+        if (payload) {
             payload.copy(buf, cmd);
-            crlf.copy(buf, buf.byteLength-2);
+            crlf.copy(buf, buf.byteLength - 2);
         }
         return buf;
     }
@@ -697,7 +696,7 @@ export class ProtocolHandler extends EventEmitter {
         }
         sub.received += 1;
 
-        // if we received expected number of messages, cancel the timeout
+        // cancel the timeout
         if (sub.timeout) {
             // we got one message
             Subscription.cancelTimeout(sub);
@@ -880,7 +879,8 @@ export class ProtocolHandler extends EventEmitter {
 
         // if not a buffer, it is already serialized json or a string
         if (!Buffer.isBuffer(data)) {
-            data = Buffer.from(data, "binary");
+            // must be utf8 - omitting encoding to prevent clever change
+            data = Buffer.from(data);
         }
         return data;
     }
@@ -927,7 +927,7 @@ export class Connect {
 
     constructor(opts?: NatsConnectionOptions) {
         opts = opts || {} as NatsConnectionOptions;
-        if(opts.user) {
+        if (opts.user) {
             this.user = opts.user;
             this.pass = opts.pass;
         }
@@ -937,11 +937,11 @@ export class Connect {
         if (opts.name) {
             this.name = opts.name;
         }
-        if(opts.verbose !== undefined) {
+        if (opts.verbose !== undefined) {
             this.verbose = opts.verbose;
         }
 
-        if(opts.pedantic !== undefined) {
+        if (opts.pedantic !== undefined) {
             this.pedantic = opts.pedantic;
         }
     }

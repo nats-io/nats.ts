@@ -372,12 +372,13 @@ export class Subscription {
 
     hasTimeout(): boolean {
         let sub = this.protocol.subscriptions.get(this.sid);
-        return sub !== null && sub.timeout !== null;
+        return sub !== null && sub.hasOwnProperty('timeout');
     }
 
     cancelTimeout(): void {
         let sub = this.protocol.subscriptions.get(this.sid);
         Subscription.cancelTimeout(sub);
+
     }
 
     setTimeout(millis: number, cb: Callback): boolean {
