@@ -59,7 +59,7 @@ export interface Req extends Base {
 export interface Msg {
     subject: string;
     reply?: string;
-    data: string | Buffer | object;
+    data?: any;
     sid: number;
     size: number;
 }
@@ -75,7 +75,7 @@ export interface FlushCallback {
 }
 
 export interface MsgCallback {
-    (err: NatsError | null, msg?: Msg): void;
+    (err: NatsError | null, msg: Msg): void;
 }
 
 export interface Subscription {
@@ -100,10 +100,10 @@ export interface RequestOptions {
 
 export interface NatsConnectionOptions {
     encoding?: BufferEncoding;
-    maxPingOut: number;
-    maxReconnectAttempts: number;
+    maxPingOut?: number;
+    maxReconnectAttempts?: number;
     name?: string;
-    noRandomize: boolean;
+    noRandomize?: boolean;
     pass?: string;
     payload?: Payload;
     pedantic?: boolean;
@@ -115,7 +115,7 @@ export interface NatsConnectionOptions {
     servers?: Array<string>;
     tls?: boolean | tls.TlsOptions;
     token?: string;
-    url: string;
+    url?: string;
     useOldRequestStyle?: boolean;
     user?: string;
     verbose?: boolean;
@@ -141,7 +141,7 @@ export class Client extends events.EventEmitter {
         events.EventEmitter.call(this);
     }
 
-    static connect(opts?: NatsConnectionOptions | number | string | void): Promise<Client> {
+    static connect(opts?: NatsConnectionOptions | string | number): Promise<Client> {
         return new Promise((resolve, reject) => {
             let options = Client.parseOptions(opts);
             let client = new Client();
@@ -172,7 +172,7 @@ export class Client extends events.EventEmitter {
         } as ConnectionOptions
     }
 
-    private static parseOptions(args?: string | number | NatsConnectionOptions | void): NatsConnectionOptions {
+    private static parseOptions(args?: string | number | NatsConnectionOptions): NatsConnectionOptions {
         if (args === undefined || args === null) {
             args = {url: DEFAULT_URI} as NatsConnectionOptions;
         }
@@ -345,7 +345,7 @@ export class Client extends events.EventEmitter {
  *
  * @api public
  */
-export function connect(opts?: NatsConnectionOptions | number | string): Promise<Client> {
+export function connect(opts?: NatsConnectionOptions | string | number): Promise<Client> {
     return Client.connect(opts);
 }
 

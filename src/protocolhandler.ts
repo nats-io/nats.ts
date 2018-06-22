@@ -14,7 +14,7 @@
  *
  */
 
-import {Client, defaultSub, FlushCallback, NatsConnectionOptions, Payload, Req, Sub, Subscription} from "./nats";
+import {Client, defaultSub, FlushCallback, Msg, NatsConnectionOptions, Payload, Req, Sub, Subscription} from "./nats";
 import {MuxSubscriptions} from "./muxsubscriptions";
 import {Callback, Transport, TransportHandlers} from "./transport";
 import {ServerInfo} from "./types";
@@ -37,8 +37,6 @@ const MAX_CONTROL_LINE_SIZE = 1024,
 
 
     // Protocol
-    //CONTROL_LINE = /^(.*)\r\n/, // TODO: remove / never used
-
     MSG = /^MSG\s+([^\s\r\n]+)\s+([^\s\r\n]+)\s+(([^\s\r\n]+)[^\S\r\n]+)?(\d+)\r\n/i,
     OK = /^\+OK\s*\r\n/i,
     ERR = /^-ERR\s+('.+')?\r\n/i,
@@ -51,7 +49,6 @@ const MAX_CONTROL_LINE_SIZE = 1024,
     // Protocol
     //PUB     = 'PUB', // TODO: remove / never used
     SUB = 'SUB',
-    UNSUB = 'UNSUB',
     CONNECT = 'CONNECT',
 
     // Responses
@@ -139,7 +136,7 @@ export class ProtocolHandler extends EventEmitter {
             }
         }
         this.pongs.push(cb);
-        this.sendCommand(PING_REQUEST);
+        this.sendCommand(this.buildProtocolMessage('PING'));
     }
 
     /**
@@ -187,7 +184,7 @@ export class ProtocolHandler extends EventEmitter {
         if (s.max) {
             this.unsubscribe(this.ssid, s.max);
         }
-        this.emit('subscribe', s.sid, s.subject);
+        this.client.emit('subscribe', s.sid, s.subject);
         return new Subscription(sub, this);
     }
 
@@ -336,55 +333,55 @@ export class ProtocolHandler extends EventEmitter {
      * @api private
      */
     private getTransportHandlers(): TransportHandlers {
-        let client = this;
         let handlers = {} as TransportHandlers;
         handlers.connect = () => {
-            if (client.pingTimer) {
-                clearTimeout(client.pingTimer);
-                delete client.pingTimer;
+            if (this.pingTimer) {
+                clearTimeout(this.pingTimer);
+                delete this.pingTimer;
             }
-            client.connected = true;
-            client.scheduleHeartbeat();
+            this.connected = true;
+            this.scheduleHeartbeat();
         };
 
         handlers.close = () => {
-            client.closeStream();
-            client.emit('disconnect');
-            if (client.closed ||
-                client.options.reconnect === false ||
-                ((client.reconnects >= client.options.maxReconnectAttempts) && client.options.maxReconnectAttempts !== -1)) {
-                client.emit('close');
+            this.closeStream();
+            this.client.emit('disconnect');
+            if (this.closed ||
+                this.options.reconnect === false ||
+                //@ts-ignore FIXME: MAR the parsed options need to help typescript catch missing values
+                ((this.reconnects >= this.options.maxReconnectAttempts) && this.options.maxReconnectAttempts !== -1)) {
+                this.client.emit('close');
             } else {
-                client.scheduleReconnect();
+                this.scheduleReconnect();
             }
         };
 
         handlers.error = (exception: Error) => {
             // If we were connected just return, close event will process
-            if (client.wasConnected && client.currentServer.didConnect) {
+            if (this.wasConnected && this.currentServer.didConnect) {
                 return;
             }
 
             // if the current server did not connect at all, and we in
             // general have not connected to any server, remove it from
             // this list. Unless overidden
-            if (!client.wasConnected && !client.currentServer.didConnect) {
+            if (!this.wasConnected && !this.currentServer.didConnect) {
                 // We can override this behavior with waitOnFirstConnect, which will
                 // treat it like a reconnect scenario.
-                if (client.options.waitOnFirstConnect) {
+                if (this.options.waitOnFirstConnect) {
                     // Pretend to move us into a reconnect state.
-                    client.currentServer.didConnect = true;
+                    this.currentServer.didConnect = true;
                 } else {
-                    client.servers.removeCurrentServer();
+                    this.servers.removeCurrentServer();
                 }
             }
 
             // Only bubble up error if we never had connected
             // to the server and we only have one.
-            if (!client.wasConnected && client.servers.length() === 0) {
-                client.emit('error', new NatsError(CONN_ERR_PREFIX + exception, ErrorCode.CONN_ERR, exception));
+            if (!this.wasConnected && this.servers.length() === 0) {
+                this.client.emit('error', new NatsError(CONN_ERR_PREFIX + exception, ErrorCode.CONN_ERR, exception));
             }
-            client.closeStream();
+            this.closeStream();
         };
 
         handlers.data = (data: Buffer) => {
@@ -394,7 +391,7 @@ export class ProtocolHandler extends EventEmitter {
             this.inbound.fill(data);
 
             // Process the inbound queue.
-            client.processInbound();
+            this.processInbound();
         };
 
         return handlers;
@@ -570,7 +567,7 @@ export class ProtocolHandler extends EventEmitter {
                         // Always try to read the connect_urls from info
                         let newServers = this.servers.processServerUpdate(this.info);
                         if (newServers.length > 0) {
-                            this.emit('serversDiscovered', newServers);
+                            this.client.emit('serversDiscovered', newServers);
                         }
 
                         // Process first INFO
@@ -592,7 +589,7 @@ export class ProtocolHandler extends EventEmitter {
                             this.pongs.unshift(() => {
                                 this.connectCB();
                             });
-                            this.transport.write(PING_REQUEST);
+                            this.transport.write(this.buildProtocolMessage('PING'));
 
                             // Mark as received
                             this.infoReceived = true;
@@ -656,25 +653,24 @@ export class ProtocolHandler extends EventEmitter {
     private checkTLSMismatch(): boolean {
         if (this.info.tls_required &&
             this.options.tls === false) {
-            this.emit('error', NatsError.errorForCode(ErrorCode.SECURE_CONN_REQ));
+            this.client.emit('error', NatsError.errorForCode(ErrorCode.SECURE_CONN_REQ));
             this.closeStream();
             return true;
         }
 
         if (!this.info.tls_required &&
             this.options.tls !== false) {
-            this.emit('error', NatsError.errorForCode(ErrorCode.NON_SECURE_CONN_REQ));
+            this.client.emit('error', NatsError.errorForCode(ErrorCode.NON_SECURE_CONN_REQ));
             this.closeStream();
             return true;
         }
-
 
         let cert = false;
         if (this.options.tls && typeof this.options.tls === 'object') {
             cert = this.options.tls.cert != null;
         }
         if (this.info.tls_verify && !cert) {
-            this.emit('error', NatsError.errorForCode(ErrorCode.CLIENT_CERT_REQ));
+            this.client.emit('error', NatsError.errorForCode(ErrorCode.CLIENT_CERT_REQ));
             this.closeStream();
             return true;
         }
@@ -705,22 +701,35 @@ export class ProtocolHandler extends EventEmitter {
         // if we got max number of messages, unsubscribe
         if (sub.max !== undefined && sub.received >= sub.max) {
             this.unsubscribe(sub.sid);
-            this.emit('unsubscribe', sub.sid, sub.subject);
+            this.client.emit('unsubscribe', sub.sid, sub.subject);
         }
 
         if (sub.callback) {
             try {
                 if (this.msgBuffer.error) {
-                    sub.callback(this.msgBuffer.error);
+                    let empty = {sid: sub.sid, size: 0, reply: "", subject: sub.subject} as Msg;
+                    sub.callback(this.msgBuffer.error, empty);
                 } else {
                     sub.callback(null, this.msgBuffer.msg);
                 }
             } catch (error) {
                 // client could have died
-                this.emit('error', error);
+                console.log(error);
+                this.client.emit('error', error);
             }
         }
     };
+
+    static toError(s: string) {
+        let t = s ? s.toLowerCase() : "";
+        if (t.indexOf('permissions violation') !== -1) {
+            return new NatsError(s, ErrorCode.PERMISSIONS_VIOLATION);
+        } else if (t.indexOf('authorization violation') !== -1) {
+            return new NatsError(s, ErrorCode.AUTHORIZATION_VIOLATION);
+        } else {
+            return new NatsError(s, ErrorCode.NATS_PROTOCOL_ERR);
+        }
+    }
 
     /**
      * ProcessErr processes any error messages from the server
@@ -730,15 +739,21 @@ export class ProtocolHandler extends EventEmitter {
     private processErr(s: string): void {
         // current NATS clients, will raise an error and close on any errors
         // except stale connection and permission errors
-        let m = s ? s.toLowerCase() : '';
-        if (m.indexOf(PERMISSIONS_ERR) !== -1) {
-            // closeStream() triggers a reconnect if allowed
-            this.closeStream();
-        } else if (m.indexOf(PERMISSIONS_ERR) !== -1) {
-            this.emit('permission_error', new NatsError(s, ErrorCode.NATS_PROTOCOL_ERR));
-        } else {
-            this.emit('error', new NatsError(s, ErrorCode.NATS_PROTOCOL_ERR));
-            this.closeStream();
+        let err = ProtocolHandler.toError(s);
+        switch(err.code) {
+            case ErrorCode.AUTHORIZATION_VIOLATION:
+                this.client.emit('error', err);
+                // closeStream() triggers a reconnect if allowed
+                this.closeStream();
+                break;
+            case ErrorCode.PERMISSIONS_VIOLATION:
+                // just emit
+                this.client.emit('permission_error', err);
+                break;
+            default:
+                this.client.emit('error', err);
+                // closeStream() triggers a reconnect if allowed
+                this.closeStream();
         }
     };
 
@@ -754,7 +769,7 @@ export class ProtocolHandler extends EventEmitter {
         this.reconnects += 1;
         this.prepareConnection();
         if (this.currentServer.didConnect) {
-            this.emit('reconnecting');
+            this.client.emit('reconnecting');
         }
     }
 
@@ -795,6 +810,7 @@ export class ProtocolHandler extends EventEmitter {
             if (this.transport.isConnected()) {
                 this.client.emit('pingcount', this.pout);
                 this.pout++;
+                // @ts-ignore
                 if (this.pout > this.options.maxPingOut) {
                     // processErr will scheduleReconnect
                     this.processErr(STALE_CONNECTION_ERR);
@@ -828,7 +844,7 @@ export class ProtocolHandler extends EventEmitter {
         if (this.currentServer) {
             this.currentServer.didConnect = true;
         }
-        this.emit(event, this);
+        this.client.emit(event, this.client);
         this.flushPending();
     }
 
@@ -945,5 +961,4 @@ export class Connect {
             this.pedantic = opts.pedantic;
         }
     }
-
 }

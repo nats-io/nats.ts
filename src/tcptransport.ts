@@ -88,6 +88,9 @@ export class TCPTransport implements Transport {
         this.stream = tls.connect(opts, () => {
             done();
         });
+        this.stream.on('error', (error) => {
+            this.handlers.error(error);
+        });
         this.setupHandlers();
     }
 

@@ -370,7 +370,6 @@ test('request timeout', async (t) => {
 
 test('cancels timeout', async (t) => {
     t.plan(2);
-    let lock = new Lock();
     let sc = t.context as SC;
     let nc = await connect({url: sc.server.nats, payload: Payload.STRING} as NatsConnectionOptions);
     let subj = createInbox();

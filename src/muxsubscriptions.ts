@@ -68,8 +68,7 @@ export class MuxSubscriptions {
 
     dispatcher() {
         let mux = this;
-        return (error: NatsError | null, m?: Msg): void => {
-
+        return (error: NatsError | null, m: Msg): void => {
             let token = mux.getToken(m);
             if (token) {
                 let r = mux.get(token);
