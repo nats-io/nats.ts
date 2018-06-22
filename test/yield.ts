@@ -15,9 +15,9 @@
  */
 
 import test from "ava";
-import {Lock, wait} from "./helpers/latch";
+import {Lock, sleep} from "./helpers/latch";
 import {SC, startServer, stopServer} from "./helpers/nats_server_control";
-import {connect} from "../src/nats";
+import {connect, Payload} from "../src/nats";
 import {next} from 'nuid';
 import {join} from 'path';
 
@@ -31,35 +31,40 @@ test.after.always((t) => {
 });
 
 test('should yield to other events', async (t) => {
-    t.plan(4);
+    t.plan(2);
     let sc = t.context as SC;
-    let nc = await connect({url: sc.server.nats, yieldTime: 5});
-
+    let nc = await connect({url: sc.server.nats, payload: Payload.JSON, yieldTime: 5});
     let lock = new Lock();
-    let start = Date.now();
+    let last: number = -1;
 
-    setTimeout(() => {
-        let delta = Date.now() - start;
-        nc.close();
-        t.true(delta >= 0);
-        t.true(25 >= delta);
-        t.true(i >= 0);
-        t.true(256 >= i);
-        lock.unlock();
+    let yields = 0;
+    nc.on('yield', () => {
+        yields++;
+    });
+
+    let interval = setInterval(() => {
+        if(last > 0) {
+            clearInterval(interval);
+            nc.close();
+            // yielded before the last message
+            t.true(last < 256);
+            // and we also got notifications that yields happen
+            t.truthy(yields);
+            lock.unlock();
+        }
     }, 10);
 
     let subj = next();
-    nc.subscribe(subj, async () => {
-        await wait(1);
+    nc.subscribe(subj, async (err, msg) => {
+        last = msg.data;
+        // take some time
+        sleep(1);
     });
 
-    let data = next();
-    let i: number;
-    for (i = 0; i < 256; i++) {
-        nc.publish(subj, data);
+    for (let i = 0; i < 256; i++) {
+        nc.publish(subj, i);
     }
-
+    nc.flush();
     await lock.latch;
-
     nc.close();
 });

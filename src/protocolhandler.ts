@@ -624,6 +624,7 @@ export class ProtocolHandler extends EventEmitter {
                     if (start !== undefined && this.options && this.options.yieldTime) {
                         if ((Date.now() - start) > this.options.yieldTime) {
                             this.transport.pause();
+                            this.client.emit('yield');
                             setImmediate(this.processInbound.bind(this));
                             return;
                         }

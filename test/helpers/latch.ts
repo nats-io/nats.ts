@@ -39,3 +39,11 @@ export function wait(millis: number = 100): Promise<any> {
         }, millis);
     });
 }
+
+export function sleep(ms: number) {
+    let start = new Date().getTime(),
+    expire = start + ms;
+    while (new Date().getTime() < expire) {
+        // spinning...
+    }
+}
