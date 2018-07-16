@@ -52,6 +52,7 @@ export class TCPTransport implements Transport {
                     this.handlers.error(error);
                 }
             });
+            this.stream.setNoDelay(true);
             this.setupHandlers();
         });
     }
