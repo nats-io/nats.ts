@@ -77,17 +77,7 @@ export interface MsgCallback {
     (err: NatsError | null, msg: Msg): void;
 }
 
-export interface Subscription {
-    subject: string;
-    callback?: MsgCallback | null;
-    received: number;
-    qgroup: string;
-    timeout?: Timer | null;
-    max?: number;
-    expected?: number;
-}
-
-export interface SubscribeOptions {
+export interface SubscriptionOptions {
     queue?: string;
     max?: number;
 }
@@ -252,7 +242,7 @@ export class Client extends events.EventEmitter {
      * @return {Number}
      * @api public
      */
-    subscribe(subject: string, cb: MsgCallback, opts: SubscribeOptions = {}): Promise<Subscription> {
+    subscribe(subject: string, cb: MsgCallback, opts: SubscriptionOptions = {}): Promise<Subscription> {
         return new Promise<Subscription>((resolve, reject) => {
             if (this.isClosed()) {
                 reject(NatsError.errorForCode(ErrorCode.CONN_CLOSED));

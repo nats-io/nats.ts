@@ -143,7 +143,7 @@ test('max message cancels subscription timeout', async (t) => {
 
 
 test('timeout if expected is not received', async (t) => {
-    t.plan(2);
+    t.plan(3);
     let sc = t.context as SC;
     let nc = await connect(sc.server.nats);
     let lock = new Lock();
@@ -154,6 +154,7 @@ test('timeout if expected is not received', async (t) => {
         if(err) {
            t.is(err.code, ErrorCode.SUB_TIMEOUT);
            t.is(sub.getReceived(), 1);
+           t.is(sub.getMax(), 2);
            nc.close();
            lock.unlock();
         } else {
@@ -183,7 +184,8 @@ test('no timeout if unsubscribed', async (t) => {
     nc.publish(subj);
     await nc.flush();
     setTimeout(()=> {
-        t.pass();
+        // shouldn't expect anything because it is unsubscribed
+        t.is(sub.getMax(), 0);
         lock.unlock();
     }, 100);
 

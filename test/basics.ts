@@ -135,7 +135,7 @@ test('subscription has exact subject', async (t) => {
 });
 
 test('subscription message has sid', async (t) => {
-    t.plan(1);
+    t.plan(2);
     let sc = t.context as SC;
     let nc = await connect(sc.server.nats);
     let subj = createInbox();
@@ -144,6 +144,8 @@ test('subscription message has sid', async (t) => {
         //@ts-ignore
         t.is(msg.sid, sub.sid);
     }, {});
+    // expecting unlimited number of messages
+    t.is(sub.getMax(), -1);
     nc.publish(subj);
     await nc.flush();
 });
