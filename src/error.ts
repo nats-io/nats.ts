@@ -29,6 +29,7 @@ export enum ErrorCode {
     INVALID_ENCODING = 'INVALID_ENCODING',
     NON_SECURE_CONN_REQ = 'NON_SECURE_CONN_REQ',
     REQ_TIMEOUT = 'REQ_TIMEOUT',
+    SUB_TIMEOUT = 'SUB_TIMEOUT',
     SECURE_CONN_REQ = 'SECURE_CONN_REQ',
 
     // emitted by the server
@@ -58,6 +59,7 @@ export class Messages {
         this.messages[ErrorCode.NON_SECURE_CONN_REQ] = 'Server does not support a secure connection.';
         this.messages[ErrorCode.SECURE_CONN_REQ] = 'Server requires a secure connection.';
         this.messages[ErrorCode.REQ_TIMEOUT] = 'Request timed out.';
+        this.messages[ErrorCode.SUB_TIMEOUT] = 'Subscription timed out.';
     }
 
     static getMessage(s: string): string {

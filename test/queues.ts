@@ -50,7 +50,7 @@ test('deliver to single queue', async (t) => {
 
     nc.publish(subj);
     await nc.flush();
-    t.is(count, 5);
+    t.is(count, 1);
     nc.close();
 });
 
@@ -82,8 +82,8 @@ test('deliver to multiple queues', async (t) => {
 
     nc.publish(subj);
     await nc.flush();
-    t.is(queue1, 5);
-    t.is(queue2, 5);
+    t.is(queue1, 1);
+    t.is(queue2, 1);
     nc.close();
 });
 
@@ -112,7 +112,32 @@ test('queues and subs independent', async (t) => {
 
     nc.publish(subj);
     await nc.flush();
-    t.is(queueCount, 5);
+    t.is(queueCount, 1);
+    t.is(count, 1);
+    nc.close();
+});
+
+test('delivers single queue subscriber regardless of wildcards', async (t) => {
+    t.plan(1);
+    let sc = t.context as SC;
+    let nc = await connect({url: sc.server.nats});
+
+    let base = next();
+    let count = 0;
+    nc.subscribe(base + ".bar", () => {
+        count++;
+    }, {queue: 'wcqueue'});
+
+    nc.subscribe(base + ".*", () => {
+        count++;
+    }, {queue: 'wcqueue'});
+
+    nc.subscribe(base + ".>", () => {
+        count++;
+    }, {queue: 'wcqueue'});
+
+    nc.publish(base + ".bar");
+    await nc.flush();
     t.is(count, 1);
     nc.close();
 });

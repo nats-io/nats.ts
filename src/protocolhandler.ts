@@ -176,8 +176,8 @@ export class ProtocolHandler extends EventEmitter {
 
     subscribe(s: Sub): Subscription {
         let sub = this.subscriptions.add(s) as Sub;
-        if (sub.queueGroup) {
-            this.sendCommand(this.buildProtocolMessage(`SUB ${sub.subject} ${sub.queueGroup} ${sub.sid}`));
+        if (sub.queue) {
+            this.sendCommand(this.buildProtocolMessage(`SUB ${sub.subject} ${sub.queue} ${sub.sid}`));
         } else {
             this.sendCommand(this.buildProtocolMessage(`SUB ${sub.subject} ${sub.sid}`));
         }
@@ -493,8 +493,8 @@ export class ProtocolHandler extends EventEmitter {
         }
         let cmds: string[] = [];
         this.subscriptions.all().forEach((s) => {
-            if (s.queueGroup) {
-                cmds.push(`${SUB} ${s.subject} ${s.queueGroup} ${s.sid} ${CR_LF}`);
+            if (s.queue) {
+                cmds.push(`${SUB} ${s.subject} ${s.queue} ${s.sid} ${CR_LF}`);
             } else {
                 cmds.push(`${SUB} ${s.subject} ${s.sid} ${CR_LF}`);
             }
@@ -693,9 +693,8 @@ export class ProtocolHandler extends EventEmitter {
         }
         sub.received += 1;
 
-        // cancel the timeout
-        if (sub.timeout) {
-            // we got one message
+        // cancel the timeout if we got the expected number of messages
+        if (sub.timeout && (sub.max === undefined || sub.received >= sub.max)) {
             Subscription.cancelTimeout(sub);
         }
 

@@ -17,7 +17,7 @@
 import test from "ava";
 import {SC, startServer, stopServer} from "./helpers/nats_server_control";
 import {connect, NatsConnectionOptions, Payload} from "../src/nats";
-import {Lock, wait} from "./helpers/latch";
+import {Lock} from "./helpers/latch";
 import {createInbox} from "../src/util";
 
 test.before(async (t) => {
@@ -331,73 +331,5 @@ test('unsubscribe unsubscribes', async (t) => {
     t.is(nc.numSubscriptions(), 1);
     sub.unsubscribe();
     t.is(nc.numSubscriptions(), 0);
-    nc.close();
-});
-
-test('subscribe timeout', async (t) => {
-    t.plan(1);
-    let lock = new Lock();
-    let sc = t.context as SC;
-    let nc = await connect({url: sc.server.nats, payload: Payload.STRING} as NatsConnectionOptions);
-    let subj = createInbox();
-
-    let sub = await nc.subscribe(subj, () => {
-    });
-    sub.setTimeout(0, () => {
-        t.pass();
-        lock.unlock();
-    });
-
-    await lock.latch;
-    nc.close();
-});
-
-test('request timeout', async (t) => {
-    t.plan(1);
-    let lock = new Lock();
-    let sc = t.context as SC;
-    let nc = await connect({url: sc.server.nats, payload: Payload.STRING} as NatsConnectionOptions);
-    let subj = createInbox();
-    let sub = await nc.subscribe(subj, () => {
-    });
-    sub.setTimeout(0, () => {
-        t.pass();
-        lock.unlock();
-    });
-    await lock.latch;
-    nc.close();
-});
-
-test('cancels timeout', async (t) => {
-    t.plan(2);
-    let sc = t.context as SC;
-    let nc = await connect({url: sc.server.nats, payload: Payload.STRING} as NatsConnectionOptions);
-    let subj = createInbox();
-    let sub = await nc.subscribe(subj, () => {
-    });
-    sub.setTimeout(500, () => {
-        t.fail();
-    });
-    t.true(sub.hasTimeout());
-    sub.cancelTimeout();
-    await wait(500);
-    t.false(sub.hasTimeout());
-    nc.close();
-});
-
-test('message cancels subscription timeout', async (t) => {
-    t.plan(2);
-    let sc = t.context as SC;
-    let nc = await connect({url: sc.server.nats, payload: Payload.STRING} as NatsConnectionOptions);
-    let subj = createInbox();
-    let sub = await nc.subscribe(subj, () => {
-    });
-    sub.setTimeout(500, () => {
-        t.fail();
-    });
-    t.true(sub.hasTimeout());
-    nc.publish(subj);
-    await wait(500);
-    t.false(sub.hasTimeout());
     nc.close();
 });

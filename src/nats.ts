@@ -29,7 +29,6 @@ import {
 } from "./const";
 
 import {ConnectionOptions} from "tls";
-import {Callback} from "./transport";
 import {next} from 'nuid';
 
 export const VERSION = ProtocolHandler.VERSION;
@@ -48,7 +47,7 @@ export function defaultSub(): Sub {
 
 export interface Sub extends Base {
     sid: number;
-    queueGroup?: string | null;
+    queue?: string | null;
 }
 
 export interface Req extends Base {
@@ -312,7 +311,12 @@ export class Client extends events.EventEmitter {
             };
 
             let request = this.protocolHandler.request(r);
-            this.publish(subject, data, `${this.protocolHandler.muxSubscriptions.baseInbox}${r.token}`);
+            try {
+                this.publish(subject, data, `${this.protocolHandler.muxSubscriptions.baseInbox}${r.token}`);
+            } catch(err) {
+                reject(err);
+                request.cancel();
+            }
         });
     };
 
@@ -381,11 +385,16 @@ export class Subscription {
 
     }
 
-    setTimeout(millis: number, cb: Callback): boolean {
+    setTimeout(millis: number): boolean {
         let sub = this.protocol.subscriptions.get(this.sid);
         Subscription.cancelTimeout(sub);
         if (sub) {
-            sub.timeout = setTimeout(cb, millis);
+            sub.timeout = setTimeout(() => {
+                if(sub && sub.callback) {
+                    sub.callback(NatsError.errorForCode(ErrorCode.SUB_TIMEOUT), {} as Msg);
+                }
+                this.unsubscribe();
+            }, millis);
             return true;
         }
         return false;
@@ -398,4 +407,21 @@ export class Subscription {
         }
         return 0;
     }
+
+    getMax(): number {
+        let sub = this.protocol.subscriptions.get(this.sid);
+        if(! sub) {
+            return 0;
+        }
+        if (sub && sub.max) {
+            return sub.max;
+        }
+        return -1;
+    }
+
+    isCancelled(): boolean {
+        return this.protocol.subscriptions.get(this.sid) === undefined;
+    }
+
+
 }

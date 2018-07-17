@@ -15,11 +15,11 @@
  */
 
 import {test} from "ava";
-import {connect, Msg, Payload} from "../src/nats";
+import {connect, Payload} from "../src/nats";
 import {Lock} from "./helpers/latch";
 import {SC, startServer, stopServer} from "./helpers/nats_server_control";
 import {next} from 'nuid';
-import {NatsError} from "../src/error";
+import {ErrorCode} from "../src/error";
 
 
 test.before(async (t) => {
@@ -51,9 +51,33 @@ test('connect json propagates options', async (t) => {
     nc.close();
 });
 
-async function macro(t: any, input: any): Promise<any> {
+test('pubsub should fail circular json', async (t) => {
     t.plan(1);
-    let lock = new Lock()
+    let sc = t.context as SC;
+    let o = {};
+    //@ts-ignore
+    o.a = o;
+    let nc = await connect({url: sc.server.nats, payload: Payload.JSON});
+    t.throws(() => {
+        nc.publish(next(), o)
+    }, {code: ErrorCode.BAD_JSON});
+    nc.close();
+});
+
+test('reqrep should fail circular json', async (t) => {
+    t.plan(1);
+    let sc = t.context as SC;
+    let o = {};
+    //@ts-ignore
+    o.a = o;
+    let nc = await connect({url: sc.server.nats, payload: Payload.JSON});
+    await t.throws(nc.request(next(), 1000, o),{code: ErrorCode.BAD_JSON});
+    nc.close();
+});
+
+async function pubsub(t: any, input: any): Promise<any> {
+    t.plan(1);
+    let lock = new Lock();
     try {
         let sc = t.context as SC;
         let nc = await connect({url: sc.server.nats, payload: Payload.JSON});
@@ -80,14 +104,71 @@ async function macro(t: any, input: any): Promise<any> {
     return lock.latch;
 }
 
-test('string', macro, 'helloworld');
-test('empty', macro, '');
-test('null', macro, null);
-test('undefined', macro, undefined);
-test('number', macro, 10);
-test('false', macro, false);
-test('true', macro, true);
-test('empty array', macro, []);
-test('any array', macro, [1, 'a', false, 3.1416]);
-test('empty object', macro, {});
-test('object', macro, {a: 1, b: false, c: 'name', d: 3.1416});
+async function reqrep(t: any, input: any): Promise<any> {
+    t.plan(1);
+    let lock = new Lock();
+    try {
+        let sc = t.context as SC;
+        let nc = await connect({url: sc.server.nats, payload: Payload.JSON});
+        let subj = next();
+        nc.subscribe(subj, (err, msg) => {
+            if(msg.reply) {
+                nc.publish(msg.reply, msg.data);
+            }
+        });
+
+        let msg = await nc.request(subj, 100, input);
+        // in JSON undefined is translated to null
+        if (input === undefined) {
+            input = null;
+        }
+        //@ts-ignore
+        t.deepEqual(msg.data, input);
+        lock.unlock();
+    } catch (err) {
+        t.fail(err);
+        lock.unlock();
+    }
+    return lock.latch;
+}
+
+const complex = {
+    json: {
+        field: 'hello',
+        body: 'world'
+    },
+    empty_array: [],
+    array: [1, -2.3, 'foo', false],
+    true: true,
+    false: false,
+    null: null,
+    number: -123.45,
+    empty_string: '',
+    string: 'abc'
+};
+
+test('string', pubsub, 'helloworld');
+test('empty', pubsub, '');
+test('null', pubsub, null);
+test('undefined', pubsub, undefined);
+test('number', pubsub, 10);
+test('false', pubsub, false);
+test('true', pubsub, true);
+test('empty array', pubsub, []);
+test('any array', pubsub, [1, 'a', false, 3.1416]);
+test('empty object', pubsub, {});
+test('object', pubsub, {a: 1, b: false, c: 'name', d: 3.1416});
+test('complex', pubsub, complex);
+
+test('rr string', reqrep, 'helloworld');
+test('rr empty', reqrep, '');
+test('rr null', reqrep, null);
+test('rr undefined', reqrep, undefined);
+test('rr number', reqrep, 10);
+test('rr false', reqrep, false);
+test('rr true', reqrep, true);
+test('rr empty array', reqrep, []);
+test('rr any array', reqrep, [1, 'a', false, 3.1416]);
+test('rr empty object', reqrep, {});
+test('rr object', reqrep, {a: 1, b: false, c: 'name', d: 3.1416});
+test('rr complex', reqrep, complex);
