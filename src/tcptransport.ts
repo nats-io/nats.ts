@@ -22,6 +22,7 @@ import {Transport, TransportHandlers} from "./transport";
 import {UrlObject} from "url";
 
 export class TCPTransport implements Transport {
+    connectedOnce: boolean = false;
     stream: net.Socket | TLSSocket | null = null;
     handlers: TransportHandlers;
     closed: boolean = false;
@@ -41,19 +42,31 @@ export class TCPTransport implements Transport {
             let connected = false;
             // @ts-ignore typescript requires this parsed to a number
             this.stream = net.createConnection(parseInt(url.port, 10), url.hostname, () => {
+                resolve();
                 connected = true;
-                resolve(this);
+                this.connectedOnce = true;
                 this.handlers.connect();
             });
+            this.stream.setNoDelay(true);
+
             this.stream.on('error', (error) => {
-                if (!connected) {
+                if(! this.connectedOnce) {
                     reject(error);
+                    this.destroy();
                 } else {
+                // if the client didn't resolve, the error handler
+                // is not set, so emitting 'error' will shutdown node
                     this.handlers.error(error);
                 }
             });
-            this.stream.setNoDelay(true);
-            this.setupHandlers();
+            this.stream.on('close', () => {
+                if(this.connectedOnce) {
+                    this.handlers.close();
+                }
+            });
+            this.stream.on('data', (data: Buffer) => {
+                this.handlers.data(data);
+            });
         });
     }
 
@@ -92,7 +105,13 @@ export class TCPTransport implements Transport {
         this.stream.on('error', (error) => {
             this.handlers.error(error);
         });
-        this.setupHandlers();
+        this.stream.on('close', () => {
+            this.handlers.close()
+        });
+        this.stream.on('data', (data: Buffer) => {
+            this.handlers.data(data);
+        });
+
     }
 
     write(data: Buffer | string): void {
@@ -135,13 +154,5 @@ export class TCPTransport implements Transport {
             return;
         }
         this.stream.resume();
-    }
-
-    private setupHandlers(): void {
-        if (!this.stream) {
-            return;
-        }
-        this.stream.on('close', this.handlers.close);
-        this.stream.on('data', this.handlers.data);
     }
 }

@@ -100,12 +100,12 @@ export function startServer(hostport?: string, opt_flags?: string[]): Promise<Se
         }
 
         let count = 50;
-        new Promise<any>((r, x) => {
+        new Promise<any>((rslv, rjct) => {
             let t = setInterval(() => {
                 --count;
                 if (count === 0) {
                     clearInterval(t);
-                    x('Unable to find the pid');
+                    rjct('Unable to find the pid');
                 }
                 //@ts-ignore
                 let pidFile = path.join(PID_DIR, `wsgnatsd_${server.pid}.pid`);
@@ -120,7 +120,7 @@ export function startServer(hostport?: string, opt_flags?: string[]): Promise<Se
 
                     port = getPort(server.nats);
                     clearInterval(t);
-                    r();
+                    rslv();
                 }
 
             }, 150);

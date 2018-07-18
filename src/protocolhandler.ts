@@ -114,15 +114,27 @@ export class ProtocolHandler extends EventEmitter {
     }
 
     static connect(client: Client, opts: NatsConnectionOptions): Promise<ProtocolHandler> {
-        return new Promise<ProtocolHandler>((resolve, reject) => {
+        return new Promise<ProtocolHandler>(async (resolve, reject) => {
             let ph = new ProtocolHandler(client, opts);
-            ph.connect()
-                .then(() => {
-                    resolve(ph);
-                })
-                .catch((ex) => {
-                    reject(ex);
-                });
+            // the initial connection handles the reconnect logic
+            // for all the servers. This way we can return at least
+            // one error to the user. Once connected (wasConnected is set),
+            // the event handlers will take over
+            let lastError: Error | null = null;
+            let fn = function(n: number) {
+                if(n <= 0) {
+                    reject(lastError);
+                }
+                ph.connect()
+                    .then(() => {
+                        resolve(ph);
+                    })
+                    .catch((ex) => {
+                        lastError = ex;
+                        fn(n-1);
+                    });
+            };
+            fn(ph.servers.length());
         });
     }
 
@@ -259,6 +271,7 @@ export class ProtocolHandler extends EventEmitter {
 
     private connect(): Promise<Transport> {
         this.prepareConnection();
+        this.client.emit('connecting', this.url.href);
         return this.transport.connect(this.url);
     }
 
@@ -273,7 +286,7 @@ export class ProtocolHandler extends EventEmitter {
         }
     }
 
-    // protocol shoudn't have crlf
+    // Fixme: protocol shoudn't have crlf
     // payload shouldn't have crlf
     private buildProtocolMessage(protocol: string, payload?: Buffer): Buffer {
         let crlf = Buffer.from('\r\n');
@@ -345,11 +358,16 @@ export class ProtocolHandler extends EventEmitter {
 
         handlers.close = () => {
             this.closeStream();
+
+            //@ts-ignore - guaranteed to be set
+            let mra = parseInt(this.options.maxReconnectAttempts, 10);
+
             this.client.emit('disconnect');
-            if (this.closed ||
-                this.options.reconnect === false ||
-                //@ts-ignore FIXME: MAR the parsed options need to help typescript catch missing values
-                ((this.reconnects >= this.options.maxReconnectAttempts) && this.options.maxReconnectAttempts !== -1)) {
+            if(this.closed) {
+                this.client.emit('close');
+            } else if(this.options.reconnect === false) {
+                this.client.emit('close');
+            } else if(mra > -1 && this.reconnects >= mra) {
                 this.client.emit('close');
             } else {
                 this.scheduleReconnect();
@@ -364,7 +382,7 @@ export class ProtocolHandler extends EventEmitter {
 
             // if the current server did not connect at all, and we in
             // general have not connected to any server, remove it from
-            // this list. Unless overidden
+            // this list. Unless overridden
             if (!this.wasConnected && !this.currentServer.didConnect) {
                 // We can override this behavior with waitOnFirstConnect, which will
                 // treat it like a reconnect scenario.
@@ -417,7 +435,7 @@ export class ProtocolHandler extends EventEmitter {
         // copy outbound and reset it
         let buffers = this.outbound.reset();
         let pongs = [] as Callback[];
-        if (this.outbound.length()) {
+        if (buffers.length) {
             let pongIndex = 0;
             // find all the pings with associated callback, and pubs
             buffers.forEach((buf) => {
@@ -456,7 +474,6 @@ export class ProtocolHandler extends EventEmitter {
             this.pout = 0;
             this.connected = false;
             this.inbound.reset();
-            this.outbound.reset();
         }
     };
 
@@ -767,10 +784,14 @@ export class ProtocolHandler extends EventEmitter {
             return;
         }
         this.reconnects += 1;
-        this.prepareConnection();
         if (this.currentServer.didConnect) {
             this.client.emit('reconnecting');
         }
+        this.connect().then(() => {
+                // all good the pong handler deals with it
+        }).catch((err) => {
+            // the stream handler deals with it
+        });
     }
 
     /**

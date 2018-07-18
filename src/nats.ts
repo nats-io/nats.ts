@@ -128,6 +128,37 @@ export class Client extends events.EventEmitter {
     constructor() {
         super();
         events.EventEmitter.call(this);
+        // this.addDebugHandlers()
+    }
+
+
+    private addDebugHandlers() {
+        let events = [
+            'close',
+            'connect',
+            'connecting',
+            'disconnect',
+            'error',
+            'pingcount',
+            'pingtimer',
+            'reconnecting',
+            'reconnect',
+            'serversDiscovered',
+            'subscribe',
+            'unsubscribe',
+            'yied',
+            'permission-error',
+        ];
+
+        function handler(name: string) {
+            return function(arg: any) {
+                console.log('debughdlr', name, [arg]);
+            }
+        }
+
+        events.forEach((e) => {
+            this.on(e, handler(e));
+        });
     }
 
     static connect(opts?: NatsConnectionOptions | string | number): Promise<Client> {
@@ -139,8 +170,8 @@ export class Client extends events.EventEmitter {
                     client.protocolHandler = ph;
                     resolve(client);
                 }).catch((ex) => {
-                reject(ex);
-            });
+                    reject(ex);
+                });
         });
     }
 
