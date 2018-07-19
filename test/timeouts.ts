@@ -192,6 +192,38 @@ test('no timeout if unsubscribed', async (t) => {
     await lock.latch;
 });
 
+test('sub timeout returns false if no sub', async (t) => {
+    t.plan(1);
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+    let lock = new Lock();
+
+    let sub = await nc.subscribe(createInbox(), () => {
+    });
+    sub.unsubscribe();
+    t.false(sub.setTimeout(10));
+    nc.close();
+});
+
+test('sub getReceived returns 0 if no sub', async (t) => {
+    t.plan(2);
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+    let lock = new Lock();
+
+    let subj = createInbox();
+    let count = 0;
+    let sub = await nc.subscribe(subj, () => {
+        count++;
+        sub.unsubscribe();
+    });
+    nc.publish(subj);
+    await nc.flush();
+    t.is(sub.getReceived(), 0);
+    t.is(count, 1);
+    nc.close();
+});
+
 test('timeout unsubscribes', async (t) => {
     t.plan(1);
     let sc = t.context as SC;

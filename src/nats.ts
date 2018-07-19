@@ -235,9 +235,13 @@ export class Client extends events.EventEmitter {
      */
     flush(cb?: FlushCallback): Promise<void> | void {
         if (cb === undefined) {
-            return new Promise((resolve) => {
-                this.protocolHandler.flush(() => {
-                    resolve();
+            return new Promise((resolve, reject) => {
+                this.protocolHandler.flush((err) => {
+                    if (!err) {
+                        resolve();
+                    } else {
+                        reject(err);
+                    }
                 });
             });
         } else {
@@ -278,6 +282,9 @@ export class Client extends events.EventEmitter {
             if (this.isClosed()) {
                 reject(NatsError.errorForCode(ErrorCode.CONN_CLOSED));
             }
+            if (!subject) {
+                reject(NatsError.errorForCode(ErrorCode.BAD_SUBJECT));
+            }
             if (!cb) {
                 reject(new NatsError("subscribe requires a callback", ErrorCode.API_ERROR));
             }
@@ -312,6 +319,9 @@ export class Client extends events.EventEmitter {
         return new Promise<Msg>((resolve, reject) => {
             if (this.isClosed()) {
                 reject(NatsError.errorForCode(ErrorCode.CONN_CLOSED));
+            }
+            if (!subject) {
+                reject(NatsError.errorForCode(ErrorCode.BAD_SUBJECT));
             }
 
             let r = defaultReq();

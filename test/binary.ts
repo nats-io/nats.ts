@@ -15,7 +15,7 @@
  */
 
 import test from "ava";
-import {connect, Msg, Payload} from "../src/nats";
+import {connect, Payload} from "../src/nats";
 import {next} from 'nuid'
 import {Lock} from "./helpers/latch";
 import {SC, startServer, stopServer} from "./helpers/nats_server_control";
@@ -50,11 +50,11 @@ async function macro(t: any, input: any): Promise<any> {
     return lock.latch;
 }
 
-var invalid2octet = Buffer.from([0xc3, 0x28]);
-var invalidsequenceidentifier = Buffer.from([0xa0, 0xa1]);
-var invalid3octet = Buffer.from([0xe2, 0x28, 0xa1]);
-var invalid4octet = Buffer.from([0xf0, 0x90, 0x28, 0xbc]);
-var embeddednull = Buffer.from([0x00, 0xf0, 0x00, 0x28, 0x00, 0x00, 0xf0, 0x9f, 0x92, 0xa9, 0x00]);
+let invalid2octet = Buffer.from([0xc3, 0x28]);
+let invalidsequenceidentifier = Buffer.from([0xa0, 0xa1]);
+let invalid3octet = Buffer.from([0xe2, 0x28, 0xa1]);
+let invalid4octet = Buffer.from([0xf0, 0x90, 0x28, 0xbc]);
+let embeddednull = Buffer.from([0x00, 0xf0, 0x00, 0x28, 0x00, 0x00, 0xf0, 0x9f, 0x92, 0xa9, 0x00]);
 
 test('invalid2octet', macro, invalid2octet);
 test('invalidsequenceidentifier', macro, invalidsequenceidentifier);
