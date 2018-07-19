@@ -19,6 +19,8 @@ import {connect, Payload} from "../src/nats";
 import {next} from 'nuid'
 import {Lock} from "./helpers/latch";
 import {SC, startServer, stopServer} from "./helpers/nats_server_control";
+import {randomBytes} from 'crypto';
+
 
 test.before(async (t) => {
     let server = await startServer();
@@ -55,9 +57,32 @@ let invalidsequenceidentifier = Buffer.from([0xa0, 0xa1]);
 let invalid3octet = Buffer.from([0xe2, 0x28, 0xa1]);
 let invalid4octet = Buffer.from([0xf0, 0x90, 0x28, 0xbc]);
 let embeddednull = Buffer.from([0x00, 0xf0, 0x00, 0x28, 0x00, 0x00, 0xf0, 0x9f, 0x92, 0xa9, 0x00]);
+let bigBuffer = randomBytes(128 * 1024);
 
 test('invalid2octet', macro, invalid2octet);
 test('invalidsequenceidentifier', macro, invalidsequenceidentifier);
 test('invalid3octet', macro, invalid3octet);
 test('invalid4octet', macro, invalid4octet);
 test('embeddednull', macro, embeddednull);
+test('bigbuffer', macro, bigBuffer);
+
+test('no control characters on chunk processing', async (t) => {
+    let count = 25;
+    t.plan(count);
+    let sc = t.context as SC;
+    let subj = next();
+    let nc = await connect({url: sc.server.nats, payload: Payload.BINARY});
+
+    let data = randomBytes(1032);
+    let lock = new Lock(count);
+    let sub = await nc.subscribe(subj, (err, msg) => {
+        t.deepEqual(msg.data, data);
+        lock.unlock();
+    });
+
+    for (let i = 0; i < count; i++) {
+        nc.publish(subj, data);
+    }
+
+    return lock.latch;
+});

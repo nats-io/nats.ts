@@ -431,3 +431,13 @@ test('flush reject on close', async (t) => {
         return nc.flush()
     }, {code: ErrorCode.CONN_CLOSED});
 });
+
+test('error if publish after close', async (t) => {
+    t.plan(1);
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+    nc.close();
+    await t.throws(() => {
+        nc.publish("foo")
+    }, {code: ErrorCode.CONN_CLOSED});
+});
