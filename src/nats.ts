@@ -104,14 +104,12 @@ export interface NatsConnectionOptions {
     pedantic?: boolean;
     pingInterval?: number;
     port?: number;
-    preserveBuffers?: boolean;
     reconnect?: boolean;
     reconnectTimeWait?: number;
     servers?: Array<string>;
     tls?: boolean | tls.TlsOptions;
     token?: string;
     url?: string;
-    useOldRequestStyle?: boolean;
     user?: string;
     verbose?: boolean;
     waitOnFirstConnect?: boolean;
@@ -192,7 +190,6 @@ export class Client extends events.EventEmitter {
             reconnect: true,
             reconnectTimeWait: DEFAULT_RECONNECT_TIME_WAIT,
             tls: false,
-            useOldRequestStyle: false,
             verbose: false,
             waitOnFirstConnect: false,
         } as ConnectionOptions

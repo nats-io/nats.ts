@@ -169,10 +169,6 @@ export class ScriptedServer extends EventEmitter {
 
             this.stream.on('listening', () => {
                 this.emit('listening');
-            });
-
-            // if '0' is provided we get a random port
-            this.stream.listen(this.port, () => {
                 connecting = false;
                 let p = this.stream.address().port;
                 if (this.port !== p) {
@@ -180,6 +176,9 @@ export class ScriptedServer extends EventEmitter {
                 }
                 resolve(p);
             });
+
+            // if '0' is provided we get a random port
+            this.stream.listen(this.port, () => {});
         });
     };
 };

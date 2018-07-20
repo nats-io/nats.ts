@@ -40,7 +40,7 @@ test('reconnect if no ping', async (t) => {
     let lock = new Lock();
     t.plan(2);
     //@ts-ignore
-    let port = 6666; //t.context.server.port;
+    let port = t.context.server.port;
     let nc = await connect({port: port, pingInterval: 200, maxReconnectAttempts: 1, reconnectTimeWait: 100,
     });
     nc.on('reconnect', () => {
