@@ -22,7 +22,7 @@ import {ErrorCode} from "../src/error";
 
 
 test.before(async (t) => {
-    let server = new mockserver.ScriptedServer(2541);
+    let server = new mockserver.ScriptedServer(0);
     try {
         await server.start();
     } catch(ex) {
