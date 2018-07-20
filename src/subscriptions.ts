@@ -15,18 +15,26 @@
  */
 
 import {Sub} from "./nats";
+import {EventEmitter} from "events";
 
-export class Subscriptions {
+export class Subscriptions extends EventEmitter {
     mux!: Sub;
     subs: { [key: number]: Sub } = {};
     sidCounter: number = 0;
     length: number = 0;
+
+    constructor() {
+        super();
+        EventEmitter.call(this);
+    }
 
     add(s: Sub): Sub {
         this.sidCounter++;
         this.length++;
         s.sid = this.sidCounter;
         this.subs[s.sid] = s;
+        let se = {sid: s.sid, subject: s.subject, queue: s.queue};
+        this.emit('subscribe', se);
         return s;
     }
 
@@ -61,8 +69,11 @@ export class Subscriptions {
             delete s.timeout;
         }
         if (s.sid in this.subs) {
+            let sub = this.subs[s.sid];
+            let se = {sid: sub.sid, subject: sub.subject, queue: sub.queue};
             delete this.subs[s.sid];
             this.length--;
+            this.emit('unsubscribe', se);
         }
     }
 

@@ -45,6 +45,12 @@ export function defaultSub(): Sub {
     return {sid: 0, subject: "", received: 0} as Sub;
 }
 
+export interface SubEvent {
+    subject: string;
+    sid: number;
+    queue?: string;
+}
+
 export interface Sub extends Base {
     sid: number;
     queue?: string | null;

@@ -14,7 +14,18 @@
  *
  */
 
-import {Client, defaultSub, FlushCallback, Msg, NatsConnectionOptions, Payload, Req, Sub, Subscription} from "./nats";
+import {
+    Client,
+    defaultSub,
+    FlushCallback,
+    Msg,
+    NatsConnectionOptions,
+    Payload,
+    Req,
+    Sub,
+    SubEvent,
+    Subscription
+} from "./nats";
 import {MuxSubscriptions} from "./muxsubscriptions";
 import {Callback, Transport, TransportHandlers} from "./transport";
 import {ServerInfo} from "./types";
@@ -109,6 +120,12 @@ export class ProtocolHandler extends EventEmitter {
         this.pass = options.pass;
         this.token = options.token;
         this.subscriptions = new Subscriptions();
+        this.subscriptions.on('subscribe', (sub) => {
+            this.client.emit('subscribe', sub);
+        });
+        this.subscriptions.on('unsubscribe', (unsub) => {
+           this.client.emit('unsubscribe', unsub);
+        });
         this.servers = new Servers(!this.options.noRandomize, this.options.servers || [], this.options.url);
         this.transport = new TCPTransport(this.getTransportHandlers());
     }
@@ -196,7 +213,6 @@ export class ProtocolHandler extends EventEmitter {
         if (s.max) {
             this.unsubscribe(this.ssid, s.max);
         }
-        this.client.emit('subscribe', s.sid, s.subject);
         return new Subscription(sub, this);
     }
 
@@ -718,7 +734,6 @@ export class ProtocolHandler extends EventEmitter {
         // if we got max number of messages, unsubscribe
         if (sub.max !== undefined && sub.received >= sub.max) {
             this.unsubscribe(sub.sid);
-            this.client.emit('unsubscribe', sub.sid, sub.subject);
         }
 
         if (sub.callback) {

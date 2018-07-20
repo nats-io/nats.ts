@@ -16,7 +16,7 @@
 
 import test from "ava";
 import {SC, startServer, stopServer} from "./helpers/nats_server_control";
-import {connect, NatsConnectionOptions, Payload} from "../src/nats";
+import {connect, NatsConnectionOptions, Payload, SubEvent} from "../src/nats";
 import {Lock} from "./helpers/latch";
 import {createInbox} from "../src/util";
 import url from 'url';
@@ -202,6 +202,58 @@ test('subscription message has sid', async (t) => {
     t.is(sub.getMax(), -1);
     nc.publish(subj);
     await nc.flush();
+});
+
+test('subscription generates events', async (t) => {
+    t.plan(3);
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+
+    let subj = createInbox();
+    nc.on('subscribe', (se: SubEvent) => {
+        t.is(se.subject, subj);
+        t.is(se.queue, 'A');
+        t.is(se.sid, 1);
+    });
+
+    nc.subscribe(subj, () => {}, {queue: 'A'});
+    await nc.flush();
+});
+
+test('unsubscribe generates events', async (t) => {
+    t.plan(3);
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+
+    let subj = createInbox();
+    nc.on('unsubscribe', (se: SubEvent) => {
+        t.is(se.subject, subj);
+        t.is(se.queue, 'A');
+        t.is(se.sid, 1);
+    });
+
+    let sub = await nc.subscribe(subj, () => {}, {queue: 'A'});
+    sub.unsubscribe();
+    await nc.flush();
+});
+
+test('unsubscribe notifications only once', async (t) => {
+    t.plan(1);
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+
+    let subj = createInbox();
+    let count = 0;
+    nc.on('unsubscribe', (se: SubEvent) => {
+        count++;
+    });
+
+    let sub = await nc.subscribe(subj, () => {}, {queue: 'A', max: 5});
+    for (let i=0; i < 5; i++) {
+        nc.publish(subj);
+    }
+    await nc.flush();
+    t.is(count, 1);
 });
 
 test('request subject is required', async (t) => {
