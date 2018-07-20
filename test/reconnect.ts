@@ -15,8 +15,8 @@
  */
 
 import test from "ava";
-import {SC, startServer, stopServer} from "./helpers/nats_server_control";
-import {Client, connect} from "../src/nats";
+import {SC, startServer, stopServer, Server} from "./helpers/nats_server_control";
+import {connect} from "../src/nats";
 import {join} from 'path';
 import url from 'url';
 import {Lock} from "./helpers/latch";
@@ -24,13 +24,21 @@ import {createInbox} from "../src/util";
 
 test.before(async (t) => {
     let server = await startServer();
-    t.context = {server: server};
+    t.context = {server: server, servers:[]};
 });
 
 test.after.always((t) => {
     // @ts-ignore
     stopServer(t.context.server);
+    //@ts-ignore
+    t.context.servers.forEach((s) => {
+        stopServer(s);
+    });
 });
+
+function registerServer(s: Server, t: any) {
+    t.context.servers.push(s);
+}
 
 test('connect with port', async (t) => {
     t.plan(1);
@@ -104,6 +112,8 @@ test('reconnect events', async (t) => {
     let lock = new Lock();
 
     let server = await startServer();
+    registerServer(server, t);
+
 
     let nc = await connect({
         url: server.nats,
@@ -145,6 +155,134 @@ test('reconnect events', async (t) => {
         t.true(elapsed >= 2000);
         t.true(elapsed <= 3000);
         lock.unlock();
+    });
+
+    return lock.latch;
+});
+
+test('reconnect not emitted if suppressed', async (t) => {
+    t.plan(2);
+    let lock = new Lock();
+
+    let server = await startServer();
+    registerServer(server, t);
+
+    let nc = await connect({
+        url: server.nats,
+        reconnect: false
+    });
+
+    nc.on('connect', () => {
+        setTimeout(() => {
+            stopServer(server);
+        }, 100);
+    });
+
+    let disconnects = 0;
+    nc.on('disconnect', () => {
+        disconnects++;
+    });
+
+    let reconnecting = false;
+    nc.on('reconnecting', () => {
+        reconnecting = true;
+    });
+
+    nc.on('close', () => {
+        t.is(disconnects, 1);
+        t.false(reconnecting);
+        lock.unlock();
+    });
+
+    return lock.latch;
+});
+
+test('reconnecting after proper delay', async (t) => {
+    t.plan(2);
+    let lock = new Lock();
+
+    let server = await startServer();
+    registerServer(server, t);
+
+    let nc = await connect({
+        url: server.nats,
+        reconnectTimeWait: 500,
+        maxReconnectAttempts: 1
+    });
+
+    nc.on('connect', () => {
+        setTimeout(() => {
+            stopServer(server);
+        }, 100);
+    });
+
+    let disconnect = 0;
+    nc.on('disconnect', () => {
+        disconnect = Date.now();
+    });
+
+    nc.on('reconnecting', () => {
+        nc.close();
+        let elapsed = Date.now() - disconnect;
+        t.true(elapsed >= 475);
+        t.true(elapsed <= 2500);
+        lock.unlock();
+    });
+
+    return lock.latch;
+});
+
+test('indefinite reconnects', async (t) => {
+    let lock = new Lock();
+    t.plan(3);
+
+    let server: Server | null;
+    server = await startServer();
+    registerServer(server, t);
+
+    let u = new url.URL(server.nats);
+    let port = parseInt(u.port, 10);
+
+    let nc = await connect({
+        url: server.nats,
+        reconnectTimeWait: 100,
+        maxReconnectAttempts: -1
+    });
+
+    nc.on('connect', () => {
+        setTimeout(() => {
+            stopServer(server, () => {
+                server = null;
+            });
+        }, 100);
+    });
+
+    setTimeout(async () => {
+        server = await startServer("", ['--', '-p', port.toString()]);
+        registerServer(server, t);
+    }, 1000);
+
+
+    let disconnects = 0;
+    nc.on('disconnect', () => {
+        disconnects++;
+    });
+
+    let reconnectings = 0;
+    nc.on('reconnecting', () => {
+        reconnectings++;
+    });
+
+    let reconnects = 0;
+    nc.on('reconnect', () => {
+        reconnects++;
+        nc.flush(() => {
+            nc.close();
+            t.true(disconnects > 5);
+            t.true(reconnectings >= 5);
+            t.is(reconnects, 1);
+            lock.unlock();
+        })
     });
 
     return lock.latch;
