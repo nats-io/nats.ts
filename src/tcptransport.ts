@@ -65,6 +65,7 @@ export class TCPTransport implements Transport {
                 }
             });
             this.stream.on('data', (data: Buffer) => {
+                // console.log('data', "< ", data.toString());
                 this.handlers.data(data);
             });
         });
