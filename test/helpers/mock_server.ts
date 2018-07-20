@@ -170,11 +170,15 @@ export class ScriptedServer extends EventEmitter {
             this.stream.on('listening', () => {
                 this.emit('listening');
                 connecting = false;
-                let p = this.stream.address().port;
-                if (this.port !== p) {
-                    this.port = p;
-                }
-                resolve(p);
+                console.log(this.stream.address());
+                resolve(this.port);
+                // try {
+                //     let p = this.stream.address().port;
+                //     if (this.port !== p) {
+                //         this.port = p;
+                //     }
+                // } catch(ex) {
+                // }
             });
 
             // if '0' is provided we get a random port
