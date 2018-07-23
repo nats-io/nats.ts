@@ -34,8 +34,8 @@ test.before(async (t) => {
     t.log(__dirname);
 
     let server = await startServer();
-    let tls = await startServer("", ["--", "--tlscert", serverCert, "--tlskey", serverKey]);
-    let tlsverify = await startServer("", ["--", "--tlsverify", "--tlscert", serverCert, "--tlskey", serverKey, "--tlscacert", caCert]);
+    let tls = await startServer("", ["--tlscert", serverCert, "--tlskey", serverKey]);
+    let tlsverify = await startServer("", ["--tlsverify", "--tlscert", serverCert, "--tlskey", serverKey, "--tlscacert", caCert]);
 
     t.context = {server: server, tls: tls, tlsverify: tlsverify, cacert: readFileSync(caCert), clientcert: readFileSync(clientCert), clientkey: readFileSync(clientKey)};
 });

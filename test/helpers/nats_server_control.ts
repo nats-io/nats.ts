@@ -22,7 +22,7 @@ import fs from 'fs'
 import {URL} from 'url';
 import Timer = NodeJS.Timer;
 
-let SERVER = (process.env.TRAVIS) ? 'wsgnatsd/wsgnatsd' : 'wsgnatsd';
+let SERVER = (process.env.TRAVIS) ? 'gnatsd/gnatsd' : 'gnatsd';
 let PID_DIR = (process.env.TRAVIS) ? process.env.TRAVIS_BUILD_DIR : process.env.TMPDIR;
 
 // context for tests
@@ -30,10 +30,17 @@ export interface SC {
     server: Server
 }
 
+export interface Ports {
+    nats: string[];
+    monitoring: string[] | undefined;
+    cluster: string[] | undefined;
+    profile: string[] | undefined;
+}
+
 export interface Server extends ChildProcess {
     args: string[];
-    ws: string;
     nats: string;
+    ports: Ports;
 }
 
 export function natsURL(s: Server): string {
@@ -52,16 +59,19 @@ export function getPort(urlString: string): number {
 export function startServer(hostport?: string, opt_flags?: string[]): Promise<Server> {
     return new Promise((resolve, reject) => {
 
-        let flags = ['-pid', PID_DIR] as string[];
-        if (hostport) {
-            flags.concat(['-hp', hostport]);
+        opt_flags = opt_flags || [];
+
+        let flags = ['--ports_file_dir', PID_DIR] as string[];
+        let port = -1;
+
+        // filter port -p or --port
+        if (opt_flags.indexOf('-p') === -1 && opt_flags.indexOf('--port') === -1) {
+            flags = flags.concat(["-p", "-1"]);
         }
 
         if (opt_flags) {
             flags = flags.concat(opt_flags);
         }
-
-        let port = -1;
 
         if (process.env.PRINT_LAUNCH_CMD) {
             console.log(flags.join(" "));
@@ -108,16 +118,13 @@ export function startServer(hostport?: string, opt_flags?: string[]): Promise<Se
                     rjct('Unable to find the pid');
                 }
                 //@ts-ignore
-                let pidFile = path.join(PID_DIR, `wsgnatsd_${server.pid}.pid`);
-                if (fs.existsSync(pidFile)) {
-                    fs.readFileSync(pidFile).toString().split("\n").forEach((s) => {
-                        if (s.startsWith('ws://') || s.startsWith('wss://')) {
-                            (server as Server).ws = s;
-                        } else {
-                            (server as Server).nats = s;
-                        }
-                    });
-
+                let portsFile = path.join(PID_DIR, `gnatsd_${server.pid}.ports`);
+                if (fs.existsSync(portsFile)) {
+                    let data = fs.readFileSync(portsFile).toString();
+                    let s = (server as Server);
+                    let ports = JSON.parse(data);
+                    s.nats = ports.nats[0];
+                    s.ports = ports;
                     port = getPort(server.nats);
                     clearInterval(t);
                     rslv();

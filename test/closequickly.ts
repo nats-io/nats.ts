@@ -23,7 +23,6 @@ import {Lock} from "./helpers/latch";
 
 test.before(async (t) => {
     let server = await startServer();
-    // let server = await startServer("", ['--', '-p', '4222']);
     t.context = {server: server};
 });
 

@@ -22,7 +22,7 @@ import {ErrorCode, NatsError} from "../src/error";
 
 
 test.before(async (t) => {
-    let server = await startServer("", ['--', '--auth', 'tokenxxxx']);
+    let server = await startServer("", ['--auth', 'tokenxxxx']);
     t.context = {server: server};
 });
 

@@ -20,7 +20,7 @@ import {connect} from "../src/nats";
 import {join} from 'path';
 
 test.before(async (t) => {
-    let server = await startServer("", ["--", "-DV"]);
+    let server = await startServer("", ["-DV"]);
     t.context = {server: server};
 });
 
