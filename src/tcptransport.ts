@@ -88,31 +88,28 @@ export class TCPTransport implements Transport {
     }
 
     upgrade(tlsOptions: any, done: Function): void {
-        if (!this.stream) {
-            return
+        if (this.stream) {
+            let opts: ConnectionOptions;
+            if ('object' === typeof tlsOptions) {
+                opts = tlsOptions as ConnectionOptions;
+            } else {
+                opts = {} as ConnectionOptions;
+            }
+            opts.socket = this.stream;
+            this.stream.removeAllListeners();
+            this.stream = tls.connect(opts, () => {
+                done();
+            });
+            this.stream.on('error', (error) => {
+                this.handlers.error(error);
+            });
+            this.stream.on('close', () => {
+                this.handlers.close()
+            });
+            this.stream.on('data', (data: Buffer) => {
+                this.handlers.data(data);
+            });
         }
-
-        let opts: ConnectionOptions;
-        if ('object' === typeof tlsOptions) {
-            opts = tlsOptions as ConnectionOptions;
-        } else {
-            opts = {} as ConnectionOptions;
-        }
-        opts.socket = this.stream;
-        this.stream.removeAllListeners();
-        this.stream = tls.connect(opts, () => {
-            done();
-        });
-        this.stream.on('error', (error) => {
-            this.handlers.error(error);
-        });
-        this.stream.on('close', () => {
-            this.handlers.close()
-        });
-        this.stream.on('data', (data: Buffer) => {
-            this.handlers.data(data);
-        });
-
     }
 
     write(data: Buffer | string): void {
@@ -121,10 +118,9 @@ export class TCPTransport implements Transport {
         // } else {
         //     console.log('>', [data.toString('binary')]);
         // }
-        if (!this.stream) {
-            return;
+        if(this.stream) {
+            this.stream.write(data);
         }
-        this.stream.write(data);
     }
 
     destroy(): void {
@@ -144,16 +140,14 @@ export class TCPTransport implements Transport {
     }
 
     pause(): void {
-        if (!this.stream) {
-            return;
+        if(this.stream) {
+            this.stream.pause()
         }
-        this.stream.pause()
     }
 
     resume(): void {
-        if (!this.stream) {
-            return;
+        if(this.stream) {
+            this.stream.resume();
         }
-        this.stream.resume();
     }
 }

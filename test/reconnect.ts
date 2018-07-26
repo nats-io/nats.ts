@@ -119,7 +119,7 @@ test('reconnect events', async (t) => {
         url: server.nats,
         waitOnFirstConnect: true,
         reconnectTimeWait: 100,
-        maxReconnectAttempts: 20
+        maxReconnectAttempts: 10
     });
 
     let stopTime = 0;
@@ -143,17 +143,17 @@ test('reconnect events', async (t) => {
         t.fail('on error should not have produced error: ' + err);
     });
 
-    let connecting = 0;
+    let reconnecting = 0;
     nc.on('reconnecting', () => {
-        connecting++;
+        reconnecting++;
     });
 
     nc.on('close', () => {
         let elapsed = Date.now() - stopTime;
-        t.is(connecting, 20);
-        t.is(disconnects, 21);
-        t.true(elapsed >= 2000);
-        t.true(elapsed <= 3000);
+        t.is(reconnecting, 10, 'reconnecting count');
+        t.is(disconnects, 1, 'disconnect count');
+        t.true(elapsed >= 10*100);
+        t.true(elapsed <= 15*100);
         lock.unlock();
     });
 
@@ -278,9 +278,9 @@ test('indefinite reconnects', async (t) => {
         reconnects++;
         nc.flush(() => {
             nc.close();
-            t.true(disconnects > 5);
             t.true(reconnectings >= 5);
             t.is(reconnects, 1);
+            t.is(disconnects, 1);
             lock.unlock();
         })
     });

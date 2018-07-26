@@ -66,5 +66,10 @@
     "sources": [
       "**/*.js"
     ]
+  },
+  "nyc": {
+    "exclude": [
+      "lib/test/**"
+    ]
   }
 }

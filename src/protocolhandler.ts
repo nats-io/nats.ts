@@ -373,12 +373,14 @@ export class ProtocolHandler extends EventEmitter {
         };
 
         handlers.close = () => {
+            let wasConnected = this.connected;
             this.closeStream();
 
             //@ts-ignore - guaranteed to be set
             let mra = parseInt(this.options.maxReconnectAttempts, 10);
-
-            this.client.emit('disconnect');
+            if(wasConnected) {
+                this.client.emit('disconnect');
+            }
             if(this.closed) {
                 this.client.emit('close');
             } else if(this.options.reconnect === false) {
@@ -598,9 +600,9 @@ export class ProtocolHandler extends EventEmitter {
                         }
 
                         // Always try to read the connect_urls from info
-                        let newServers = this.servers.processServerUpdate(this.info);
-                        if (newServers.length > 0) {
-                            this.client.emit('serversDiscovered', newServers);
+                        let change = this.servers.processServerUpdate(this.info);
+                        if (change.deleted.length > 0 || change.added.length > 0) {
+                            this.client.emit('serversChanged', change);
                         }
 
                         // Process first INFO

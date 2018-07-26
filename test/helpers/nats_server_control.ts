@@ -28,6 +28,7 @@ let PID_DIR = (process.env.TRAVIS) ? process.env.TRAVIS_BUILD_DIR : process.env.
 // context for tests
 export interface SC {
     server: Server
+    servers: Server[];
 }
 
 export interface Ports {
@@ -41,6 +42,8 @@ export interface Server extends ChildProcess {
     args: string[];
     nats: string;
     ports: Ports;
+    port: number;
+    clusterPort: number;
 }
 
 export function natsURL(s: Server): string {
@@ -58,16 +61,30 @@ export function getPort(urlString: string): number {
 
 export function startServer(hostport?: string, opt_flags?: string[]): Promise<Server> {
     return new Promise((resolve, reject) => {
-
         opt_flags = opt_flags || [];
+        let flags : string[] = [];
 
-        let flags = ['--ports_file_dir', PID_DIR] as string[];
-        let port = -1;
+        // filter host
+        if (opt_flags.indexOf('-a') === -1) {
+            flags = flags.concat(["-a", "127.0.0.1"]);
+        }
 
         // filter port -p or --port
         if (opt_flags.indexOf('-p') === -1 && opt_flags.indexOf('--port') === -1) {
             flags = flags.concat(["-p", "-1"]);
         }
+
+        if (opt_flags.indexOf('--cluster') === -1) {
+            flags = flags.concat(["--cluster", "nats://127.0.0.1:-1"]);
+        }
+
+        if (opt_flags.indexOf('--http_port') === -1 && opt_flags.indexOf('-m') === -1) {
+            flags = flags.concat(["--m", "-1"]);
+        }
+
+        flags = flags.concat(['--ports_file_dir', PID_DIR] as string[]);
+
+        let port = -1;
 
         if (opt_flags) {
             flags = flags.concat(opt_flags);
@@ -78,6 +95,13 @@ export function startServer(hostport?: string, opt_flags?: string[]): Promise<Se
         }
 
         let server = spawn(SERVER, flags) as Server;
+        // server.stderr.on('data', function (data) {
+        //     let lines = data.toString().split('\n');
+        //     lines.forEach((m) => {
+        //         console.log(m);
+        //     });
+        // });
+
         server.args = flags;
 
         let start = Date.now();
@@ -124,8 +148,9 @@ export function startServer(hostport?: string, opt_flags?: string[]): Promise<Se
                     let s = (server as Server);
                     let ports = JSON.parse(data);
                     s.nats = ports.nats[0];
+                    s.port = port = getPort(server.nats);
+                    s.clusterPort = getPort(ports.cluster[0]);
                     s.ports = ports;
-                    port = getPort(server.nats);
                     clearInterval(t);
                     rslv();
                 }

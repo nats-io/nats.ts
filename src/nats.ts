@@ -136,34 +136,34 @@ export class Client extends events.EventEmitter {
     }
 
 
-    private addDebugHandlers() {
-        let events = [
-            'close',
-            'connect',
-            'connecting',
-            'disconnect',
-            'error',
-            'pingcount',
-            'pingtimer',
-            'reconnecting',
-            'reconnect',
-            'serversDiscovered',
-            'subscribe',
-            'unsubscribe',
-            'yied',
-            'permission-error',
-        ];
-
-        function handler(name: string) {
-            return function(arg: any) {
-                console.log('debughdlr', name, [arg]);
-            }
-        }
-
-        events.forEach((e) => {
-            this.on(e, handler(e));
-        });
-    }
+    // private addDebugHandlers() {
+    //     let events = [
+    //         'close',
+    //         'connect',
+    //         'connecting',
+    //         'disconnect',
+    //         'error',
+    //         'pingcount',
+    //         'pingtimer',
+    //         'reconnecting',
+    //         'reconnect',
+    //         'serversChanged',
+    //         'subscribe',
+    //         'unsubscribe',
+    //         'yield',
+    //         'permission-error',
+    //     ];
+    //
+    //     function handler(name: string) {
+    //         return function(arg: any) {
+    //             console.log('debughdlr', name, [arg]);
+    //         }
+    //     }
+    //
+    //     events.forEach((e) => {
+    //         this.on(e, handler(e));
+    //     });
+    // }
 
     static connect(opts?: NatsConnectionOptions | string | number): Promise<Client> {
         return new Promise((resolve, reject) => {

@@ -43,6 +43,11 @@ export class Server {
     }
 }
 
+export interface ServerChanges {
+    added: string[];
+    deleted: string[];
+}
+
 export class Servers {
     private readonly servers: Server[];
     private currentServer: Server;
@@ -75,6 +80,10 @@ export class Servers {
         this.currentServer = this.servers[0];
     }
 
+    getCurrentServer() : Server {
+        return this.currentServer;
+    }
+
     addServer(u: string, implicit = false) {
         this.servers.push(new Server(u, implicit));
     }
@@ -82,7 +91,7 @@ export class Servers {
     selectServer(): Server | undefined {
         let t = this.servers.shift();
         if (t) {
-            this.servers.push(this.currentServer);
+            this.servers.push(t);
             this.currentServer = t;
         }
         return t;
@@ -111,9 +120,9 @@ export class Servers {
         return this.servers;
     }
 
-
-    processServerUpdate(info: ServerInfo): string[] {
-        let newURLs = [];
+    processServerUpdate(info: ServerInfo): ServerChanges {
+        let added = [];
+        let deleted : string[] = [];
 
         if (info.connect_urls && info.connect_urls.length > 0) {
             let discovered: { [key: string]: Server } = {};
@@ -121,7 +130,7 @@ export class Servers {
             info.connect_urls.forEach(server => {
                 let u = `nats://${server}`;
                 let s = new Server(u, true);
-                discovered[s.toString()] = s;
+                discovered[u] = s;
             });
 
             // remove implicit servers that are no longer reported
@@ -139,17 +148,18 @@ export class Servers {
             // perform the deletion
             toDelete.reverse();
             toDelete.forEach(index => {
-                this.servers.splice(index, 1);
+                let removed = this.servers.splice(index, 1);
+                deleted = deleted.concat(removed[0].url.toString());
             });
 
             // remaining servers are new
             for (let k in discovered) {
                 if (discovered.hasOwnProperty(k)) {
                     this.servers.push(discovered[k]);
-                    newURLs.push(k);
+                    added.push(k);
                 }
             }
         }
-        return newURLs;
+        return {added: added, deleted: deleted} as ServerChanges;
     }
 }
