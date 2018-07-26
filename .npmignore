@@ -3,7 +3,6 @@ npm-debug.log
 .DS_Store
 .idea
 .settings/
-lib/src/*
 lib/test/*
 src/*
 

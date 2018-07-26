@@ -76,7 +76,7 @@ enum ParserState {
 }
 
 export class ProtocolHandler extends EventEmitter {
-    static VERSION = "1.0.0";
+    static VERSION = "0.0.9";
     options: NatsConnectionOptions;
     subscriptions: Subscriptions;
     muxSubscriptions = new MuxSubscriptions();

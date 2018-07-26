@@ -14,9 +14,9 @@
  *
  */
 import url = require('url');
-import _ = require('lodash');
 import {DEFAULT_URI} from "./const";
 import {ServerInfo} from "./types";
+import {shuffle} from "./util";
 
 export class Server {
     url: url.Url;
@@ -59,7 +59,7 @@ export class Servers {
                 this.servers.push(new Server(element));
             });
             if (randomize) {
-                this.servers = _.shuffle(this.servers);
+                this.servers = shuffle(this.servers);
             }
         }
 

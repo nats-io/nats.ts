@@ -1,6 +1,6 @@
 {
   "name": "ts-nats",
-  "version": "1.0.0",
+  "version": "0.0.9",
   "description": "Typescript Node.js client for NATS, a lightweight, high-performance cloud native messaging system",
   "keywords": [
     "nats",
@@ -27,7 +27,7 @@
   },
   "contributors": [],
   "main": "./index.js",
-  "types": "lib/src/nats.d.ts",
+  "types": "./lib/src/nats.d.ts",
   "scripts": {
     "build": "npm run clean:dist && tsc",
     "clean": "npm run clean:dist",
@@ -37,7 +37,7 @@
     "pack": "npm pack",
     "debugtest": "tsc && node $NODE_DEBUG_OPTION node_modules/.bin/ava --verbose -T 6500000 -m",
     "test": "tsc && nyc ava --verbose -T 15000",
-    "failed": "tsc && ava --tap --verbose -T 15000"
+    "publish-npm:beta": "npm publish --tag=next"
   },
   "engines": {
     "node": ">= 4.5.0"
@@ -47,10 +47,8 @@
     "nuid": "^1.0.0"
   },
   "devDependencies": {
-    "@types/lodash": "^4.14.108",
     "@types/node": "^9.6.13",
     "ava": "^1.0.0-beta.6",
-    "chai": "^4.1.2",
     "dependency-check": "2.5.x",
     "if-node-version": "^1.1.1",
     "nyc": "^12.0.2",
