@@ -117,7 +117,7 @@ async function reqrep(t: any, input: any): Promise<any> {
             }
         });
 
-        let msg = await nc.request(subj, 100, input);
+        let msg = await nc.request(subj, 500, input);
         // in JSON undefined is translated to null
         if (input === undefined) {
             input = null;
