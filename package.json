@@ -27,6 +27,7 @@
   },
   "contributors": [],
   "main": "./index.js",
+  "types": "lib/src/nats.d.ts",
   "scripts": {
     "build": "npm run clean:dist && tsc",
     "clean": "npm run clean:dist",

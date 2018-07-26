@@ -13,4 +13,4 @@
  * limitations under the License.
  */
 
-module.exports = require('./lib/nats');
+module.exports = require('./src/');

@@ -2,65 +2,21 @@
 
 A [Node.js](http://nodejs.org/) client for the [NATS messaging system](https://nats.io).
 
-[![license](https://img.shields.io/github/license/nats-io/node-nats.svg)](https://www.apache.org/licenses/LICENSE-2.0)
-[![Travis branch](https://img.shields.io/travis/nats-io/node-nats/master.svg)]()
-[![Coveralls github branch](https://img.shields.io/coveralls/github/nats-io/node-nats/master.svg)]()
-[![npm](https://img.shields.io/npm/v/nats.svg)](https://www.npmjs.com/package/nats)
-[![npm](https://img.shields.io/npm/dt/nats.svg)](https://www.npmjs.com/package/nats)
+[![license](https://img.shields.io/github/license/nats-io/ts-nats.svg)](https://www.apache.org/licenses/LICENSE-2.0)
+[![Travis branch](https://img.shields.io/travis/nats-io/ts-nats/master.svg)]()
+[![Coveralls github branch](https://img.shields.io/coveralls/github/nats-io/ts-nats/master.svg)]()
+[![npm](https://img.shields.io/npm/v/ts-nats.svg)](https://www.npmjs.com/package/nats)
+[![npm](https://img.shields.io/npm/dt/ts-nats.svg)](https://www.npmjs.com/package/nats)
 
 ## Installation
 
 ```bash
-npm install nats
+npm install ts-nats
 ```
 
 ## Basic Usage
 
-```javascript
-var NATS = require('nats');
-var nats = NATS.connect();
-
-// Simple Publisher
-nats.publish('foo', 'Hello World!');
-
-// Simple Subscriber
-nats.subscribe('foo', function(msg) {
-  console.log('Received a message: ' + msg);
-});
-
-// Unsubscribing
-var sid = nats.subscribe('foo', function(msg) {});
-nats.unsubscribe(sid);
-
-// Request Streams
-var sid = nats.request('request', function(response) {
-  console.log('Got a response in msg stream: ' + response);
-});
-
-// Request with Auto-Unsubscribe. Will unsubscribe after
-// the first response is received via {'max':1}
-nats.request('help', null, {'max':1}, function(response) {
-  console.log('Got a response for help: ' + response);
-});
-
-
-// Request for single response with timeout.
-nats.requestOne('help', null, {}, 1000, function(response) {
-  // `NATS` is the library.
-  if(response.code && response.code === NATS.REQ_TIMEOUT) {
-    console.log('Request for help timed out.');
-    return;
-  }
-  console.log('Got a response for help: ' + response);
-});
-
-// Replies
-nats.subscribe('help', function(request, replyTo) {
-  nats.publish(replyTo, 'I can help!');
-});
-
-// Close connection
-nats.close();
+```typescript
 
 ```
 
