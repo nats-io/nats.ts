@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2018 The NATS Authors
+ * Copyright 2018 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -11,359 +11,279 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
  */
 
-import * as NATS from '../src/nats';
-import {NatsConnectionOptions} from '../src/nats';
-import * as nsc from './support/nats_server_control';
-import {Server} from './support/nats_server_control';
-import {expect} from 'chai'
+import test from "ava";
+import {SC, startServer, stopServer, Server} from "./helpers/nats_server_control";
+import {connect} from "../src/nats";
+import {join} from 'path';
+import url from 'url';
+import {Lock} from "./helpers/latch";
+import {createInbox} from "../src/util";
 
-describe('Reconnect functionality', () => {
+test.before(async (t) => {
+    let server = await startServer();
+    t.context = {server: server, servers:[]};
+});
 
-    let PORT = 1426;
-    let WAIT = 20;
-    let ATTEMPTS = 4;
-    let server: Server | null;
-
-    // Start up our own nats-server
-    beforeEach((done) => {
-        server = nsc.start_server(PORT, [], done);
+test.after.always((t) => {
+    // @ts-ignore
+    stopServer(t.context.server);
+    //@ts-ignore
+    t.context.servers.forEach((s) => {
+        stopServer(s);
     });
+});
 
-    // Shutdown our server after we are done
-    afterEach((done) => {
-        nsc.stop_server(server, done);
+function registerServer(s: Server, t: any) {
+    t.context.servers.push(s);
+}
+
+test('connect with port', async (t) => {
+    t.plan(1);
+    let lock = new Lock();
+    let sc = t.context as SC;
+    let u = new url.URL(sc.server.nats);
+    let port = parseInt(u.port, 10);
+
+    let nc = await connect(port);
+    nc.on('connect', (c) => {
+        t.truthy(c);
+        nc.close();
+        lock.unlock();
     });
+    return lock.latch;
+});
 
-    it('should not emit a reconnecting event if suppressed', (done) => {
-        let nc = NATS.connect({
-            'port': PORT,
-            'reconnect': false
-        } as NatsConnectionOptions);
+test('connect with url argument', async (t) => {
+    t.plan(1);
+    let lock = new Lock();
+    let sc = t.context as SC;
 
-        expect(nc).to.exist;
+    let nc = await connect(sc.server.nats);
+    nc.on('connect', (c) => {
+        t.truthy(c);
+        nc.close();
+        lock.unlock();
+    });
+    return lock.latch;
+});
 
-        nc.on('connect', () => {
-            nsc.stop_server(server);
-        });
-        nc.on('reconnecting', () => {
-            done(new Error('Reconnecting improperly called'));
-        });
-        nc.on('close', () => {
+test('connect with url in options', async (t) => {
+    t.plan(1);
+    let lock = new Lock();
+    let sc = t.context as SC;
+
+    let nc = await connect({url: sc.server.nats});
+    nc.on('connect', (c) => {
+        t.truthy(c);
+        nc.close();
+        lock.unlock();
+    });
+    return lock.latch;
+});
+
+test('should receive when some servers are invalid', async (t) => {
+    t.plan(1);
+    let lock = new Lock();
+    let sc = t.context as SC;
+
+    let servers = ["nats://localhost:7", sc.server.nats];
+
+    let nc = await connect({servers: servers, noRandomize: true});
+    let subj = createInbox();
+    let sub = await nc.subscribe(subj, (err, msg) => {
+        if(err) {
+            t.fail(err.message);
+        } else {
+            t.pass();
             nc.close();
-            done();
-        });
-    });
-
-    it('should emit a disconnect and a reconnecting event after proper delay', (done) => {
-        let nc = NATS.connect({
-            'port': PORT,
-            'reconnectTimeWait': WAIT
-        } as NatsConnectionOptions);
-        let startTime: number;
-        expect(nc).to.exist;
-        nc.on('connect', () => {
-            nsc.stop_server(server, () => {
-                startTime = Date.now();
-            });
-        });
-        nc.on('reconnecting', () => {
-            let elapsed = Date.now() - startTime;
-            expect(elapsed).to.be.within(WAIT, 5 * WAIT);
-            nc.close();
-            done();
-        });
-        nc.on('disconnect', () => {
-            let elapsed = Date.now() - startTime;
-            expect(elapsed).to.be.within(0, 5 * WAIT);
-        });
-    });
-
-    it('should emit multiple reconnecting events and fail after maxReconnectAttempts', (done) => {
-        let nc = NATS.connect({
-            'port': PORT,
-            'reconnectTimeWait': WAIT,
-            'maxReconnectAttempts': ATTEMPTS
-        } as NatsConnectionOptions);
-        let startTime: number;
-        let numAttempts = 0;
-        nc.on('connect', () => {
-            nsc.stop_server(server, function(){
-                startTime = Date.now();
-            });
-        });
-        nc.on('reconnecting', () => {
-            let elapsed = Date.now() - startTime;
-            expect(elapsed).to.be.within(WAIT, 5 * WAIT);
-            startTime = Date.now();
-            numAttempts += 1;
-        });
-        nc.on('close', () => {
-            expect(numAttempts).to.be.equal(ATTEMPTS);
-            nc.close();
-            done();
-        });
-    });
-
-    it('should emit reconnecting events indefinitely if maxReconnectAttempts is set to -1', (done) => {
-
-        let nc = NATS.connect({
-            'port': PORT,
-            'reconnectTimeWait': WAIT,
-            'maxReconnectAttempts': -1
-        } as NatsConnectionOptions);
-        let numAttempts = 0;
-
-        // stop trying after an arbitrary amount of elapsed time
-        setTimeout(() => {
-            // restart server and make sure next flush works ok
-            if (server === null) {
-                server = nsc.start_server(PORT);
-            }
-        }, 1000);
-
-        nc.on('connect', () => {
-            nsc.stop_server(server, () => {
-                server = null;
-            });
-        });
-        nc.on('reconnecting', () => {
-            numAttempts += 1;
-            // attempt indefinitely to reconnect
-            //@ts-ignore
-            expect(nc.reconnects).to.be.equal(numAttempts);
-            //@ts-ignore
-            expect(nc.connected).to.be.false;
-            //@ts-ignore
-            expect(nc.wasConnected).to.be.true;
-            //@ts-ignore
-            expect(nc.reconnecting).to.be.true;
-            // if maxReconnectAttempts is set to -1, the number of reconnects will always be greater
-            //@ts-ignore
-            expect(nc.reconnects).to.be.above(nc.options.maxReconnectAttempts);
-        });
-        nc.on('reconnect', () => {
-            nc.flush(() => {
-                nc.close();
-                done();
-            });
-        });
-    });
-
-    it('should succesfully reconnect to new server', (done) => {
-        let nc = NATS.connect({
-            'port': PORT,
-            'reconnectTimeWait': 100
-        } as NatsConnectionOptions);
-        // Kill server after first successful contact
-        nc.flush(() => {
-            nsc.stop_server(server, function(){
-                server = null;
-            });
-        });
-        nc.on('reconnecting', () => {
-            // restart server and make sure next flush works ok
-            if (server === null) {
-                server = nsc.start_server(PORT);
-            }
-        });
-        nc.on('reconnect', () => {
-            nc.flush(() => {
-                nc.close();
-                done();
-            });
-        });
-    });
-
-    it('should succesfully reconnect to new server with subscriptions', (done) => {
-        let nc = NATS.connect({
-            'port': PORT,
-            'reconnectTimeWait': 100
-        } as NatsConnectionOptions);
-        // Kill server after first successful contact
-        nc.flush(() => {
-            nsc.stop_server(server, () => {
-                server = null;
-            });
-        });
-        nc.subscribe('foo', {}, () => {
-            nc.close();
-            done();
-        });
-        nc.on('reconnecting', () => {
-            // restart server and make sure next flush works ok
-            if (server === null) {
-                server = nsc.start_server(PORT);
-            }
-        });
-        nc.on('reconnect', () => {
-            nc.publish('foo');
-        });
-    });
-
-    it('should succesfully reconnect to new server with queue subscriptions correctly', (done) => {
-        let nc = NATS.connect({
-            'port': PORT,
-            'reconnectTimeWait': 100
-        } as NatsConnectionOptions);
-        // Kill server after first successful contact
-        nc.flush(() => {
-            nsc.stop_server(server, () => {
-                server = null;
-            });
-        });
-        let received = 0;
-        // Multiple subscribers
-        for (let i = 0; i < 5; i++) {
-            nc.subscribe('foo', {'queue': 'myReconnectQueue'}, () => {
-                received += 1;
-            });
+            lock.unlock();
         }
-        nc.on('reconnecting', () => {
-            // restart server and make sure next flush works ok
-            if (server === null) {
-                server = nsc.start_server(PORT);
-            }
-        });
-        nc.on('reconnect', () => {
-            nc.publish('foo', () => {
-                expect(received).to.be.equal(1);
-                nc.close();
-                done();
-            });
-        });
     });
 
-    it('should properly resync with inbound buffer non-nil', (done) => {
-        let nc = NATS.connect({
-            'port': PORT,
-            'reconnectTimeWait': 100
-        } as NatsConnectionOptions);
+    nc.publish(subj);
+    return lock.latch;
+});
 
-        // Send lots of data to ourselves
-        nc.on('connect', () => {
-            let sid = nc.subscribe('foo', {}, () => {
-                // Kill server on first message, inbound should still be full.
-                nsc.stop_server(server, () => {
-                    nc.unsubscribe(sid);
-                    server = nsc.start_server(PORT);
-                });
-            });
-            let b = Buffer.allocUnsafe(4096).toString();
-            for (let i = 0; i < 1000; i++) {
-                nc.publish('foo', b);
-            }
-        });
+test('reconnect events', async (t) => {
+    t.plan(4);
+    let lock = new Lock();
 
-        nc.on('reconnect', () => {
-            nc.flush(() => {
-                nc.close();
-                done();
-            });
-        });
+    let server = await startServer();
+    registerServer(server, t);
+
+
+    let nc = await connect({
+        url: server.nats,
+        waitOnFirstConnect: true,
+        reconnectTimeWait: 100,
+        maxReconnectAttempts: 10
     });
 
-    it('should not crash when sending a publish with a callback after connection loss', (done) => {
-        let nc = NATS.connect({
-            'port': PORT,
-            'reconnectTimeWait': WAIT
-        } as NatsConnectionOptions);
-        let startTime: number;
-        expect(nc).to.exist;
-        nc.on('connect', () => {
-            nsc.stop_server(server, () => {
-                startTime = Date.now();
+    let stopTime = 0;
+    nc.on('connect', () => {
+        setTimeout(() => {
+            stopServer(server, () => {
+                stopTime = Date.now();
             });
-        });
-        nc.on('disconnect', () => {
-            nc.publish('foo', 'bar', 'reply', () => {
-                // fails to get here, but should not crash
-            });
-            server = nsc.start_server(PORT);
-        });
-        nc.on('reconnect', () => {
-            nc.flush(() => {
-                nc.close();
-                done();
-            });
-        });
+        }, 100);
     });
 
-    it('should execute callbacks if published during reconnect', (done) => {
-        let nc = NATS.connect({
-            'port': PORT,
-            'reconnectTimeWait': 100
-        } as NatsConnectionOptions);
-        nc.on('reconnecting', () => {
-            // restart server
-            if (server === null) {
-                nc.publish('foo', () => {
-                    nc.close();
-                    done();
-                });
-                server = nsc.start_server(PORT);
-            }
-        });
-        nc.on('connect', () => {
-            let s = server;
-            server = null;
-            nsc.stop_server(s);
-        });
+    // we get a disconnect event for the initial connection
+    // and for each of the failed reattempts
+    let disconnects = 0;
+    nc.on('disconnect', () => {
+        disconnects++;
     });
 
-    it('should not lose messages if published during reconnect', (done) => {
-        // This checks two things if the client publishes while reconnecting:
-        // 1) the message is published when the client reconnects
-        // 2) the client's subscriptions are synced before the message is published
-        let nc = NATS.connect({
-            'port': PORT,
-            'reconnectTimeWait': 100
-        } as NatsConnectionOptions);
-        nc.subscribe('foo', {}, () => {
+    nc.on('error', (err) => {
+        console.log(err);
+        t.fail('on error should not have produced error: ' + err);
+    });
+
+    let reconnecting = 0;
+    nc.on('reconnecting', () => {
+        reconnecting++;
+    });
+
+    nc.on('close', () => {
+        let elapsed = Date.now() - stopTime;
+        t.is(reconnecting, 10, 'reconnecting count');
+        t.is(disconnects, 1, 'disconnect count');
+        t.true(elapsed >= 10*100);
+        t.true(elapsed <= 15*100);
+        lock.unlock();
+    });
+
+    return lock.latch;
+});
+
+test('reconnect not emitted if suppressed', async (t) => {
+    t.plan(2);
+    let lock = new Lock();
+
+    let server = await startServer();
+    registerServer(server, t);
+
+    let nc = await connect({
+        url: server.nats,
+        reconnect: false
+    });
+
+    nc.on('connect', () => {
+        setTimeout(() => {
+            stopServer(server);
+        }, 100);
+    });
+
+    let disconnects = 0;
+    nc.on('disconnect', () => {
+        disconnects++;
+    });
+
+    let reconnecting = false;
+    nc.on('reconnecting', () => {
+        reconnecting = true;
+    });
+
+    nc.on('close', () => {
+        t.is(disconnects, 1);
+        t.false(reconnecting);
+        lock.unlock();
+    });
+
+    return lock.latch;
+});
+
+test('reconnecting after proper delay', async (t) => {
+    t.plan(2);
+    let lock = new Lock();
+
+    let server = await startServer();
+    registerServer(server, t);
+
+    let nc = await connect({
+        url: server.nats,
+        reconnectTimeWait: 500,
+        maxReconnectAttempts: 1
+    });
+
+    nc.on('connect', () => {
+        setTimeout(() => {
+            stopServer(server);
+        }, 100);
+    });
+
+    let disconnect = 0;
+    nc.on('disconnect', () => {
+        disconnect = Date.now();
+    });
+
+    nc.on('reconnecting', () => {
+        nc.close();
+        let elapsed = Date.now() - disconnect;
+        t.true(elapsed >= 475);
+        t.true(elapsed <= 2500);
+        lock.unlock();
+    });
+
+    return lock.latch;
+});
+
+test('indefinite reconnects', async (t) => {
+    let lock = new Lock();
+    t.plan(3);
+
+    let server: Server | null;
+    server = await startServer();
+    registerServer(server, t);
+
+    let u = new url.URL(server.nats);
+    let port = parseInt(u.port, 10);
+
+    let nc = await connect({
+        url: server.nats,
+        reconnectTimeWait: 100,
+        maxReconnectAttempts: -1
+    });
+
+    nc.on('connect', () => {
+        setTimeout(() => {
+            stopServer(server, () => {
+                server = null;
+            });
+        }, 100);
+    });
+
+    setTimeout(async () => {
+        server = await startServer("", ['-p', port.toString()]);
+        registerServer(server, t);
+    }, 1000);
+
+
+    let disconnects = 0;
+    nc.on('disconnect', () => {
+        disconnects++;
+    });
+
+    let reconnectings = 0;
+    nc.on('reconnecting', () => {
+        reconnectings++;
+    });
+
+    let reconnects = 0;
+    nc.on('reconnect', () => {
+        reconnects++;
+        nc.flush(() => {
             nc.close();
-            done();
-        });
-        nc.on('reconnecting', () => {
-            // restart server
-            if (server === null) {
-                nc.publish('foo');
-                server = nsc.start_server(PORT);
-            }
-        });
-        nc.on('connect', () => {
-            let s = server;
-            server = null;
-            nsc.stop_server(s);
-        });
+            t.true(reconnectings >= 5);
+            t.is(reconnects, 1);
+            t.is(disconnects, 1);
+            lock.unlock();
+        })
     });
 
-    it('should emit reconnect before flush callbacks are called', (done) => {
-        let nc = NATS.connect({
-            'port': PORT,
-            'reconnectTimeWait': 100
-        } as NatsConnectionOptions);
-        let reconnected = false;
-        nc.on('reconnecting', () => {
-            // restart server
-            if (server === null) {
-                nc.flush(() => {
-                    nc.close();
-                    if (!reconnected) {
-                        done(new Error('Flush callback called before reconnect emitted'));
-                    }
-                    done();
-                });
-                server = nsc.start_server(PORT);
-            }
-        });
-        nc.on('reconnect', () => {
-            reconnected = true;
-        });
-        nc.on('connect', () => {
-            let s = server;
-            server = null;
-            nsc.stop_server(s);
-        });
-    });
+    return lock.latch;
 });

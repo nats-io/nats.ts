@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2018 The NATS Authors
+ * Copyright 2018 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -11,152 +11,243 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
  */
 
-import * as NATS from '../src/nats';
-import * as nsc from './support/nats_server_control';
-import {Server} from './support/nats_server_control';
-import {expect} from 'chai'
+import test from "ava";
+import {Lock, wait} from "./helpers/latch";
+import {SC, startServer, stopServer} from "./helpers/nats_server_control";
+import {connect} from "../src/nats";
+import {join} from 'path';
+import {createInbox} from "../src/util";
+import {ErrorCode} from "../src/error";
+
+test.before(async (t) => {
+    let server = await startServer();
+    t.context = {server: server};
+});
+
+test.after.always((t) => {
+    stopServer((t.context as SC).server);
+});
 
 
-describe('Timeout and max received events for subscriptions', () => {
-    let PORT = 1428;
+test('subscription timeouts', async (t) => {
+    t.plan(2);
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+    let lock = new Lock();
 
-    let server: Server;
-
-    // Start up our own nats-server
-    before((done) => {
-        server = nsc.start_server(PORT, [], done);
+    let sub = await nc.subscribe(createInbox(), (err) => {
+        //@ts-ignore
+        t.is(err.code, ErrorCode.SUB_TIMEOUT);
+        let elapsed = Date.now() - start;
+        t.true(elapsed >= 45 && elapsed <= 100);
+        nc.close();
+        lock.unlock();
     });
+    let start = Date.now();
+    sub.setTimeout(50);
 
-    // Shutdown our server after we are done
-    after((done) => {
-        nsc.stop_server(server, done);
+    return lock.latch;
+});
+
+
+test('message cancels timeout', async (t) => {
+    t.plan(2);
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+    let subj = createInbox();
+    let sub = await nc.subscribe(subj, (err) => {
+        if(err) {
+            t.fail();
+        }
     });
+    sub.setTimeout(500);
+    t.true(sub.hasTimeout());
+    sub.cancelTimeout();
+    await wait(500);
+    t.false(sub.hasTimeout());
+    nc.close();
+});
 
-    it('should perform simple timeouts on subscriptions', (done) => {
-        let nc = NATS.connect(PORT);
-        nc.on('connect', () => {
-            let startTime = Date.now();
-            let sid = nc.subscribe('foo');
-            nc.timeout(sid, 50, 1, () => {
-                let elapsed = Date.now() - startTime;
-                expect(elapsed).to.be.within(45, 75);
-                nc.close();
-                done();
-            });
-        });
+
+test('cancel timeout', async (t) => {
+    t.plan(2);
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+    let subj = createInbox();
+    let sub = await nc.subscribe(subj, (err) => {
+        if(err) {
+            t.fail();
+        }
     });
+    sub.setTimeout(500);
+    t.true(sub.hasTimeout());
+    sub.cancelTimeout();
+    await wait(500);
+    t.false(sub.hasTimeout());
+    nc.close();
+});
 
-    it('should not timeout if exepected has been received', (done) => {
-        let nc = NATS.connect(PORT);
-        nc.on('connect', () => {
-            let sid = nc.subscribe('foo');
-            nc.timeout(sid, 50, 1, () => {
-                done(new Error('Timeout improperly called'));
-            });
-            nc.publish('foo', () => {
-                nc.close();
-                done();
-            });
-        });
+test('message cancels subscription timeout', async (t) => {
+    t.plan(2);
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+    let subj = createInbox();
+    let count = 0;
+    let sub = await nc.subscribe(subj, (err, msg) => {
+        if(err) {
+            t.fail();
+        } else {
+            count++;
+        }
     });
+    sub.setTimeout(50);
+    t.true(sub.hasTimeout());
+    nc.publish(subj);
+    await wait(500);
+    t.false(sub.hasTimeout());
+    nc.close();
+});
 
-
-    it('should not timeout if unsubscribe is called', (done) => {
-        let nc = NATS.connect(PORT);
-        nc.on('connect', () => {
-            let count = 0;
-            let sid = nc.subscribe('bar', {}, () => {
-                count++;
-                if (count === 1) {
-                    nc.unsubscribe(sid);
-                }
-            });
-            nc.timeout(sid, 1000, 2, () => {
-                done(new Error('Timeout improperly called'));
-            });
-            nc.publish('bar', '');
-            nc.flush();
-            setTimeout(() => {
-                // terminate the test
-                done();
-            }, 1500);
-        });
-    });
-
-    it('timeout should unsubscribe', (done) => {
-        let nc = NATS.connect(PORT);
-        nc.on('connect', () => {
-            let count = 0;
-            let sid = nc.subscribe('bar', {}, () => {
-                count++;
-            });
-            nc.timeout(sid, 250, 2, () => {
+test('max message cancels subscription timeout', async (t) => {
+    t.plan(3);
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+    let lock = new Lock();
+    let subj = createInbox();
+    let count = 0;
+    let sub = await nc.subscribe(subj, (err, msg) => {
+        if(err) {
+            t.fail();
+        } else {
+            count++;
+            if(count === 2) {
                 process.nextTick(() => {
-                    nc.publish('bar');
-                    nc.flush();
+                    t.false(sub.isCancelled());
+                    nc.close();
+                    lock.unlock();
                 });
-            });
-            setTimeout(() => {
-                nc.close();
-                expect(count).to.equal(0);
-                done();
-            }, 1000);
-        });
+            }
+        }
+    }, {max: 2});
+    sub.setTimeout(50);
+    t.true(sub.hasTimeout());
+    nc.publish(subj);
+    nc.publish(subj);
+    await wait(500);
+    t.false(sub.hasTimeout());
+    return lock.latch;
+});
+
+
+test('timeout if expected is not received', async (t) => {
+    t.plan(3);
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+    let lock = new Lock();
+
+    let subj = createInbox();
+    let count = 0;
+    let sub = await nc.subscribe(subj, (err) => {
+        if(err) {
+           t.is(err.code, ErrorCode.SUB_TIMEOUT);
+           t.is(sub.getReceived(), 1);
+           t.is(sub.getMax(), 2);
+           nc.close();
+           lock.unlock();
+        } else {
+            count++;
+        }
     });
+    sub.unsubscribe(2);
+    sub.setTimeout(50);
+    nc.publish(subj);
+
+    return lock.latch;
+});
 
 
-    it('should perform simple timeouts on requests', (done) => {
-        let nc = NATS.connect(PORT);
-        nc.on('connect', () => {
-            nc.request('foo', "", {max: 1, timeout: 1000}, (err) => {
-                expect(err).to.exist;
-                //@ts-ignore
-                expect(err.code).to.be.equal(NATS.REQ_TIMEOUT);
-                nc.close();
-                done();
-            });
-        });
+test('no timeout if unsubscribed', async (t) => {
+    t.plan(1);
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+    let lock = new Lock();
+
+    let subj = createInbox();
+    let sub = await nc.subscribe(subj, () => {
+        sub.unsubscribe();
     });
+    sub.unsubscribe(10);
+    sub.setTimeout(50);
+    nc.publish(subj);
+    await nc.flush();
+    setTimeout(()=> {
+        // shouldn't expect anything because it is unsubscribed
+        t.is(sub.getMax(), 0);
+        lock.unlock();
+    }, 100);
 
-    it('should perform simple timeouts on requests without specified number of messages', (done) => {
-        let nc = NATS.connect(PORT);
-        nc.on('connect', () => {
-            nc.subscribe('foo', {}, (msg, reply) => {
-                nc.publish(reply);
-            });
+    await lock.latch;
+});
 
-            let responses = 0;
-            nc.request('foo', "", {max: 2, timeout: 1000}, (err) => {
-                if (!err.hasOwnProperty('code')) {
-                    responses++;
-                    return;
-                }
-                expect(responses).to.be.equal(1);
-                expect(err).to.exist;
-                //@ts-ignore
-                expect(err.code).to.be.equal(NATS.REQ_TIMEOUT);
-                nc.close();
-                done();
-            });
-        });
+test('sub timeout returns false if no sub', async (t) => {
+    t.plan(1);
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+    let lock = new Lock();
+
+    let sub = await nc.subscribe(createInbox(), () => {
     });
+    sub.unsubscribe();
+    t.false(sub.setTimeout(10));
+    nc.close();
+});
 
-    it('should override request autoset timeouts', (done) => {
-        let nc = NATS.connect(PORT);
-        let calledOnRequestHandler = false;
-        nc.on('connect', () => {
-            let sid = nc.request('foo', "", {max: 2, timeout: 1000}, () => {
-                calledOnRequestHandler = true;
-            });
+test('sub getReceived returns 0 if no sub', async (t) => {
+    t.plan(2);
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+    let lock = new Lock();
 
-            nc.timeout(sid, 1500, 2, function (v) {
-                expect(calledOnRequestHandler).to.be.false;
-                expect(v).to.be.equal(sid);
-                nc.close();
-                done();
-            });
-        });
+    let subj = createInbox();
+    let count = 0;
+    let sub = await nc.subscribe(subj, () => {
+        count++;
+        sub.unsubscribe();
     });
+    nc.publish(subj);
+    await nc.flush();
+    t.is(sub.getReceived(), 0);
+    t.is(count, 1);
+    nc.close();
+});
+
+test('timeout unsubscribes', async (t) => {
+    t.plan(1);
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+    let lock = new Lock();
+
+    let subj = createInbox();
+    let count = 0;
+    let sub = await nc.subscribe(subj, (err) => {
+        if(err) {
+            process.nextTick(() => {
+                nc.publish(subj);
+                nc.flush();
+            });
+        } else {
+            count++;
+        }
+    });
+    sub.setTimeout(50);
+
+    setTimeout(()=> {
+        t.is(count, 0);
+        lock.unlock();
+    }, 100);
+
+    await lock.latch;
 });

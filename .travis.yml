@@ -2,16 +2,19 @@ language: node_js
 sudo: false
 
 node_js:
-  - "6"
-  - "8"
-  - "9"
-  - "10"
+- "6"
+- "8"
+- "9"
+- "10"
 
 git:
   depth: false
 
 env:
-  - NATS_VERSION=v1.1.0
+  global:
+  - NATS_VERSION=v1.2.0
+  - WSGNATSD_VERSION=v0.7.3
+#  - NODE_EXTRA_CA_CERTS=$TRAVIS_BUILD_DIR/test/helpers/certs/ca.pem
 
 before_script:
   - wget "https://github.com/nats-io/gnatsd/releases/download/$NATS_VERSION/gnatsd-$NATS_VERSION-linux-amd64.zip" -O tmp.zip
@@ -19,8 +22,8 @@ before_script:
   - mv gnatsd-$NATS_VERSION-linux-amd64 gnatsd
 
 script:
-  - if [[ "$TRAVIS_NODE_VERSION" == 6 ]]; then npm test; fi
-  - if [[ "$TRAVIS_NODE_VERSION" == 8 ]]; then npm test; fi
-  - if [[ "$TRAVIS_NODE_VERSION" == 9 ]]; then npm test; fi
-  - if [[ "$TRAVIS_NODE_VERSION" == 10 ]]; then npm test; fi
+- if [[ "$TRAVIS_NODE_VERSION" == 6 ]]; then npm test; fi
+- if [[ "$TRAVIS_NODE_VERSION" == 8 ]]; then npm test; fi
+- if [[ "$TRAVIS_NODE_VERSION" == 9 ]]; then npm test; fi
+- if [[ "$TRAVIS_NODE_VERSION" == 10 ]]; then npm test; fi
 #  - if [[ "$TRAVIS_NODE_VERSION" == 9 ]]; then npm run coveralls; fi

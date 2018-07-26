@@ -75,34 +75,6 @@ export class ScriptedServer extends EventEmitter {
         this.script = script || defaultScript();
     }
 
-    start() {
-        this.stream = net.createServer((socket: Socket) => {
-            this.emit('connect_request');
-            this.sendInfo(socket);
-            let client: Client = socket as Client;
-            client.script = Array.from(this.script);
-            client.on('data', this.handleData(this, client));
-        });
-
-        this.stream.on('connection', (socket) => {
-            this.sockets.push(socket);
-        });
-
-        this.stream.on('close', () => {
-            this.emit('close');
-        });
-
-        this.stream.on('error', (ex) => {
-            this.emit('error', ex);
-        });
-
-        this.stream.on('listening', () => {
-            this.emit('listening');
-        });
-
-        this.stream.listen(this.port);
-    };
-
     stop(cb?: Function) {
         this.stream.close(cb);
         if (this.sockets) {
@@ -132,6 +104,7 @@ export class ScriptedServer extends EventEmitter {
 
     handleData(server: ScriptedServer, client: Client): handler {
         return function (data): void {
+            client.emit('debug', data.toString());
             // if we have a buffer append to it or make one
             if (client.buffer) {
                 client.buffer = Buffer.concat([client.buffer, data]);
@@ -167,7 +140,46 @@ export class ScriptedServer extends EventEmitter {
             }
         };
     }
-}
+
+    start() : Promise<number> {
+        let connecting = true;
+        return new Promise((resolve, reject) => {
+            this.stream = net.createServer((socket: Socket) => {
+                this.emit('connect_request');
+                this.sendInfo(socket);
+                let client: Client = socket as Client;
+                client.script = Array.from(this.script);
+                client.on('data', this.handleData(this, client));
+            });
+
+            this.stream.on('connection', (socket) => {
+                this.sockets.push(socket);
+            });
+
+            this.stream.on('close', () => {
+                this.emit('close');
+            });
+
+            this.stream.on('error', (ex) => {
+                this.emit('error', ex);
+                if (connecting) {
+                    reject();
+                }
+            });
+
+            this.stream.on('listening', () => {
+                this.emit('listening');
+                connecting = false;
+                //@ts-ignore
+                this.port = this.stream.address().port;
+                resolve(this.port);
+            });
+
+            // if '0' is provided we get a random port
+            this.stream.listen(this.port, () => {});
+        });
+    };
+};
 
 
 function colorize(str: string) {

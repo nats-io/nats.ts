@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2018 The NATS Authors
+ * Copyright 2018 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -11,169 +11,78 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
  */
 
-/* jslint node: true */
-/* global describe: false, before: false, after: false, it: false */
-'use strict';
-
-import * as NATS from '../src/nats';
-import {NatsConnectionOptions} from '../src/nats';
-import * as nsc from './support/nats_server_control';
-import {Server} from './support/nats_server_control';
-import * as crypto from 'crypto';
-import {expect} from 'chai'
+import test from "ava";
+import {connect, Payload} from "../src/nats";
+import {next} from 'nuid'
+import {Lock} from "./helpers/latch";
+import {SC, startServer, stopServer} from "./helpers/nats_server_control";
+import {randomBytes} from 'crypto';
 
 
-describe('Binary', () => {
+test.before(async (t) => {
+    let server = await startServer();
+    t.context = {server: server};
+});
 
-    let PORT = 1432;
-    let server: Server;
-
-    // Start up our own nats-server
-    before((done) => {
-        server = nsc.start_server(PORT, [], done);
-    });
-
-    // Shutdown our server
-    after((done) => {
-        nsc.stop_server(server, done);
-    });
+test.after.always((t) => {
+    stopServer((t.context as SC).server);
+});
 
 
-    function binaryDataTests(done: Function, nc: NATS.Client) {
-        // try some invalid utf-8 byte sequences
-        let invalid2octet = Buffer.from('\xc3\x28', 'binary');
-        let invalidsequenceidentifier = Buffer.from('\xa0\xa1', 'binary');
-        let invalid3octet = Buffer.from('\xe2\x28\xa1', 'binary');
-        let invalid4octet = Buffer.from('\xf0\x90\x28\xbc', 'binary');
-        let bigBuffer = crypto.randomBytes(128 * 1024);
-
-        // make sure embedded nulls don't cause truncation
-        let embeddednull = Buffer.from('\x00\xf0\x00\x28\x00\x00\xf0\x9f\x92\xa9\x00', 'binary');
-
-        let count = 6;
-
-        function finished() {
-            if (--count <= 0) {
-                nc.close();
-                done();
-            }
+async function macro(t: any, input: any): Promise<any> {
+    t.plan(2);
+    let lock = new Lock();
+    let sc = t.context as SC;
+    let subj = next();
+    let nc = await connect({url: sc.server.nats, payload: Payload.BINARY});
+    //
+    nc.subscribe(subj, (err, msg) => {
+        if(err) {
+            t.fail(err);
         }
+        t.true(Buffer.isBuffer(msg.data));
+        t.deepEqual(msg.data, input);
+        lock.unlock();
+    }, {max: 1});
+    nc.publish(subj, input);
+    nc.flush();
+    return lock.latch;
+}
 
-        nc.subscribe('invalid2octet', {}, (msg) => {
-            expect(msg).lengthOf(2);
-            //@ts-ignore
-            if (nc.options.preserveBuffers) {
-                expect(msg).to.be.eql(invalid2octet);
-            } else {
-                expect(msg).to.be.equal(invalid2octet.toString('binary'));
-            }
-            finished();
-        });
+let invalid2octet = Buffer.from([0xc3, 0x28]);
+let invalidsequenceidentifier = Buffer.from([0xa0, 0xa1]);
+let invalid3octet = Buffer.from([0xe2, 0x28, 0xa1]);
+let invalid4octet = Buffer.from([0xf0, 0x90, 0x28, 0xbc]);
+let embeddednull = Buffer.from([0x00, 0xf0, 0x00, 0x28, 0x00, 0x00, 0xf0, 0x9f, 0x92, 0xa9, 0x00]);
+let bigBuffer = randomBytes(128 * 1024);
 
-        nc.subscribe('invalidsequenceidentifier', {}, (msg) => {
-            expect(msg).lengthOf(2);
-            //@ts-ignore
-            if (nc.options.preserveBuffers) {
-                expect(msg).to.be.eql(invalidsequenceidentifier);
-            } else {
-                expect(msg).to.be.equal(invalidsequenceidentifier.toString('binary'));
-            }
-            finished();
-        });
+test('invalid2octet', macro, invalid2octet);
+test('invalidsequenceidentifier', macro, invalidsequenceidentifier);
+test('invalid3octet', macro, invalid3octet);
+test('invalid4octet', macro, invalid4octet);
+test('embeddednull', macro, embeddednull);
+test('bigbuffer', macro, bigBuffer);
 
-        nc.subscribe('invalid3octet', {}, (msg) => {
-            expect(msg).lengthOf(3);
-            //@ts-ignore
-            if (nc.options.preserveBuffers) {
-                expect(msg).to.be.eql(invalid3octet);
-            } else {
-                expect(msg).to.be.equal(invalid3octet.toString('binary'));
-            }
-            finished();
-        });
+test('no control characters on chunk processing', async (t) => {
+    let count = 25;
+    t.plan(count);
+    let sc = t.context as SC;
+    let subj = next();
+    let nc = await connect({url: sc.server.nats, payload: Payload.BINARY});
 
-        nc.subscribe('invalid4octet', {}, (msg) => {
-            expect(msg).lengthOf(4);
-            //@ts-ignore
-            if (nc.options.preserveBuffers) {
-                expect(msg).to.be.eql(invalid4octet);
-            } else {
-                expect(msg).to.be.equal(invalid4octet.toString('binary'));
-            }
-            finished();
-        });
+    let data = randomBytes(1032);
+    let lock = new Lock(count);
+    let sub = await nc.subscribe(subj, (err, msg) => {
+        t.deepEqual(msg.data, data);
+        lock.unlock();
+    });
 
-        nc.subscribe('embeddednull', {}, (msg) => {
-            expect(msg).lengthOf(11);
-            //@ts-ignore
-            if (nc.options.preserveBuffers) {
-                expect(msg).to.be.eql(embeddednull);
-            } else {
-                expect(msg).to.be.equal(embeddednull.toString('binary'));
-            }
-            finished();
-        });
-
-        nc.subscribe('bigbuffer', {}, (msg) => {
-            expect(msg).lengthOf(bigBuffer.length);
-            //@ts-ignore
-            if (nc.options.preserveBuffers) {
-                expect(msg).to.be.eql(bigBuffer);
-            } else {
-                expect(msg).to.be.equal(bigBuffer.toString('binary'));
-            }
-            finished();
-        });
-
-        nc.publish('invalid2octet', invalid2octet);
-        nc.publish('invalidsequenceidentifier', invalidsequenceidentifier);
-        nc.publish('invalid3octet', invalid3octet);
-        nc.publish('invalid4octet', invalid4octet);
-        nc.publish('embeddednull', embeddednull);
-        nc.publish('bigbuffer', bigBuffer);
+    for (let i = 0; i < count; i++) {
+        nc.publish(subj, data);
     }
 
-    it('should allow sending and receiving binary data', (done) => {
-        let nc = NATS.connect({
-            'url': 'nats://localhost:' + PORT,
-            'encoding': 'binary'
-        } as NatsConnectionOptions);
-        binaryDataTests(done, nc);
-    });
-
-    it('should allow sending binary buffers', (done) => {
-        let nc = NATS.connect({
-            'url': 'nats://localhost:' + PORT,
-            'preserveBuffers': true
-        } as NatsConnectionOptions);
-        binaryDataTests(done, nc);
-    });
-
-    it('should not append control characters on chunk processing', (done) => {
-        let nc = NATS.connect({
-            'url': 'nats://localhost:' + PORT,
-            'preserveBuffers': true
-        } as NatsConnectionOptions);
-        let buffer = crypto.randomBytes(1024);
-
-        let count = 0;
-        let finished = () => {
-
-            if (++count === 100) {
-                nc.close();
-                done();
-            }
-        };
-
-        nc.subscribe('trailingData', {}, (msg) => {
-            expect(msg).to.be.eql(buffer);
-            finished();
-        });
-
-        for (let i = 0; i <= 100; i++) {
-            nc.publish('trailingData', buffer);
-        }
-    });
+    return lock.latch;
 });

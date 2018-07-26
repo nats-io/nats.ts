@@ -22,6 +22,7 @@ import {Transport, TransportHandlers} from "./transport";
 import {UrlObject} from "url";
 
 export class TCPTransport implements Transport {
+    connectedOnce: boolean = false;
     stream: net.Socket | TLSSocket | null = null;
     handlers: TransportHandlers;
     closed: boolean = false;
@@ -30,33 +31,51 @@ export class TCPTransport implements Transport {
         this.handlers = handlers;
     }
 
-    private setupHandlers() : void {
-        if(! this.stream) {
-            return;
-        }
-        this.stream.on('connect', this.handlers.connect);
-        this.stream.on('close', this.handlers.close);
-        this.stream.on('error', this.handlers.error);
-        this.stream.on('data', this.handlers.data);
+    connect(url: UrlObject): Promise<any> {
+        return new Promise((resolve, reject) => {
+            // Create the stream
+            // See #45 if we have a stream release the listeners
+            // otherwise in addition to the leak events will fire fire
+            if (this.stream) {
+                this.destroy();
+            }
+            let connected = false;
+            // @ts-ignore typescript requires this parsed to a number
+            this.stream = net.createConnection(parseInt(url.port, 10), url.hostname, () => {
+                resolve();
+                connected = true;
+                this.connectedOnce = true;
+                this.handlers.connect();
+            });
+            this.stream.setNoDelay(true);
+
+            this.stream.on('error', (error) => {
+                if(! this.connectedOnce) {
+                    reject(error);
+                    this.destroy();
+                } else {
+                // if the client didn't resolve, the error handler
+                // is not set, so emitting 'error' will shutdown node
+                    this.handlers.error(error);
+                }
+            });
+            this.stream.on('close', () => {
+                if(this.connectedOnce) {
+                    this.handlers.close();
+                }
+            });
+            this.stream.on('data', (data: Buffer) => {
+                // console.log('data', "< ", data.toString());
+                this.handlers.data(data);
+            });
+        });
     }
 
-    connect(url: UrlObject) : void {
-        // Create the stream
-        // See #45 if we have a stream release the listeners
-        // otherwise in addition to the leak events will fire fire
-        if(this.stream) {
-            this.destroy();
-        }
-        // @ts-ignore typescript requires this parsed to a number
-        this.stream = net.createConnection(parseInt(url.port,10), url.hostname);
-        this.setupHandlers();
-    }
-
-    isClosed() : boolean {
+    isClosed(): boolean {
         return this.closed;
     }
 
-    isConnected() : boolean {
+    isConnected(): boolean {
         return this.stream != null && !this.stream.connecting;
     }
 
@@ -64,63 +83,71 @@ export class TCPTransport implements Transport {
         return this.stream instanceof TLSSocket && this.stream.encrypted;
     }
 
-    isAuthorized() : boolean {
+    isAuthorized(): boolean {
         return this.stream instanceof TLSSocket && this.stream.authorized;
     }
 
-    upgrade(tlsOptions: any, done: Function) : void {
-        if(! this.stream) {
-            return
+    upgrade(tlsOptions: any, done: Function): void {
+        if (this.stream) {
+            let opts: ConnectionOptions;
+            if ('object' === typeof tlsOptions) {
+                opts = tlsOptions as ConnectionOptions;
+            } else {
+                opts = {} as ConnectionOptions;
+            }
+            opts.socket = this.stream;
+            this.stream.removeAllListeners();
+            this.stream = tls.connect(opts, () => {
+                done();
+            });
+            this.stream.on('error', (error) => {
+                this.handlers.error(error);
+            });
+            this.stream.on('close', () => {
+                this.handlers.close()
+            });
+            this.stream.on('data', (data: Buffer) => {
+                this.handlers.data(data);
+            });
         }
-
-        let opts: ConnectionOptions;
-        if('object' === typeof tlsOptions) {
-            opts = tlsOptions as ConnectionOptions;
-        } else {
-            opts = {} as ConnectionOptions;
-        }
-        opts.socket = this.stream;
-        this.stream.removeAllListeners();
-        this.stream = tls.connect(opts, () => {
-            done();
-        });
-        this.setupHandlers();
     }
 
-    write(data: Buffer|string): void {
-        if(! this.stream) {
-            return;
+    write(data: Buffer | string): void {
+        // if(typeof data === 'string') {
+        //     console.log('>', [data]);
+        // } else {
+        //     console.log('>', [data.toString('binary')]);
+        // }
+        if(this.stream) {
+            this.stream.write(data);
         }
-        this.stream.write(data);
     }
 
-    destroy() : void {
-        if(! this.stream) {
+    destroy(): void {
+        if (!this.stream) {
             return;
         }
-        if(this.closed) {
+        if (this.closed) {
             this.stream.removeAllListeners();
         }
         this.stream.destroy();
         this.stream = null;
     }
 
-    close() : void {
+    close(): void {
         this.closed = true;
         this.destroy();
     }
 
-    pause() : void {
-        if(! this.stream) {
-            return;
+    pause(): void {
+        if(this.stream) {
+            this.stream.pause()
         }
-        this.stream.pause()
     }
 
-    resume() : void {
-        if(! this.stream) {
-            return;
+    resume(): void {
+        if(this.stream) {
+            this.stream.resume();
         }
-        this.stream.resume();
     }
 }

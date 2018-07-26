@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2018 The NATS Authors
+ * Copyright 2018 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -11,147 +11,134 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
  */
 
-import * as NATS from '../src/nats';
-import * as nsc from './support/nats_server_control';
-import {Server} from './support/nats_server_control';
-import {expect} from 'chai'
+import {SC, startServer, stopServer} from "./helpers/nats_server_control";
+import test from "ava";
+import {connect} from "../src/nats";
+import {next} from 'nuid'
 
-describe('Queues', () => {
 
-    let PORT = 1425;
-    let server: Server;
-
-    // Start up our own nats-server
-    before((done) => {
-        server = nsc.start_server(PORT, [], done);
-    });
-
-    // Shutdown our server
-    after((done) => {
-        nsc.stop_server(server, done);
-    });
-
-    it('should deliver a message to single member of a queue group', (done) => {
-        let nc = NATS.connect(PORT);
-        let received = 0;
-        nc.subscribe('foo', {'queue': 'myqueue'}, () => {
-            received += 1;
-        });
-        nc.publish('foo', () => {
-            expect(received).to.be.equal(1);
-            nc.close();
-            done();
-        });
-    });
-
-    it('should deliver a message to only one member of a queue group', (done) => {
-        let nc = NATS.connect(PORT);
-        let received = 0;
-        for (let i = 0; i < 5; i++) {
-            nc.subscribe('foo', {'queue': 'myqueue'}, () => {
-                received += 1;
-            });
-        }
-        nc.publish('foo', () => {
-            expect(received).to.be.equal(1);
-            nc.close();
-            done();
-        });
-    });
-
-    it('should allow queue subscribers and normal subscribers to work together', (done) => {
-        let nc = NATS.connect(PORT);
-        let expected = 4;
-        let received = 0;
-
-        function recv(): void {
-            received += 1;
-            if (received == expected) {
-                nc.close();
-                done();
-            }
-        }
-
-        nc.subscribe('foo', {'queue': 'myqueue'}, recv);
-        nc.subscribe('foo', {}, recv);
-        nc.publish('foo');
-        nc.publish('foo');
-        nc.flush();
-    });
-
-    it('should spread messages out equally (given random)', (done) => {
-        let nc = NATS.connect(PORT);
-        let total = 5000;
-        let numSubscribers = 10;
-        let avg = total / numSubscribers;
-        let allowedVariance = total * 0.05;
-        let received = new Array(numSubscribers);
-
-        for (let i = 0; i < numSubscribers; i++) {
-            received[i] = 0;
-            nc.subscribe('foo.bar', {'queue': 'spreadtest'}, (function (index) {
-                return () => {
-                    received[index] += 1;
-                };
-            }(i)));
-        }
-
-        for (let i = 0; i < total; i++) {
-            nc.publish('foo.bar', 'ok');
-        }
-
-        nc.flush(() => {
-            for (let i = 0; i < numSubscribers; i++) {
-                expect(Math.abs(received[i] - avg)).to.be.below(allowedVariance);
-            }
-            nc.close();
-            done();
-        });
-    });
-
-    it('should deliver only one mesage to queue subscriber regardless of wildcards', (done) => {
-        let nc = NATS.connect(PORT);
-        let received = 0;
-        nc.subscribe('foo.bar', {'queue': 'wcqueue'}, () => {
-            received += 1;
-        });
-        nc.subscribe('foo.*', {'queue': 'wcqueue'}, () => {
-            received += 1;
-        });
-        nc.subscribe('foo.>', {'queue': 'wcqueue'}, () => {
-            received += 1;
-        });
-        nc.publish('foo.bar', () => {
-            expect(received).to.be.equal(1);
-            nc.close();
-            done();
-        });
-    });
-
-    it('should deliver to multiple queue groups', (done) => {
-        let nc = NATS.connect(PORT);
-        let received1 = 0;
-        let received2 = 0;
-        let count = 10;
-
-        nc.subscribe('foo.bar', {'queue': 'r1'}, () => {
-            received1 += 1;
-        });
-        nc.subscribe('foo.bar', {'queue': 'r2'}, () => {
-            received2 += 1;
-        });
-
-        for (let i = 0; i < count; i++) {
-            nc.publish('foo.bar');
-        }
-
-        nc.flush(() => {
-            expect(received1).to.be.equal(count);
-            expect(received2).to.be.equal(count);
-            nc.close();
-            done();
-        });
-    });
+test.before(async (t) => {
+    let server = await startServer();
+    t.context = {server: server};
 });
+
+test.after.always((t) => {
+    stopServer((t.context as SC).server);
+});
+
+
+test('deliver to single queue', async (t) => {
+    t.plan(1);
+    let sc = t.context as SC;
+    let nc = await connect({url: sc.server.nats});
+
+    let subj = next();
+
+    let subs = [];
+    let count = 0;
+    for (let i = 0; i < 5; i++) {
+        let s = nc.subscribe(subj, () => {
+            count++;
+        }, {queue: "a"});
+        subs.push(s);
+    }
+
+    await Promise.all(subs);
+
+    nc.publish(subj);
+    await nc.flush();
+    t.is(count, 1);
+    nc.close();
+});
+
+test('deliver to multiple queues', async (t) => {
+    t.plan(2);
+    let sc = t.context as SC;
+    let nc = await connect({url: sc.server.nats});
+
+    let subj = next();
+
+    let subs = [];
+    let queue1 = 0;
+    for (let i = 0; i < 5; i++) {
+        let s = nc.subscribe(subj, () => {
+            queue1++;
+        }, {queue: "a"});
+        subs.push(s);
+    }
+
+    let queue2 = 0;
+    for (let i = 0; i < 5; i++) {
+        let s = nc.subscribe(subj, () => {
+            queue2++;
+        }, {queue: "b"});
+        subs.push(s);
+    }
+
+    await Promise.all(subs);
+
+    nc.publish(subj);
+    await nc.flush();
+    t.is(queue1, 1);
+    t.is(queue2, 1);
+    nc.close();
+});
+
+test('queues and subs independent', async (t) => {
+    t.plan(2);
+    let sc = t.context as SC;
+    let nc = await connect({url: sc.server.nats});
+
+    let subj = next();
+
+    let subs = [];
+    let queueCount = 0;
+    for (let i = 0; i < 5; i++) {
+        let s = nc.subscribe(subj, () => {
+            queueCount++;
+        }, {queue: "a"});
+        subs.push(s);
+    }
+
+    let count = 0;
+    subs.push(nc.subscribe(subj, () => {
+        count++;
+    }));
+
+    await Promise.all(subs);
+
+    nc.publish(subj);
+    await nc.flush();
+    t.is(queueCount, 1);
+    t.is(count, 1);
+    nc.close();
+});
+
+test('delivers single queue subscriber regardless of wildcards', async (t) => {
+    t.plan(1);
+    let sc = t.context as SC;
+    let nc = await connect({url: sc.server.nats});
+
+    let base = next();
+    let count = 0;
+    nc.subscribe(base + ".bar", () => {
+        count++;
+    }, {queue: 'wcqueue'});
+
+    nc.subscribe(base + ".*", () => {
+        count++;
+    }, {queue: 'wcqueue'});
+
+    nc.subscribe(base + ".>", () => {
+        count++;
+    }, {queue: 'wcqueue'});
+
+    nc.publish(base + ".bar");
+    await nc.flush();
+    t.is(count, 1);
+    nc.close();
+});
+

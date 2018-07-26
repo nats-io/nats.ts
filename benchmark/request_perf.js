@@ -14,21 +14,21 @@ var received = 0;
 
 console.log('Request Performance Test');
 
-nc1.on('connect', function() {
+nc1.on('connect', function () {
 
     var start = new Date();
 
-    nc1.subscribe('request.test', function(msg, reply) {
+    nc1.subscribe('request.test', function (msg, reply) {
         nc1.publish(reply, 'ok');
     });
 
     // Need to flush here since using separate connections.
-    nc1.flush(function() {
+    nc1.flush(function () {
 
         for (var i = 0; i < loop; i++) {
             nc2.request('request.test', 'help', {
                 'max': 1
-            }, function() {
+            }, function () {
                 received += 1;
                 if (received === loop) {
                     var stop = new Date();
@@ -36,7 +36,7 @@ nc1.on('connect', function() {
                     console.log('\n' + rps + ' request-responses/sec');
                     var lat = parseInt(((stop - start) * 1000) / (loop * 2), 10); // Request=2, Reponse=2 RTs
                     console.log('Avg roundtrip latency: ' + lat + ' microseconds');
-                    log("rr", loop, stop-start);
+                    log("rr", loop, stop - start);
                 } else if (received % hash === 0) {
                     process.stdout.write('+');
                 }
@@ -44,13 +44,13 @@ nc1.on('connect', function() {
         }
     });
 
-  function log(op, count, time) {
-    fs.appendFile('perf.csv', [op, count, time, new Date().toDateString(), NATS.version].join(",") + "\n", function(err) {
-      if(err) {
-        console.log(err);
-      }
-      process.exit();
-    });
-  }
+    function log(op, count, time) {
+        fs.appendFile('perf.csv', [op, count, time, new Date().toDateString(), NATS.version].join(",") + "\n", function (err) {
+            if (err) {
+                console.log(err);
+            }
+            process.exit();
+        });
+    }
 
 });

@@ -13,9 +13,7 @@
  * limitations under the License.
  *
  */
-import {TCPTransport} from "./tcptransport";
 import * as url from "url";
-import {UrlObject} from "url";
 
 
 export interface ErrorCallback {
@@ -27,7 +25,7 @@ export interface DataCallback {
 }
 
 export interface Callback {
-    () : void;
+    (): void;
 }
 
 export interface TransportHandlers {
@@ -37,25 +35,27 @@ export interface TransportHandlers {
     data: DataCallback
 }
 
-export function NewTransport(type: string, handlers: TransportHandlers) : Transport {
-    if(type === "tcp") {
-        return new TCPTransport(handlers);
-    }
-    throw new Error(`no such transport: '${type}'`);
-}
-
 export interface Transport {
     close(): void;
 
-    connect(url: url.UrlObject): void;
+    connect(url: url.UrlObject): Promise<Transport>;
+
     destroy(): void;
+
     isAuthorized(): boolean;
+
     isClosed(): boolean;
+
     isConnected(): boolean;
+
     isEncrypted(): boolean;
+
     pause(): void;
+
     resume(): void;
+
     upgrade(tlsOptions: any, done: Function): void;
+
     write(data: Buffer | string): void;
 }
 

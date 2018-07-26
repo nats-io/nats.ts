@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2018 The NATS Authors
+ * Copyright 2018 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -11,154 +11,151 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
  */
 
-import * as NATS from '../src/nats';
-import {NatsConnectionOptions} from '../src/nats';
-import * as nsc from './support/nats_server_control';
-import {Server} from './support/nats_server_control';
-import {expect} from 'chai'
-import * as fs from 'fs';
 
 
-describe('TLS', () => {
 
-    let PORT = 1442;
-    let TLSPORT = 1443;
-    let TLSVERIFYPORT = 1444;
+import {SC, startServer, stopServer} from "./helpers/nats_server_control";
+import test from "ava";
+import {join} from "path";
+import {Client, connect} from "../src/nats";
+import {Lock} from "./helpers/latch";
+import {readFileSync} from "fs";
 
-    let server: Server;
-    let tlsServer: Server;
-    let tlsVerifyServer: Server;
+let serverCert = join(__dirname, "../../test/helpers/certs/server-cert.pem");
+let serverKey = join(__dirname, "../../test/helpers/certs/server-key.pem");
+let caCert = join(__dirname, "../../test/helpers/certs/ca.pem");
+let clientCert = join(__dirname, "../../test/helpers/certs/client-cert.pem");
+let clientKey = join(__dirname, "../../test/helpers/certs/client-key.pem");
 
-    // Start up our own nats-server for each test
-    // We will start a plain, a no client cert, and a client cert required.
-    before((done) => {
-        server = nsc.start_server(PORT, [], () => {
-            let flags = ['--tls', '--tlscert', './test/certs/server-cert.pem',
-                '--tlskey', './test/certs/server-key.pem'
-            ];
-            tlsServer = nsc.start_server(TLSPORT, flags, () => {
-                let flags = ['--tlsverify', '--tlscert', './test/certs/server-cert.pem',
-                    '--tlskey', './test/certs/server-key.pem',
-                    '--tlscacert', './test/certs/ca.pem'
-                ];
-                tlsVerifyServer = nsc.start_server(TLSVERIFYPORT, flags, done);
-            });
-        });
-    });
+test.before(async (t) => {
+    t.log(__dirname);
 
+    let server = await startServer();
+    let tls = await startServer("", ["--tlscert", serverCert, "--tlskey", serverKey]);
+    let tlsverify = await startServer("", ["--tlsverify", "--tlscert", serverCert, "--tlskey", serverKey, "--tlscacert", caCert]);
 
-    // Shutdown our server after each test.
-    after((done) => {
-        nsc.stop_cluster([server, tlsServer, tlsVerifyServer], done);
-    });
-
-    it('should error if server does not support TLS', (done) => {
-        let nc = NATS.connect({
-            port: PORT,
-            tls: true
-        } as NatsConnectionOptions);
-        nc.on('error', function(err) {
-            expect(err).to.exist;
-            expect(err).to.match(/Server does not support a secure/);
-            nc.close();
-            done();
-        });
-    });
-
-    it('should error if server requires TLS', (done) => {
-        let nc = NATS.connect(TLSPORT);
-        nc.on('error', function(err) {
-            expect(err).to.exist;
-            expect(err).to.match(/Server requires a secure/);
-            nc.close();
-            done();
-        });
-    });
-
-    it('should reject without proper CA', (done) => {
-        let nc = NATS.connect({
-            port: TLSPORT,
-            tls: true
-        } as NatsConnectionOptions);
-        nc.on('error', function(err) {
-            expect(err).to.exist;
-            expect(err.message).to.match(/unable to verify the first certificate/);
-            nc.close();
-            done();
-        });
-    });
-
-    it('should connect if authorized is overridden', (done) => {
-        let tlsOptions = {
-            rejectUnauthorized: false,
-        };
-        let nc = NATS.connect({
-            port: TLSPORT,
-            tls: tlsOptions
-        } as NatsConnectionOptions);
-
-        expect(nc).to.exist;
-        nc.on('connect', function(client) {
-            expect(client).to.be.eql(nc);
-            //@ts-ignore
-            expect(nc.stream.isAuthorized()).to.be.false;
-            nc.close();
-            done();
-        });
-    });
-
-    it('should connect with proper ca and be authorized', (done) => {
-        let tlsOptions = {
-            ca: [fs.readFileSync('./test/certs/ca.pem')]
-        };
-        let nc = NATS.connect({
-            port: TLSPORT,
-            tls: tlsOptions
-        } as NatsConnectionOptions);
-
-        expect(nc).to.exist;
-        nc.on('connect', function(client) {
-            expect(client).to.be.eql(nc);
-            //@ts-ignore
-            expect(nc.stream.isAuthorized()).to.be.true;
-            nc.close();
-            done();
-        });
-    });
-
-    it('should reject without proper cert if required by server', (done) => {
-        let nc = NATS.connect({
-            port: TLSVERIFYPORT,
-            tls: true
-        } as NatsConnectionOptions);
-        nc.on('error', function(err) {
-            expect(err).to.exist;
-            expect(err).to.match(/Server requires a client certificate/);
-            nc.close();
-            done();
-        });
-    });
-
-
-    it('should be authrorized with proper cert', (done) => {
-        let tlsOptions = {
-            key: fs.readFileSync('./test/certs/client-key.pem'),
-            cert: fs.readFileSync('./test/certs/client-cert.pem'),
-            ca: [fs.readFileSync('./test/certs/ca.pem')]
-        };
-        let nc = NATS.connect({
-            port: TLSPORT,
-            tls: tlsOptions
-        } as NatsConnectionOptions);
-        nc.on('connect', function(client) {
-            expect(client).to.be.eql(nc);
-            //@ts-ignore
-            expect(nc.stream.isAuthorized()).to.be.true;
-            nc.close();
-            done();
-        });
-    });
-
+    t.context = {server: server, tls: tls, tlsverify: tlsverify, cacert: readFileSync(caCert), clientcert: readFileSync(clientCert), clientkey: readFileSync(clientKey)};
 });
+
+test.after.always((t) => {
+    let sc = t.context as SC;
+    stopServer(sc.server);
+    //@ts-ignore
+    stopServer(sc.tls);
+    //@ts-ignore
+    stopServer(sc.tlsverify);
+});
+
+
+test('error if server does not support TLS', async (t) => {
+    t.plan(2);
+    let lock = new Lock();
+    let sc = t.context as SC;
+    let nc = await connect({url: sc.server.nats, tls: true});
+    nc.on('error', (err) => {
+        t.truthy(err);
+        t.regex(err.message, /Server does not support a secure/);
+        nc.close();
+        lock.unlock();
+    });
+    return lock.latch;
+});
+
+test('error if server requires TLS', async (t) => {
+    t.plan(2);
+    let lock = new Lock();
+    let sc = t.context as SC;
+    //@ts-ignore
+    let nc = await connect({url: sc.tls.nats});
+    nc.on('error', (err) => {
+        t.truthy(err);
+        t.regex(err.message, /Server requires a secure/);
+        nc.close();
+        lock.unlock();
+    });
+    return lock.latch;
+});
+
+test('reject without proper CA', async (t) => {
+    t.plan(2);
+    let lock = new Lock();
+    let sc = t.context as SC;
+    //@ts-ignore
+    let nc = await connect({url: sc.tls.nats, tls: true});
+    nc.on('error', (err) => {
+        t.truthy(err);
+        // FIXME: this an Error thrown by the connection
+        t.regex(err.message, /unable to verify the first certificate/);
+        nc.close();
+        lock.unlock();
+    });
+    return lock.latch;
+});
+
+test('connect if authorized is overridden', async (t) => {
+    t.plan(2);
+    let lock = new Lock();
+    let sc = t.context as SC;
+    //@ts-ignore
+    let nc = await connect({url: sc.tls.nats, tls: {rejectUnauthorized: false}});
+    nc.on('connect', (c) => {
+        //@ts-ignore
+        t.is(c, nc);
+        //@ts-ignore
+        t.false(nc.protocolHandler.transport.isAuthorized());
+        nc.close();
+        lock.unlock();
+    });
+    return lock.latch;
+});
+
+test('connect with proper ca and be authorized', async (t) => {
+    t.plan(2);
+    let lock = new Lock();
+    let sc = t.context as SC;
+    //@ts-ignore
+    let nc = await connect({url: sc.tls.nats, tls: {ca: [sc.cacert]}});
+    nc.on('connect', (c) => {
+        t.is(c, nc);
+        //@ts-ignore
+        t.true(nc.protocolHandler.transport.isAuthorized());
+        nc.close();
+        lock.unlock();
+    });
+    return lock.latch;
+});
+
+test('reject without proper cert if required by server', async (t) => {
+    t.plan(2);
+    let lock = new Lock();
+    let sc = t.context as SC;
+    //@ts-ignore
+    let nc = await connect({url: sc.tlsverify.nats, tls: true});
+    nc.on('error', (err) => {
+        t.truthy(err);
+        t.regex(err.message, /Server requires a client certificate/);
+        nc.close();
+        lock.unlock();
+    });
+    return lock.latch;
+});
+
+test('authorized with proper cert', async (t) => {
+    t.plan(2);
+    let lock = new Lock();
+    let sc = t.context as SC;
+    //@ts-ignore
+    let nc = await connect({url: sc.tls.nats, tls: {ca: [sc.cacert]}, key: [sc.clientkey], cert: [sc.clientcert]});
+    nc.on('connect', (c: Client) => {
+        t.is(c, nc);
+        //@ts-ignore
+        t.true(nc.protocolHandler.transport.isAuthorized());
+        nc.close();
+        lock.unlock();
+    });
+    return lock.latch;
+});
+

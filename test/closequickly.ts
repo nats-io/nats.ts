@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2018 The NATS Authors
+ * Copyright 2018 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -11,64 +11,72 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
  */
 
-import * as NATS from '../src/nats';
-import {NatsConnectionOptions} from '../src/nats';
-import * as nsc from './support/nats_server_control';
-import {Server} from './support/nats_server_control';
+import test from "ava";
+import {SC, startServer, stopServer} from "./helpers/nats_server_control";
 import * as child_process from "child_process";
-import Timer = NodeJS.Timer;
+import url from 'url';
+import {connect} from "../src/nats";
+import {Lock} from "./helpers/latch";
 
-describe('Close functionality', () => {
-
-    let PORT = 8459;
-    let server: Server;
-
-    // Start up our own nats-server
-    before((done) => {
-        server = nsc.start_server(PORT, [], done);
-    });
-
-    // Shutdown our server after we are done
-    after((done) => {
-        nsc.stop_server(server, done);
-    });
-
-    it('close quickly', (done) => {
-        let nc = NATS.connect({
-            port: PORT
-        } as NatsConnectionOptions);
-
-        let timer: Timer | null;
-
-        nc.flush(() => {
-            nc.subscribe("started", {}, () => {
-                nc.publish("close");
-            });
-
-            timer = setTimeout(() => {
-                done(new Error("process didn't exit quickly"));
-            }, 10000);
-        });
-
-        let child = child_process.execFile('ts-node', ['./test/support/exiting_client.ts', PORT.toString()], (error) => {
-            if (error) {
-                nc.close();
-                done(error);
-            }
-        });
-
-        child.on('exit', (code, signal) => {
-            if (timer) {
-                clearTimeout(timer);
-            }
-            nc.close();
-            if (code !== 0) {
-                done(new Error(`Process didn't return a zero code: ${code} signal: ${signal}`));
-            } else {
-                done();
-            }
-        });
-    });
+test.before(async (t) => {
+    let server = await startServer();
+    t.context = {server: server};
 });
+
+test.after.always((t) => {
+    // @ts-ignore
+    stopServer(t.context.server);
+});
+
+
+test('close quickly', async (t) => {
+    t.plan(1);
+    let lock = new Lock();
+    let sc = t.context as SC;
+    let u = new url.URL(sc.server.nats);
+    let port = u.port;
+
+    let nc = await connect({url: sc.server.nats, name: "closer"});
+
+    let sub = nc.subscribe("started", (err, msg) => {
+        nc.publish("close");
+    });
+
+    let timer = setTimeout(() => {
+        t.fail("process didn't exit quickly");
+        lock.unlock();
+    }, 10000);
+
+    let child = child_process.execFile(process.argv[0], [__dirname + '/helpers/exiting_client.js', port], (error) => {
+        if (error) {
+            nc.close();
+            t.fail(error.message);
+            lock.unlock();
+        }
+    });
+
+    child.on('error', (err) => {
+        t.log(err);
+    });
+
+    child.on('exit', (code, signal) => {
+        if (timer) {
+            clearTimeout(timer);
+        }
+        nc.close();
+        if (code !== 0) {
+            t.fail(`Process didn't return a zero code: ${code} signal: ${signal}`);
+        } else {
+            t.pass();
+        }
+        lock.unlock();
+    });
+
+    return lock.latch;
+});
+
+
+

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2018 The NATS Authors
+ * Copyright 2018 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -11,52 +11,60 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
  */
 
-import * as NATS from '../src/nats';
-import {NatsConnectionOptions} from '../src/nats';
-import * as nsc from './support/nats_server_control';
-import {Server} from './support/nats_server_control';
-import {expect} from 'chai'
-import {sleep} from './support/sleep';
+import test from "ava";
+import {Lock, sleep} from "./helpers/latch";
+import {SC, startServer, stopServer} from "./helpers/nats_server_control";
+import {connect, Payload} from "../src/nats";
+import {next} from 'nuid';
+import {join} from 'path';
 
+test.before(async (t) => {
+    let server = await startServer();
+    t.context = {server: server};
+});
 
-describe('Yield', () => {
-    let PORT = 1469;
-    let server: Server;
+test.after.always((t) => {
+    stopServer((t.context as SC).server);
+});
 
-    // Start up our own nats-server
-    before((done) => {
-        server = nsc.start_server(PORT, [], done);
+test('should yield to other events', async (t) => {
+    t.plan(2);
+    let sc = t.context as SC;
+    let nc = await connect({url: sc.server.nats, payload: Payload.JSON, yieldTime: 5});
+    let lock = new Lock();
+    let last: number = -1;
+
+    let yields = 0;
+    nc.on('yield', () => {
+        yields++;
     });
 
-    // Shutdown our server
-    after((done) => {
-        nsc.stop_server(server, done);
-    });
-
-    it('should yield to other events', (done) => {
-        let nc = NATS.connect({
-            port: PORT,
-            yieldTime: 5
-        } as NatsConnectionOptions);
-
-        let start = Date.now();
-
-        let timer = setInterval(() => {
-            let delta = Date.now() - start;
+    let interval = setInterval(() => {
+        if(last > 0) {
+            clearInterval(interval);
             nc.close();
-            clearTimeout(timer);
-            expect(delta).to.be.within(10, 25);
-            done();
-        }, 10);
-
-        nc.subscribe('foo', {}, () => {
-            sleep(1);
-        });
-
-        for (let i = 0; i < 256; i++) {
-            nc.publish('foo', 'hello world');
+            // yielded before the last message
+            t.true(last < 256);
+            // and we also got notifications that yields happen
+            t.truthy(yields);
+            lock.unlock();
         }
+    }, 10);
+
+    let subj = next();
+    nc.subscribe(subj, async (err, msg) => {
+        last = msg.data;
+        // take some time
+        sleep(1);
     });
+
+    for (let i = 0; i < 256; i++) {
+        nc.publish(subj, i);
+    }
+    nc.flush();
+    await lock.latch;
+    nc.close();
 });

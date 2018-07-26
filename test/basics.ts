@@ -14,492 +14,481 @@
  *
  */
 
-import * as NATS from '../src/nats';
-import {NatsConnectionOptions} from '../src/nats';
-import * as nsc from './support/nats_server_control';
-import {Server} from './support/nats_server_control';
-import {expect} from 'chai';
+import test from "ava";
+import {SC, startServer, stopServer} from "./helpers/nats_server_control";
+import {connect, NatsConnectionOptions, Payload, SubEvent} from "../src/nats";
+import {Lock} from "./helpers/latch";
+import {createInbox} from "../src/util";
+import url from 'url';
+import {ErrorCode, NatsError} from "../src/error";
 
-describe('Basics', function () {
 
-    let PORT = 1423;
-    let server: Server;
+test.before(async (t) => {
+    let server = await startServer();
+    t.context = {server: server};
+});
 
-    // Start up our own nats-server
-    before((done) => {
-        server = nsc.start_server(PORT, [], done);
+test.after.always((t) => {
+    // @ts-ignore
+    stopServer(t.context.server);
+});
+
+test('fail connect', async (t) => {
+    await t.throws(connect);
+});
+
+test('connect with port', async (t) => {
+    t.plan(1);
+    let sc = t.context as SC;
+    let u = new url.URL(sc.server.nats);
+    let nc = await connect({port: parseInt(u.port, 10)} as NatsConnectionOptions);
+    nc.flush(() => {
+        t.pass();
+    });
+    await nc.flush();
+    nc.close();
+});
+
+test('pub subject is required', async (t) => {
+    t.plan(1);
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+    await t.throws(() => {
+        //@ts-ignore
+        nc.publish();
+    }, {code: ErrorCode.BAD_SUBJECT});
+});
+
+test('sub subject is required', async (t) => {
+    t.plan(1);
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+    //@ts-ignore
+    await t.throws(nc.subscribe(),
+        {code: ErrorCode.BAD_SUBJECT});
+});
+
+test('sub callback is required', async (t) => {
+    t.plan(1);
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+    //@ts-ignore
+    await t.throws(nc.subscribe("foo"),
+        {code: ErrorCode.API_ERROR});
+});
+
+test('subs require connection', async (t) => {
+    t.plan(1);
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+    nc.close();
+    //@ts-ignore
+    await t.throws(nc.subscribe("foo", () => {
+        }),
+        {code: ErrorCode.CONN_CLOSED});
+});
+
+test('sub and unsub', async (t) => {
+    t.plan(1);
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+    let sub = await nc.subscribe(createInbox(), () => {
+    }, {});
+    t.truthy(sub);
+    sub.unsubscribe();
+    await nc.flush();
+    nc.close();
+});
+
+test('basic publish', async (t) => {
+    t.plan(1);
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+    nc.publish(createInbox());
+    nc.flush(() => {
+        t.pass();
+    });
+    await nc.flush();
+    nc.close();
+});
+
+test('subscription callback', async (t) => {
+    t.plan(1);
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+    let subj = createInbox();
+    await nc.subscribe(subj, () => {
+        t.pass();
+    }, {max: 1});
+    nc.publish(subj);
+    await nc.flush();
+    nc.close();
+});
+
+test('subscription message in callback', async (t) => {
+    t.plan(2);
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+    let subj = createInbox();
+    const payload = "Hello World";
+
+    await nc.subscribe(subj, (err, msg) => {
+        t.is(err, null);
+        //@ts-ignore
+        t.is(msg.data, payload);
+
+    }, {});
+    nc.publish(subj, payload);
+    await nc.flush();
+    nc.close();
+});
+
+test('subscription message has reply', async (t) => {
+    t.plan(1);
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+    let subj = createInbox();
+    const payload = "Hello World";
+    const replyInbox = createInbox();
+    await nc.subscribe(subj, (err, msg) => {
+        //@ts-ignore
+        t.is(msg.reply, replyInbox);
+    }, {});
+    nc.publish(subj, payload, replyInbox);
+    await nc.flush();
+    nc.close();
+});
+
+test('subscription message has subject', async (t) => {
+    t.plan(1);
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+    let subj = createInbox();
+
+    await nc.subscribe(subj, (err, msg) => {
+        //@ts-ignore
+        t.is(msg.subject, subj);
+    }, {});
+    nc.publish(subj);
+    await nc.flush();
+});
+
+test('subscription has exact subject', async (t) => {
+    t.plan(1);
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+    let subj = createInbox();
+
+    await nc.subscribe(`${subj}.*.*.*`, (err, msg) => {
+        //@ts-ignore
+        t.is(msg.subject, `${subj}.1.2.3`);
+    }, {});
+    nc.publish(`${subj}.1.2.3`);
+    await nc.flush();
+});
+
+test('subscription message has sid', async (t) => {
+    t.plan(2);
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+    let subj = createInbox();
+
+    let sub = await nc.subscribe(subj, (err, msg) => {
+        //@ts-ignore
+        t.is(msg.sid, sub.sid);
+    }, {});
+    // expecting unlimited number of messages
+    t.is(sub.getMax(), -1);
+    nc.publish(subj);
+    await nc.flush();
+});
+
+test('subscription generates events', async (t) => {
+    t.plan(3);
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+
+    let subj = createInbox();
+    nc.on('subscribe', (se: SubEvent) => {
+        t.is(se.subject, subj);
+        t.is(se.queue, 'A');
+        t.is(se.sid, 1);
     });
 
-    // Shutdown our server
-    after((done) => {
-        nsc.stop_server(server, done);
+    nc.subscribe(subj, () => {}, {queue: 'A'});
+    await nc.flush();
+});
+
+test('unsubscribe generates events', async (t) => {
+    t.plan(3);
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+
+    let subj = createInbox();
+    nc.on('unsubscribe', (se: SubEvent) => {
+        t.is(se.subject, subj);
+        t.is(se.queue, 'A');
+        t.is(se.sid, 1);
     });
 
-    it('should do basic subscribe and unsubscribe', (done) => {
-        let nc = NATS.connect(PORT);
-        let sid = nc.subscribe('foo');
-        expect(sid).to.exist;
-        nc.unsubscribe(sid);
-        nc.flush(function () {
-            nc.close();
-            done();
-        });
+    let sub = await nc.subscribe(subj, () => {}, {queue: 'A'});
+    sub.unsubscribe();
+    await nc.flush();
+});
+
+test('unsubscribe notifications only once', async (t) => {
+    t.plan(1);
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+
+    let subj = createInbox();
+    let count = 0;
+    nc.on('unsubscribe', (se: SubEvent) => {
+        count++;
     });
 
-    it('should do basic publish', (done) => {
-        let nc = NATS.connect(PORT);
-        nc.publish('foo');
-        nc.flush(function () {
-            nc.close();
-            done();
-        });
-    });
-
-    it('should fire a callback for subscription', (done) => {
-        let nc = NATS.connect(PORT);
-        nc.subscribe('foo', {}, () => {
-            nc.close();
-            done();
-        });
-        nc.publish('foo');
-    });
-
-    it('should include the correct message in the callback', (done) => {
-        let nc = NATS.connect(PORT);
-        let data = 'Hello World';
-        nc.subscribe('foo', {}, (msg) => {
-            nc.close();
-            expect(msg).to.exist;
-            expect(msg).to.be.equal(data);
-            done();
-        });
-        nc.publish('foo', data);
-    });
-
-    it('should include the correct reply in the callback', (done) => {
-        let nc = NATS.connect(PORT);
-        let data = 'Hello World';
-        let inbox = nc.createInbox();
-        nc.subscribe('foo', {}, (msg, reply) => {
-            nc.close();
-            expect(msg).to.exist;
-            expect(msg).to.be.equal(data);
-            expect(reply).to.exist;
-            expect(reply).to.be.equal(inbox);
-            done();
-        });
-        nc.publish('foo', data, inbox);
-    });
-
-    it('should do request-reply', (done) => {
-        let nc = NATS.connect(PORT);
-        let initMsg = 'Hello World';
-        let replyMsg = 'Hello Back!';
-
-        nc.subscribe('foo', {}, (msg, reply) => {
-            expect(msg).to.exist;
-            expect(msg).to.be.equal(initMsg);
-            expect(reply).to.exist;
-            expect(reply).to.match(/_INBOX\.*/);
-            nc.publish(reply, replyMsg);
-        });
-
-        nc.request('foo', initMsg, {}, (reply) => {
-            nc.close();
-            expect(reply).to.exist;
-            expect(reply).to.be.equal(replyMsg);
-            done();
-        });
-    });
-
-    it('should return a sub id for requests', (done) => {
-        let nc = NATS.connect(PORT);
-        let initMsg = 'Hello World';
-        let replyMsg = 'Hello Back!';
-        let expected = 1;
-        let received = 0;
-
-        // Add two subscribers. We will only receive a reply from one.
-        nc.subscribe('foo', {}, (msg, reply) => {
-            nc.publish(reply, replyMsg);
-        });
-
-        nc.subscribe('foo', {}, (msg, reply) => {
-            nc.publish(reply, replyMsg);
-        });
-
-        let sub = nc.request('foo', initMsg, {}, () => {
-            nc.flush(function () {
-                nc.close();
-                expect(received).to.be.equal(expected);
-                done();
-            });
-
-            received += 1;
-            nc.unsubscribe(sub);
-        });
-    });
-
-    it('should do single partial wildcard subscriptions correctly', (done) => {
-        let nc = NATS.connect(PORT);
-        let expected = 3;
-        let received = 0;
-        nc.subscribe('*', {}, () => {
-            received += 1;
-            if (received === expected) {
-                nc.close();
-                done();
-            }
-        });
-        nc.publish('foo.baz'); // miss
-        nc.publish('foo.baz.foo'); // miss
-        nc.publish('foo');
-        nc.publish('bar');
-        nc.publish('foo.bar.3'); // miss
-        nc.publish('baz');
-    });
-
-    it('should do partial wildcard subscriptions correctly', (done) => {
-        let nc = NATS.connect(PORT);
-        let expected = 3;
-        let received = 0;
-        nc.subscribe('foo.bar.*', {}, () => {
-            received += 1;
-            if (received === expected) {
-                nc.close();
-                done();
-            }
-        });
-        nc.publish('foo.baz'); // miss
-        nc.publish('foo.baz.foo'); // miss
-        nc.publish('foo.bar.1');
-        nc.publish('foo.bar.2');
-        nc.publish('bar');
-        nc.publish('foo.bar.3');
-    });
-
-    it('should do full wildcard subscriptions correctly', (done) => {
-        let nc = NATS.connect(PORT);
-        let expected = 5;
-        let received = 0;
-        nc.subscribe('foo.>', {}, () => {
-            received += 1;
-            if (received === expected) {
-                nc.close();
-                done();
-            }
-        });
-        nc.publish('foo.baz');
-        nc.publish('foo.baz.foo');
-        nc.publish('foo.bar.1');
-        nc.publish('foo.bar.2');
-        nc.publish('bar'); // miss
-        nc.publish('foo.bar.3');
-    });
-
-    it('should pass exact subject to callback', function (done) {
-        let nc = NATS.connect(PORT);
-        let subject = 'foo.bar.baz';
-        nc.subscribe('*.*.*', {}, (msg, reply, subj) => {
-            nc.close();
-            expect(subj).to.exist;
-            expect(subj).to.be.equal(subject);
-            done();
-        });
-        nc.publish(subject);
-    });
-
-    it('should do callback after publish is flushed', (done) => {
-        let nc = NATS.connect(PORT);
-        nc.publish('foo', "", "", () => {
-            nc.close();
-            done();
-        });
-    });
-
-    it('should do callback after flush', (done) => {
-        let nc = NATS.connect(PORT);
-        nc.flush(function () {
-            nc.close();
-            done();
-        });
-    });
-
-    it('should handle an unsubscribe after close of connection', (done) => {
-        let nc = NATS.connect(PORT);
-        let sid = nc.subscribe('foo');
-        nc.close();
-        nc.unsubscribe(sid);
-        done();
-    });
-
-    it('should not receive data after unsubscribe call', (done) => {
-        let nc = NATS.connect(PORT);
-        let received = 0;
-        let expected = 1;
-
-        let sid = nc.subscribe('foo', {}, () => {
-            nc.unsubscribe(sid);
-            received += 1;
-        });
-
-        nc.publish('foo');
-        nc.publish('foo');
-        nc.publish('foo', function () {
-            expect(received).to.equal(expected);
-            nc.close();
-            done();
-        });
-    });
-
-    it('should pass sid properly to a message callback if requested', (done) => {
-        let nc = NATS.connect(PORT);
-        let sid = nc.subscribe('foo', {}, (msg, reply, subj, lsid) => {
-            expect(lsid).to.equal(sid);
-            nc.close();
-            done();
-        });
-        nc.publish('foo');
-    });
-
-    it('should parse json messages', (done) => {
-        let config = {
-            port: PORT,
-            json: true
-        } as NatsConnectionOptions;
-        let nc = NATS.connect(config);
-        let jsonMsg = {
-            key: true
-        };
-        nc.subscribe('foo1', {}, (msg) => {
-            nc.close();
-            expect(msg).to.exist;
-            expect(msg).to.have.property('key');
-            //@ts-ignore
-            expect(msg.key).to.be.true;
-            done();
-        });
-        nc.publish('foo1', jsonMsg);
-    });
-
-    it('should parse UTF8 json messages', (done) => {
-        let config = {
-            port: PORT,
-            json: true
-        } as NatsConnectionOptions;
-
-        let nc = NATS.connect(config);
-        let utf8msg = {
-            key: 'CEDILA-Ç'
-        };
-        nc.subscribe('foo2', {}, (msg) => {
-            nc.close();
-            expect(msg).to.exist;
-            expect(msg).to.have.property('key');
-            //@ts-ignore
-            expect(msg.key).to.be.equal(utf8msg.key);
-            //@ts-ignore
-            expect(msg).to.be.eql(utf8msg);
-            done();
-        });
-        nc.publish('foo2', utf8msg);
-    });
-
-    function requestOneGetsReply(nc: NATS.Client, done: Function) {
-        let initMsg = 'Hello World';
-        let replyMsg = 'Hello Back!';
-
-        nc.subscribe('foo', {}, (msg, reply) => {
-            expect(msg).to.exist;
-            expect(msg).to.be.equal(initMsg);
-            expect(reply).to.exist;
-            expect(reply).to.match(/_INBOX\.*/);
-            nc.publish(reply, replyMsg);
-        });
-
-        nc.requestOne('foo', initMsg, {}, 1000, (reply) => {
-            expect(reply).to.exist;
-            expect(reply).to.be.equal(replyMsg);
-            nc.close();
-            done();
-        });
+    let sub = await nc.subscribe(subj, () => {}, {queue: 'A', max: 5});
+    for (let i=0; i < 5; i++) {
+        nc.publish(subj);
     }
+    await nc.flush();
+    t.is(count, 1);
+});
 
-    it('should do requestone-get-reply', (done) => {
-        let nc = NATS.connect(PORT);
-        requestOneGetsReply(nc, done);
+test('request subject is required', async (t) => {
+    t.plan(1);
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+    //@ts-ignore
+    await t.throws(nc.request(), {code: ErrorCode.BAD_SUBJECT});
+});
+
+test('requests require connection', async (t) => {
+    t.plan(1);
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+    nc.close();
+    //@ts-ignore
+    await t.throws(nc.request("foo"), {code: ErrorCode.CONN_CLOSED});
+});
+
+test('request reply', async (t) => {
+    t.plan(2);
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+    let subj = createInbox();
+    const payload = "Hello World";
+    const response = payload.split("").reverse().join("");
+    await nc.subscribe(subj, (err, msg) => {
+        //@ts-ignore
+        t.is(msg.data, payload);
+        //@ts-ignore
+        nc.publish(msg.reply, response);
+    }, {});
+
+    let msg = await nc.request(subj, 1000, payload);
+    t.is(msg.data, response);
+    nc.close();
+});
+
+test('wildcard subscriptions', async (t) => {
+    t.plan(3);
+    let single = 3;
+    let partial = 2;
+    let full = 5;
+
+    let singleCounter = 0;
+    let partialCounter = 0;
+    let fullCounter = 0;
+
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+
+    let s = createInbox();
+    nc.subscribe(`${s}.*`, () => {
+        singleCounter++;
+    });
+    nc.subscribe(`${s}.foo.bar.*`, () => {
+        partialCounter++;
+    });
+    nc.subscribe(`${s}.foo.>`, () => {
+        fullCounter++;
     });
 
-    it('oldRequestOne should do requestone-get-reply', (done) => {
-        let nc = NATS.connect({port: PORT, useOldRequestStyle: true} as NatsConnectionOptions);
-        requestOneGetsReply(nc, done);
+    nc.publish(`${s}.bar`);
+    nc.publish(`${s}.baz`);
+    nc.publish(`${s}.foo.bar.1`);
+    nc.publish(`${s}.foo.bar.2`);
+    nc.publish(`${s}.foo.baz.3`);
+    nc.publish(`${s}.foo.baz.foo`);
+    nc.publish(`${s}.foo.baz`);
+    nc.publish(`${s}.foo`);
+
+    await nc.flush();
+    t.is(singleCounter, single);
+    t.is(partialCounter, partial);
+    t.is(fullCounter, full);
+
+    nc.close();
+});
+
+test('flush can be a promise', async (t) => {
+    t.plan(1);
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+    let p = nc.flush();
+    t.true(p instanceof Promise);
+    await p;
+    nc.close();
+});
+
+test('flush can be a callback', async (t) => {
+    t.plan(2);
+    let lock = new Lock();
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+    let p = nc.flush(() => {
+        t.pass();
+        lock.unlock();
     });
 
-    function requestOneWillUnsubscribe(nc: NATS.Client, done: Function) {
-        const rsub = "x.y.z";
-        let count = 0;
+    t.is(p, undefined);
+    await lock.latch;
 
-        nc.subscribe(rsub, {}, (msg, reply) => {
-            expect(reply).to.match(/_INBOX\.*/);
-            nc.publish(reply, "y");
-            nc.publish(reply, "yy");
-            nc.flush();
-            setTimeout(function () {
-                nc.publish(reply, "z");
-                nc.flush();
-                nc.close();
-                setTimeout(function () {
-                    expect(count).to.be.equal(1);
-                    nc.close();
-                    done();
-                }, 1000);
-            }, 1500);
-        });
+    nc.close();
+});
 
-        nc.requestOne(rsub, "", {}, 1000, (reply) => {
-            expect(reply).to.not.be.instanceof(Error);
-            expect(reply).to.exist;
-            count++;
-        });
-    }
+test('unsubscribe after close', async (t) => {
+    t.plan(1);
+    let lock = new Lock();
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+    let sub = await nc.subscribe(createInbox(), () => {
+    });
+    nc.close();
+    sub.unsubscribe();
+    t.pass();
+});
 
-    it('should do requestone-will-unsubscribe', (done) => {
-        let nc = NATS.connect(PORT);
-        requestOneWillUnsubscribe(nc, done);
+test('no data after unsubscribe', async (t) => {
+    t.plan(1);
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+    let subj = createInbox();
+    let received = 0;
+    let sub = await nc.subscribe(subj, () => {
+        received++;
+        sub.unsubscribe();
+    });
+    nc.publish(subj);
+    nc.publish(subj);
+    nc.publish(subj);
+    await nc.flush();
+    t.is(received, 1);
+    nc.close();
+});
+
+test('JSON messages', async (t) => {
+    t.plan(2);
+    let sc = t.context as SC;
+    let nc = await connect({url: sc.server.nats, payload: Payload.JSON} as NatsConnectionOptions);
+    let subj = createInbox();
+    let m = {
+        boolean: true,
+        string: 'CEDILA-Ç'
+    };
+
+    nc.subscribe(subj, (err, msg) => {
+        t.is(err, null);
+        // @ts-ignore
+        t.deepEqual(msg.data, m);
+    }, {max: 1});
+    nc.publish(subj, m);
+    await nc.flush();
+    nc.close();
+});
+
+test('UTF8 messages', async (t) => {
+    t.plan(2);
+    let sc = t.context as SC;
+    let nc = await connect({url: sc.server.nats, payload: Payload.STRING} as NatsConnectionOptions);
+    let subj = createInbox();
+    let m = 'CEDILA-Ç';
+
+    nc.subscribe(subj, (err, msg) => {
+        t.is(err, null);
+        // @ts-ignore
+        t.is(msg.data, m);
+    }, {max: 1});
+    nc.publish(subj, m);
+    await nc.flush();
+    nc.close();
+});
+
+test('request removes mux', async (t) => {
+    t.plan(3);
+    let sc = t.context as SC;
+    let nc = await connect({url: sc.server.nats, payload: Payload.STRING} as NatsConnectionOptions);
+    let subj = createInbox();
+
+    nc.subscribe(subj, (err, msg) => {
+        t.truthy(msg);
+        //@ts-ignore
+        nc.publish(msg.reply);
+    }, {max: 1});
+
+    let r = await nc.request(subj);
+    t.truthy(r);
+    //@ts-ignore
+    t.is(nc.protocolHandler.muxSubscriptions.length, 0);
+    nc.close();
+});
+
+test('unsubscribe unsubscribes', async (t) => {
+    t.plan(2);
+    let sc = t.context as SC;
+    let nc = await connect({url: sc.server.nats, payload: Payload.STRING} as NatsConnectionOptions);
+    let subj = createInbox();
+
+    let sub = await nc.subscribe(subj, (err, msg) => {
+    });
+    t.is(nc.numSubscriptions(), 1);
+    sub.unsubscribe();
+    t.is(nc.numSubscriptions(), 0);
+    nc.close();
+});
+
+test('flush cb calls error on close', async (t) => {
+    let lock = new Lock();
+    t.plan(1);
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+    nc.close();
+    nc.flush((err) => {
+        let ne = err as NatsError;
+        t.is(ne.code, ErrorCode.CONN_CLOSED);
+        lock.unlock();
     });
 
+    return lock.latch;
+});
 
-    it('oldRequest: should do requestone-will-unsubscribe', (done) => {
-        let nc = NATS.connect({port: PORT, useOldRequestStyle: true} as NatsConnectionOptions);
-        requestOneWillUnsubscribe(nc, done);
-    });
+test('flush reject on close', async (t) => {
+    t.plan(1);
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+    nc.close();
+    await t.throws(() => {
+        return nc.flush()
+    }, {code: ErrorCode.CONN_CLOSED});
+});
 
-    function requestTimeoutTest(nc: NATS.Client, done: Function) {
-        nc.requestOne('a.b.c', '', {}, 1000, (reply) => {
-            expect(reply).to.exist;
-            expect(reply).to.be.an.instanceof(Error);
-            expect(reply).to.have.property('code');
-            //@ts-ignore
-            expect(reply.code).to.be.equal(NATS.REQ_TIMEOUT);
-            nc.close();
-            done();
-        });
-    }
-
-    it('should do requestone-can-timeout', (done) => {
-        let nc = NATS.connect(PORT);
-        requestTimeoutTest(nc, done);
-    });
-
-    it('old request one - should do requestone-can-timeout', (done) => {
-        let nc = NATS.connect({port: PORT, useOldRequestStyle: true} as NatsConnectionOptions);
-        requestTimeoutTest(nc, done);
-    });
-
-    function shouldUnsubscribeWhenRequestOneTimeout(nc: NATS.Client, done: Function) {
-        let replies = 0;
-        let responses = 0;
-        // set a subscriber to respond to the request
-        nc.subscribe('a.b.c', {max: 1} as NATS.SubscribeOptions, (msg, reply) => {
-            setTimeout(function () {
-                nc.publish(reply);
-                nc.flush();
-                replies++;
-            }, 500);
-        });
-
-        // request one - we expect a timeout
-        nc.requestOne('a.b.c', '', {}, 250, (reply) => {
-            expect(reply).to.be.an.instanceof(Error);
-            expect(reply).to.have.property('code');
-            //@ts-ignore
-            expect(reply.code).to.be.equal(NATS.REQ_TIMEOUT);
-            if (!reply.hasOwnProperty('code')) {
-                responses++;
-            }
-        });
-
-        // verify reply was sent, but we didn't get it
-        setTimeout(function () {
-            expect(replies).to.be.equal(1);
-            expect(responses).to.be.equal(0);
-            nc.close();
-            done();
-        }, 1000);
-    }
-
-    it('should unsubscribe when request one timesout', (done) => {
-        let nc = NATS.connect(PORT);
-        shouldUnsubscribeWhenRequestOneTimeout(nc, done);
-    });
-
-    it('old requestOne should unsubscribe when request one timesout', (done) => {
-        let nc = NATS.connect({port: PORT, useOldRequestStyle: true} as NatsConnectionOptions);
-        shouldUnsubscribeWhenRequestOneTimeout(nc, done);
-    });
-
-    it('requestone has negative sids', function (done) {
-        let nc = NATS.connect(PORT);
-        nc.flush(function () {
-            let sid = nc.requestOne("121.2.13.4", "", {}, 1000, (r) => {
-                expect.fail(r, null, "got message when it shouldn't have");
-            });
-            expect(sid).to.be.a('number');
-            expect(sid).to.be.below(0);
-
-            // this cancel returns the config
-            //@ts-ignore
-            let conf = nc.respmux.cancelMuxRequest(sid);
-
-            // after cancel it shouldn't exit
-            //@ts-ignore
-            expect(nc.respmux.requestMap).to.not.have.ownProperty(conf.token);
-            nc.close();
-            done();
-        });
-    });
-
-    function paramTranspositions(nc: NATS.Client, done: Function) {
-        let all = false;
-        let four = false;
-        let three = true;
-        let count = 0;
-        nc.flush(function () {
-            nc.requestOne("a", "", {}, 1, function () {
-                all = true;
-                called();
-            });
-
-            nc.requestOne("b", "", {}, 1, function () {
-                four = true;
-                called();
-            });
-
-            nc.requestOne("b", "", {}, 1, function () {
-                three = true;
-                called();
-            });
-        });
-
-        function called() {
-            count++;
-            if (count === 3) {
-                expect(all).to.be.true;
-                expect(four).to.be.true;
-                expect(three).to.be.true;
-                nc.close();
-                done();
-            }
-        }
-    }
-
-    it('requestOne: optional param transpositions', (done) => {
-        let nc = NATS.connect(PORT);
-        paramTranspositions(nc, done);
-    });
-
-    it('old requestOne: optional param transpositions', (done) => {
-        let nc = NATS.connect({port: PORT, useOldRequestStyle: true} as NatsConnectionOptions);
-        paramTranspositions(nc, done);
-    });
+test('error if publish after close', async (t) => {
+    t.plan(1);
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+    nc.close();
+    await t.throws(() => {
+        nc.publish("foo")
+    }, {code: ErrorCode.CONN_CLOSED});
 });

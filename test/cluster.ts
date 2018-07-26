@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2018 The NATS Authors
+ * Copyright 2018 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -11,161 +11,115 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
  */
 
-import * as NATS from '../src/nats';
-import {NatsConnectionOptions} from '../src/nats';
-import * as nsc from './support/nats_server_control';
-import {Server} from './support/nats_server_control';
-import {expect} from 'chai'
-import * as url from 'url';
+import {SC, startServer, stopServer} from "./helpers/nats_server_control";
+import test, {ExecutionContext} from "ava";
+import {connect} from "../src/nats";
+import {Lock} from "./helpers/latch";
 
-describe('Cluster', () => {
 
-    let WAIT = 20;
-    let ATTEMPTS = 4;
+test.before(async (t) => {
+    let s1 = await startServer();
+    let s2 = await startServer();
+    t.context = {server: s1, servers: [s1, s2]};
+});
 
-    let PORT1 = 15621;
-    let PORT2 = 15622;
+test.after.always((t) => {
+    (t.context as SC).servers.forEach((s) => {
+        stopServer(s);
+    })
+});
 
-    let s1Url = `nats://localhost:${PORT1}`;
-    let s2Url = `nats://localhost:${PORT2}`;
-    let s1: Server;
-    let s2: Server;
+function getServers(t: ExecutionContext<any>): string[] {
+    let a : string[] = [];
+    let servers = (t.context as SC).servers;
+    servers.forEach((s) => {
+        a.push(s.nats);
+    });
+    return a;
+}
 
-    // Start up our own nats-server
-    before((done) => {
-        s1 = nsc.start_server(PORT1, [], () => {
-            s2 = nsc.start_server(PORT2, [], () => {
-                done();
-            });
-        });
+test('has multiple servers', async (t) => {
+    t.plan(1);
+
+    let a = getServers(t);
+    let nc = await connect({servers: a});
+
+    //@ts-ignore
+    let servers = nc.protocolHandler.servers;
+    t.is(servers.length(), a.length);
+    nc.close();
+});
+
+test('connects to first valid server', async (t) => {
+    let lock = new Lock();
+    let a = getServers(t);
+    a.splice(0, 0, 'nats://localhost:7');
+    let nc = await connect({servers: a});
+    nc.on('connect', () => {
+        t.pass();
+        nc.close();
+        lock.unlock();
     });
 
-    // Shutdown our server
-    after((done) => {
-        nsc.stop_cluster([s1, s2], done);
-    });
+    return lock.latch;
+});
 
-    it('should accept servers options', (done) => {
-        let nc = NATS.connect({
-            'servers': [s1Url, s2Url]
-        } as NatsConnectionOptions);
-        expect(nc).to.exist;
-        expect(nc).to.haveOwnProperty('options');
+test('reject if no valid server', async (t) => {
+    t.plan(1);
+    let a = ['nats://localhost:7'];
+    await t.throws(() => {
+        return connect({servers: a});
+    }, {code: "ECONNREFUSED"});
+});
+
+test('throws if no valid server', async (t) => {
+    t.plan(1);
+    let a = ['nats://localhost:7', 'nats://localhost:9'];
+    try {
+        await connect({servers: a});
+    } catch(ex) {
+        t.is(ex.code, "ECONNREFUSED");
+    }
+});
+
+test('random server connections', async (t) => {
+    let first = getServers(t)[0];
+    let count = 0;
+    let other = 0;
+    for(let i =0; i < 100; i++) {
+        let nc = await connect({servers: getServers(t)});
         //@ts-ignore
-        expect(nc.options).to.haveOwnProperty('servers');
-        expect(nc).to.haveOwnProperty('servers');
+        let s = nc.protocolHandler.servers.getCurrentServer();
         //@ts-ignore
-        expect(nc.servers).to.exist;
+        if(s.toString() === first) {
+            count++;
+        } else {
+            other++;
+        }
+        nc.close();
+    }
+
+    t.is(count+other, 100);
+    t.true(count >= 35);
+    t.true(count <= 65);
+});
+
+test('no random server if noRandomize', async (t) => {
+    let first = getServers(t)[0];
+    let count = 0;
+    for(let i =0; i < 100; i++) {
+        let nc = await connect({servers: getServers(t), noRandomize: true});
         //@ts-ignore
-        expect(nc.servers.servers).to.be.an('array');
+        let s = nc.protocolHandler.servers.getCurrentServer();
         //@ts-ignore
-        expect(nc.servers.servers).to.have.lengthOf(2);
-        expect(nc).to.haveOwnProperty('url');
-        nc.flush(() => {
-            nc.close();
-            done();
-        });
-    });
-
-    it('should randomly connect to servers by default', (done) => {
-        let conns: NATS.Client[] = [];
-        let s1Count = 0;
-        for (let i = 0; i < 100; i++) {
-            let nc = NATS.connect({
-                'servers': [s1Url, s2Url]
-            } as NatsConnectionOptions);
-            conns.push(nc);
-            //@ts-ignore
-            let nurl = url.format(nc.url);
-            if (nurl === s1Url) {
-                s1Count++;
-            }
+        if(s.toString() === first) {
+            count++;
         }
-        for (let i = 0; i < 100; i++) {
-            conns[i].close();
-        }
-        expect(s1Count).to.be.within(35, 65);
-        done();
-    });
+        nc.close();
+    }
 
-    it('should connect to first valid server', (done) => {
-        let nc = NATS.connect({
-            'servers': ['nats://localhost:21022', s1Url, s2Url]
-        } as NatsConnectionOptions);
-        nc.on('error', function(err) {
-            done(err);
-        });
-        nc.on('connect', () => {
-            nc.close();
-            done();
-        });
-    });
-
-    it('should emit error if no servers are available', (done) => {
-        let nc = NATS.connect({
-            'servers': ['nats://localhost:21022', 'nats://localhost:21023']
-        } as NatsConnectionOptions);
-        nc.on('error', function () {
-            nc.close();
-            done();
-        });
-        nc.on('reconnecting', function () {
-            // This is an error
-            done('Should not receive a reconnect event');
-        });
-    });
-
-    it('should not randomly connect to servers if noRandomize is set', (done) => {
-        let conns: NATS.Client[] = [];
-        let s1Count = 0;
-        for (let i = 0; i < 100; i++) {
-            let nc = NATS.connect({
-                'noRandomize': true,
-                'servers': [s1Url, s2Url]
-            } as NatsConnectionOptions);
-            conns.push(nc);
-            //@ts-ignore
-            let nurl = url.format(nc.url);
-            if (nurl === s1Url) {
-                s1Count++;
-            }
-        }
-        for (let i = 0; i < 100; i++) {
-            conns[i].close();
-        }
-        expect(s1Count).to.be.equal(100);
-        done();
-    });
-
-    it('should fail after maxReconnectAttempts when servers killed', (done) => {
-        let nc = NATS.connect({
-            'noRandomize': true,
-            'servers': [s1Url, s2Url],
-            'reconnectTimeWait': WAIT,
-            'maxReconnectAttempts': ATTEMPTS
-        } as NatsConnectionOptions);
-        let startTime: number;
-        let numAttempts = 0;
-        nc.on('connect', () => {
-            nsc.stop_server(s1, function(){
-                startTime = Date.now();
-            });
-        });
-        nc.on('reconnect', () => {
-            nsc.stop_server(s2);
-        });
-        nc.on('reconnecting', function () {
-            let elapsed = Date.now() - startTime;
-            expect(elapsed).to.be.within(WAIT, 5 * WAIT);
-            startTime = Date.now();
-            numAttempts += 1;
-        });
-        nc.on('close', () => {
-            expect(numAttempts).to.be.equal(ATTEMPTS);
-            nc.close();
-            done();
-        });
-    });
+    t.is(count, 100);
 });
