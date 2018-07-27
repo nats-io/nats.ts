@@ -215,7 +215,7 @@ let nc12 = await connect({payload: Payload.STRING});
 let nc13 = await connect({payload: Payload.JSON});
 let nc14 = await connect({payload: Payload.BINARY});
 
-// String encodings can be set to node supported string encodings:
+// String encodings can be set to node supported string encodings.
 // Default encoding is "utf-8", it only affects string payloads.
 let nc14 = await connect({payload: Payload.STRING, encoding: "ascii"});
 
@@ -236,7 +236,7 @@ let nc15 = await connect({maxReconnectAttempts: -1, reconnectTimeWait: 250});
 The nats client is an `EventEmitter`, and thus emits various notifications:
 
 | Event                  | Argument               | Description
-|--                      |__                      |__
+|--------                |---------               |------------
 | `close`                |                        | Emitted when the client closes. A close client is finished, and cannot be reused.
 | `connect`              | `Client`, url (string) | Emitted when the client first connects to a NATS server. Only happens once.
 | `connecting`           | url (string)           | Emitted when the client first attempts to connect to a server.
