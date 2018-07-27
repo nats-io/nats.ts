@@ -96,7 +96,7 @@ test('cannot sub to foo', async (t) => {
     let lock = new Lock();
     let sc = t.context as SC;
     let nc = await connect({url: sc.server.nats, user: 'derek', pass: 'foobar'} as NatsConnectionOptions);
-    nc.addListener('permission_error', (err) => {
+    nc.addListener('permissionError', (err) => {
         //@ts-ignore
         let ne = err as NatsError;
         t.is(ne.code, ErrorCode.PERMISSIONS_VIOLATION);
@@ -118,7 +118,7 @@ test('cannot pub bar', async (t) => {
     let lock = new Lock();
     let sc = t.context as SC;
     let nc = await connect({url: sc.server.nats, user: 'derek', pass: 'foobar'} as NatsConnectionOptions);
-    nc.addListener('permission_error', (err) => {
+    nc.addListener('permissionError', (err) => {
         //@ts-ignore
         let ne = err as NatsError;
         t.is(ne.code, ErrorCode.PERMISSIONS_VIOLATION);

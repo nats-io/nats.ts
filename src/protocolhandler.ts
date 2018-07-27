@@ -76,7 +76,7 @@ enum ParserState {
 }
 
 export class ProtocolHandler extends EventEmitter {
-    static VERSION = "0.0.9";
+    static VERSION = "0.0.10";
     options: NatsConnectionOptions;
     subscriptions: Subscriptions;
     muxSubscriptions = new MuxSubscriptions();
@@ -287,7 +287,11 @@ export class ProtocolHandler extends EventEmitter {
 
     private connect(): Promise<Transport> {
         this.prepareConnection();
-        this.client.emit('connecting', this.url.href);
+        if (this.currentServer.didConnect) {
+            this.client.emit('reconnecting', this.url.href);
+        } else {
+            this.client.emit('connecting', this.url.href);
+        }
         return this.transport.connect(this.url);
     }
 
@@ -782,7 +786,7 @@ export class ProtocolHandler extends EventEmitter {
                 break;
             case ErrorCode.PERMISSIONS_VIOLATION:
                 // just emit
-                this.client.emit('permission_error', err);
+                this.client.emit('permissionError', err);
                 break;
             default:
                 this.client.emit('error', err);
@@ -801,9 +805,6 @@ export class ProtocolHandler extends EventEmitter {
             return;
         }
         this.reconnects += 1;
-        if (this.currentServer.didConnect) {
-            this.client.emit('reconnecting');
-        }
         this.connect().then(() => {
                 // all good the pong handler deals with it
         }).catch((err) => {
@@ -882,7 +883,7 @@ export class ProtocolHandler extends EventEmitter {
         if (this.currentServer) {
             this.currentServer.didConnect = true;
         }
-        this.client.emit(event, this.client);
+        this.client.emit(event, this.client, this.currentServer.url.href);
         this.flushPending();
     }
 

@@ -4,6 +4,7 @@ npm-debug.log
 .idea
 .settings/
 lib/test/*
+lib/src/*
 src/*
 
 *.log
