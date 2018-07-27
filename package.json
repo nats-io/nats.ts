@@ -53,7 +53,8 @@
     "if-node-version": "^1.1.1",
     "nyc": "^12.0.2",
     "ts-node": "^6.0.3",
-    "typescript": "^2.8.3"
+    "typescript": "^2.8.3",
+    "why-is-node-running": "^2.0.2"
   },
   "typings": "./lib/nats.d.ts",
   "ava": {

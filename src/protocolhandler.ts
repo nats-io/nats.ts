@@ -140,7 +140,10 @@ export class ProtocolHandler extends EventEmitter {
             let lastError: Error | null = null;
             let fn = function(n: number) {
                 if(n <= 0) {
-                    reject(lastError);
+                    if(!ph.options.waitOnFirstConnect) {
+                        reject(lastError);
+                        return;
+                    }
                 }
                 ph.connect()
                     .then(() => {
@@ -148,7 +151,9 @@ export class ProtocolHandler extends EventEmitter {
                     })
                     .catch((ex) => {
                         lastError = ex;
-                        fn(n-1);
+                        setTimeout(() => {
+                            fn(n-1);
+                        }, ph.options.reconnectTimeWait || 0);
                     });
             };
             fn(ph.servers.length());
