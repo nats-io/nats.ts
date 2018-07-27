@@ -8,6 +8,8 @@ A [Node.js](http://nodejs.org/) client for the [NATS messaging system](https://n
 [![npm](https://img.shields.io/npm/v/ts-nats.svg)](https://www.npmjs.com/package/nats)
 [![npm](https://img.shields.io/npm/dt/ts-nats.svg)](https://www.npmjs.com/package/nats)
 
+ts-nats is a typescript nats library for node that supports Promises and async/await patterns.
+
 ## Installation
 
 ```bash
@@ -15,239 +17,270 @@ npm install ts-nats
 ```
 
 ## Basic Usage
-
 ```typescript
+import {connect, NatsConnectionOptions, Payload} from "ts-nats";
 
+// connect takes a port, url or a NatsConnectionOptions options
+// `connect()` returns a Promise to a NATS client
+connect()
+    .then((nc) => {
+        // Do something with the connection
+    })
+    .catch((ex) => {
+        // handle the error
+    });
+    
+
+// alternatively, inside an async function
+...
+try {
+    let nc = await connect({servers: ['nats://demo.nats.io:4222', 'nats://somehost:4443']});
+    // Do something with the connection
+} catch(ex) {
+    // handle the error
+}
+...
+
+// simple publisher
+nc.publish('greeting', 'hello world!');
+
+// simple subscription - subscribe returns a promise to a subscription object
+let sub = await nc.subscribe('greeting', (err, msg) => {
+    if(err) {
+        // do something
+    } else {
+        // do something with msg.data
+    }
+});
+
+// a subscription can respond to request messages:
+let sub = await nc.subscribe('greeter', (err, msg) => {
+    if(err) {
+        // do something
+    } else if (msg.reply) {
+        nc.publish(msg.reply, `hello there ${msg.data}`);
+    }
+});
+
+// stop getting messages on the subscription
+sub.unsubscribe();
+
+// request publishes a message with a reply subject, and creates a
+// subscription to handle the first reply. Requests specify a timeout
+// at which point the request will throw an error. Requests return
+// a Promise to a message.
+let msg = await nc.request('greeter', 1000, 'me');
+
+// when the client is finished, the connection can be closed
+nc.close();
 ```
+
+
 
 ## Wildcard Subscriptions
 
-```javascript
-
-// "*" matches any token, at any level of the subject.
-nats.subscribe('foo.*.baz', function(msg, reply, subject) {
-  console.log('Msg received on [' + subject + '] : ' + msg);
+```typescript
+// "*" matches all values in a token (foo.bar.baz, foo.a.baz, ...)
+// to work as a regex it must be the only character in the token.
+// Asterisks that are part of a token value are interpreted as string
+// literals,`foo.a*.bar` and will only match the literal value of `foo.a*.bar`.
+let sub1 = await nc.subscribe('foo.*.baz', (err, msg) => {
+    console.log('message received on', msg.subject, ":", msg.data);
 });
 
-nats.subscribe('foo.bar.*', function(msg, reply, subject) {
-  console.log('Msg received on [' + subject + '] : ' + msg);
-});
 
-// ">" matches any length of the tail of a subject, and can only be
+// ">" matches any length of the tail of a subject. It can only be
 // the last token E.g. 'foo.>' will match 'foo.bar', 'foo.bar.baz',
-// 'foo.foo.bar.bax.22'
-nats.subscribe('foo.>', function(msg, reply, subject) {
-  console.log('Msg received on [' + subject + '] : ' + msg);
+// 'foo.foo.bar.bax.22'. If part of a token it is interpreted as a
+// string literal `foo.bar.a>` will only match `foo.bar.a>`.
+let sub2 = await nc.subscribe('foo.baz.>', (err, msg) => {
+    console.log('message received on', msg.subject, ":", msg.data);
 });
 
 ```
-
 ## Queue Groups
 
-```javascript
+```typescript
 // All subscriptions with the same queue name will form a queue group.
-// Each message will be delivered to only one subscriber per queue group,
-// queuing semantics. You can have as many queue groups as you wish.
-// Normal subscribers will continue to work as expected.
-nats.subscribe('foo', {'queue':'job.workers'}, function() {
-  received += 1;
-});
+// Each message will be delivered to only a single subscriber in the queue group.
+// You can have as many queue groups as you wish. Normal subscribers will continue 
+// to work as expected.
+let sub3 = await nc.subscribe('foo.baz.>', (err, msg) => {
+    console.log('message received on', msg.subject, ":", msg.data);
+}, {queue: 'A'});
 
 ```
 ## Clustered Usage
 
-```javascript
-var nats = require('nats');
-
-var servers = ['nats://nats.io:4222', 'nats://nats.io:5222', 'nats://nats.io:6222'];
-
+```typescript
+let servers = ['nats://demo.nats.io:4222', 'nats://127.0.0.1:5222', 'nats://127.0.0.1:6222'];
 // Randomly connect to a server in the cluster group.
-var nc = nats.connect({'servers': servers});
+let nc2 = await connect({servers: servers});
 
-// currentServer is the URL of the connected server.
-console.log("Connected to " + nc.currentServer.url.host);
 
 // Preserve order when connecting to servers.
-nc = nats.connect({'dontRandomize': true, 'servers':servers});
-
+let nc3 = await connect({servers: servers, noRandomize: true});
 ```
 ## TLS
 
-```javascript
-var nats = require('nats');
-var fs = require('fs');
-
+```typescript
 // Simple TLS connect
-var nc = nats.connect({port: TLSPORT, tls: true});
+let ncs = await connect({url: 'tls://demo.nats.io:4443'});
 
-// Overriding and not verifying the server
-var tlsOptions = {
-  rejectUnauthorized: false,
-};
-var nc = nats.connect({port: TLSPORT, tls: tlsOptions});
-// nc.stream.authorized will be false
+// Client can explicitly request that the server be using tls
+let ncs1 = await connect({url: 'tls://demo.nats.io:4443', tls: true});
 
-// Use a specified CA for self-signed server certificates
-var tlsOptions = {
-  ca: [ fs.readFileSync('./test/certs/ca.pem') ]
-};
-var nc = nats.connect({port: TLSPORT, tls: tlsOptions});
-// nc.stream.authorized should be true
+// if CA is self signed:
+import {readFileSync} from "fs";
 
-// Use a client certificate if the server requires
-var tlsOptions = {
-  key: fs.readFileSync('./test/certs/client-key.pem'),
-  cert: fs.readFileSync('./test/certs/client-cert.pem'),
-  ca: [ fs.readFileSync('./test/certs/ca.pem') ]
-};
-var nc = nats.connect({port: TLSPORT, tls: tlsOptions});
+let caCert = readFileSync('/path/to/cacert');
+let ncs2 = await connect({url: 'tls://demo.nats.io:4443', tls: {
+    ca: caCert
+}});
+
+// client can verify server certificate:
+let ncs3 = await connect({url: 'tls://demo.nats.io:4443', tls: {
+    ca: caCert,
+    rejectUnauthorized: true
+}});
+
+// client can request to not validate server cert:
+let ncs4 = await connect({url: 'tls://demo.nats.io:4443', tls: {
+    rejectUnauthorized: false
+}});
+
+// if server requires client certificates
+import {readFileSync} from "fs";
+let caCert = readFileSync('/path/to/cacert');
+let clientCert = readFileSync('/path/to/clientCert');
+let clientKey = readFileSync('/path/to/clientKey');
+
+let ncs5 = await connect({url: 'tls://someserver:4443', tls: {
+    ca: caCert,
+    key: clientKey,
+    cert: clientCert
+}});
 
 ```
 ## Authentication
-```javascript
-
+```typescript
 // Connect with username and password in the url
-var nc = NATS.connect("nats://foo:bar@localhost:4222");
-
-// Connect with username and password inside object
-var nc = NATS.connect({'url':"nats://localhost:4222", 'user':'foo', 'pass':'bar'});
-
+let nc6= await connect({url: 'nats://me:secret@127.0.0.1:4222'});
+// Connect with username and password in the options
+let nc7= await connect({url: 'nats://127.0.0.1:4222', user: 'me', pass: 'secret'});
 // Connect with token in url
-var nc = NATS.connect("nats://mytoken@localhost:4222");
-
-// Connect with token inside object
-var nc = NATS.connect({'url':"nats://localhost:4222", 'token':'mytoken'});
-
+let nc8= await connect({url: 'nats://token@127.0.0.1:4222'});
+// or token inside the options:
+let nc9= await connect({url: 'nats://127.0.0.1:4222', token: 'token'});
 ```
 ## Advanced Usage
 
 ```javascript
+// Flush the connection, and get notified when the server has finished processing
+let ok = await nc.flush();
 
-// Publish with closure, callback fires when server has processed the message
-nats.publish('foo', 'You done?', function() {
-  console.log('msg processed!');
+// or
+nc.flush(() => {
+    console.log('done');
 });
 
-// Flush connection to server, callback fires when all messages have
-// been processed.
-nats.flush(function() {
-  console.log('All clear!');
-});
 
 // If you want to make sure NATS yields during the processing
 // of messages, you can use an option to specify a yieldTime in ms.
-// During the processing of the inbound stream, we will yield if we
-// spend more then yieldTime milliseconds processing.
-var nc = nats.connect({port: PORT, yieldTime: 10});
+// During the processing of the inbound stream, the client will yield
+// if it spends more than yieldTime milliseconds processing.
+let nc10 = await connect({port: PORT, yieldTime: 10});
 
-// Timeouts for subscriptions
-var sid = nats.subscribe('foo', function() {
-  received += 1;
+// Auto-cancel a subscription after a specified message count:
+nc.subscribe('foo', (err, msg) => {
+    // do something
+}, {max: 10});
+
+// Timeout if 10 messages are not received in specified time:
+nc.subscribe('foo', (err, msg) => {
+    // do something
+}, {max: 10, timeout: 1000});
+
+// or
+let sub2 = await nc.subscribe('foo', (err, msg) => {
+    // do something
 });
+sub2.unsubscribe(10);
+sub2.setTimeout(1000);
 
-// Timeout unless a certain number of messages have been received
-nats.timeout(sid, timeout_ms, expected, function() {
-  timeout = true;
-});
+// Message Payloads can be strings, binary, or json
+// Payloads determine the type of `msg.data` on subscriptions
+// string, Buffer, or javascript object
+let nc12 = await connect({payload: Payload.STRING});
+let nc13 = await connect({payload: Payload.JSON});
+let nc14 = await connect({payload: Payload.BINARY});
 
-// Auto-unsubscribe after MAX_WANTED messages received
-nats.subscribe('foo', {'max':MAX_WANTED});
-nats.unsubscribe(sid, MAX_WANTED);
+// String encodings can be set to node supported string encodings.
+// Default encoding is "utf-8", it only affects string payloads.
+let nc14 = await connect({payload: Payload.STRING, encoding: "ascii"});
 
-// Multiple connections
-var nats = require('nats');
-var nc1 = nats.connect();
-var nc2 = nats.connect();
-
-nc1.subscribe('foo');
-nc2.publish('foo');
-
-// Encodings
-
-// By default messages received will be decoded using UTF8. To change that,
-// set the encoding option on the connection.
-
-nc = nats.connect({'servers':servers, 'encoding': 'ascii'});
-
-
-
-// PreserveBuffers
-
-// To prevent payload conversion from a Buffer to a string, set the 
-// preserveBuffers option to true. Message payload return will be a Buffer.
-
-nc = nats.connect({'preserveBuffers': true});
 
 // Reconnect Attempts and Time between reconnects
 
 // By default a NATS connection will try to reconnect to a server 10 times
 // waiting 2 seconds between reconnect attempts. If the maximum number of
 // retries is reached, the client will close the connection.
-// To change the default behaviour specify the max number of connection
-// attempts in `maxReconnectAttempts` (set to -1 to retry forever), and the 
-// time in milliseconds between reconnects in `reconnectTimeWait`.
 
-nc = nats.connect({'maxReconnectAttempts': -1, 'reconnectTimeWait': 250});
-
-nc.on('error', function(err) {
-	console.log(err);
-});
-
-nc.on('connect', function(nc) {
-	console.log('connected');
-});
-
-nc.on('disconnect', function() {
-	console.log('disconnect');
-});
-
-nc.on('reconnecting', function() {
-	console.log('reconnecting');
-});
-
-nc.on('reconnect', function(nc) {
-	console.log('reconnect');
-});
-
-nc.on('close', function() {
-	console.log('close');
-});
+// Keep trying to reconnect forever, and attempt to reconnect every 250ms
+let nc15 = await connect({maxReconnectAttempts: -1, reconnectTimeWait: 250});
 
 ```
 
-See examples and benchmarks for more information.
+## Notifications
+
+The nats client is an `EventEmitter`, and thus emits various notifications:
+
+| Event                  | Argument               | Description
+|--------                |---------               |------------
+| `close`                |                        | Emitted when the client closes. A close client is finished, and cannot be reused.
+| `connect`              | `Client`, url (string) | Emitted when the client first connects to a NATS server. Only happens once.
+| `connecting`           | url (string)           | Emitted when the client first attempts to connect to a server.
+| `disconnect`           |                        | Emitted when the client disconnects from a server.
+| `error`                | `NatsError`            | Emitted when the client receives an error. If an error handler is not set, the node process will exit.
+| `permissionError`      | `NatsError`            | Emitted when the server emits a permission error when subscribing or publishing to a subject that the client is not allowed to.
+| `reconnect`            | `Client`, url (string) | Emitted when the server connects to a different server
+| `reconnecting`         | url (string)           | Emitted when the server attempts to reconnect to a different server
+| `serversChanged`       | `ServersChangedEvent`  | Emitted when the server gossips a list of other servers in the cluster. Only servers not specified in a connect list are deleted if they disapear.
+| `subscribe`            | `SubEvent`             | Emitted when a subscription is created on the client
+| `unsubscribe`          | `SubEvent`             | Emitted when a subscription is auto-unsubscribed
+| `yield`                |                        | Emitted when the client's processing took longer than the specified yield option, and the client yielded.
+
+
+
+See examples for more information.   
 
 ## Connect Options
 
 The following is the list of connection options and default values.
 
-| Option                 | Aliases                                      | Default                   | Description
-|--------                |---------                                     |---------                  |------------
-| `encoding`             |                                              | `"utf8"`                  | Encoding specified by the client to encode/decode data
-| `json`                 |                                              | `false`                   | If true, message payloads are converted to/from JSON
-| `maxPingOut`           |                                              | `2`                       | Max number of pings the client will allow unanswered before rasing a stale connection error
-| `maxReconnectAttempts` |                                              | `10`                      | Sets the maximun number of reconnect attempts. The value of `-1` specifies no limit
-| `name`                 | `client`                                     |                           | Optional client name
-| `noRandomize`          | `dontRandomize`, `NoRandomize`               | `false`                   | If set, the order of user-specified servers is randomized.
-| `pass`                 | `password`                                   |                           | Sets the password for a connection
-| `pedantic`             |                                              | `false`                   | Turns on strict subject format checks
-| `pingInterval`         |                                              | `120000`                  | Number of milliseconds between client-sent pings
-| `preserveBuffers`      |                                              | `false`                   | If true, data for a message is returned as Buffer
-| `reconnect`            |                                              | `true`                    | If false server will not attempt reconnecting
-| `reconnectTimeWait`    |                                              | `2000`                    | If disconnected, the client will wait the specified number of milliseconds between reconnect attempts
-| `servers`              | `urls`                                       |                           | Array of connection `url`s
-| `tls`                  | `secure`                                     | `false`                   | This property can be a boolean or an Object. If true the client requires a TLS connection. If false a non-tls connection is required.  The value can also be an object specifying TLS certificate data. The properties `ca`, `key`, `cert` should contain the certificate file data. `ca` should be provided for self-signed certificates. `key` and `cert` are required for client provided certificates. `rejectUnauthorized` if `true` validates server's credentials
-| `token`                |                                              |                           | Sets a authorization token for a connection
-| `url`                  | `uri`                                        | `"nats://localhost:4222"` | Connection url
-| `useOldRequestStyle`   |                                              | `false`                   | If set to `true` calls to `request()` and `requestOne()` will create an inbox subscription per call.
-| `user`                 |                                              |                           | Sets the username for a connection
-| `verbose`              |                                              | `false`                   | Turns on `+OK` protocol acknowledgements
-| `waitOnFirstConnect`   |                                              | `false`                   | If `true` the server will fall back to a reconnect mode if it fails its first connection attempt.
-| `yieldTime`            |                                              |                           | If set, processing will yield at least the specified number of milliseconds to IO callbacks before processing inbound messages 
+| Option                 | Default                   | Description
+|--------                |---------                  |------------
+| `encoding`             | `"utf8"`                  | Encoding specified by the client to encode/decode data
+| `maxPingOut`           | `2`                       | Max number of pings the client will allow unanswered before rasing a stale connection error
+| `maxReconnectAttempts` | `10`                      | Sets the maximun number of reconnect attempts. The value of `-1` specifies no limit
+| `name`                                             | Optional client name (useful for debugging a client on the server output `-DV`)
+| `noRandomize`          | `false`                   | If set, the order of user-specified servers is randomized.
+| `pass`                 |                           | Sets the password for a connection
+| `payload`                `Payload.STRING`          | Sets the payload type [Payload.STRING, Payload.BINARY, or Payload.JSON].
+| `pedantic`             | `false`                   | Turns on strict subject format checks
+| `pingInterval`         | `120000`                  | Number of milliseconds between client-sent pings
+| `reconnect`            | `true`                    | If false server will not attempt reconnecting
+| `reconnectTimeWait`    | `2000`                    | If disconnected, the client will wait the specified number of milliseconds between reconnect attempts
+| `servers`              |                           | Array of connection `url`s
+| `tls`                  | `false`                   | This property can be a boolean or an Object. If true the client requires a TLS connection. If false a non-tls connection is required.  The value can also be an object specifying TLS certificate data. The properties `ca`, `key`, `cert` should contain the certificate file data. `ca` should be provided for self-signed certificates. `key` and `cert` are required for client provided certificates. `rejectUnauthorized` if `true` validates server's credentials
+| `token`                |                           | Sets a authorization token for a connection
+| `url`                  | `"nats://localhost:4222"` | Connection url
+| `user`                 |                           | Sets the username for a connection
+| `verbose`              | `false`                   | Turns on `+OK` protocol acknowledgements
+| `waitOnFirstConnect`   | `false`                   | If `true` the server will fall back to a reconnect mode if it fails its first connection attempt.
+| `yieldTime`            |                           | If set and processing exceeds yieldTime, client will yield to IO callbacks before processing additional inbound messages 
 
 
-  
-  
 
 ## Supported Node Versions    
 

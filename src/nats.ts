@@ -51,6 +51,11 @@ export interface SubEvent {
     queue?: string;
 }
 
+export interface ServersChangedEvent {
+    added: string[];
+    deleted: string[];
+}
+
 export interface Sub extends Base {
     sid: number;
     queue?: string | null;
@@ -143,15 +148,15 @@ export class Client extends events.EventEmitter {
     //         'connecting',
     //         'disconnect',
     //         'error',
+    //         'permissionError',
     //         'pingcount',
     //         'pingtimer',
-    //         'reconnecting',
     //         'reconnect',
+    //         'reconnecting',
     //         'serversChanged',
     //         'subscribe',
     //         'unsubscribe',
     //         'yield',
-    //         'permission-error',
     //     ];
     //
     //     function handler(name: string) {

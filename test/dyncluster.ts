@@ -123,7 +123,7 @@ test('reconnects to gossiped server', async (t) => {
 });
 
 test('fails after maxReconnectAttempts when servers killed', async (t) => {
-    t.plan(3);
+    t.plan(5);
     let s1 = registerServer(t, await startServer());
     let s2 = await addClusterServer(t, s1);
 
@@ -132,13 +132,15 @@ test('fails after maxReconnectAttempts when servers killed', async (t) => {
     //@ts-ignore
     let servers = nc.protocolHandler.servers;
 
-    nc.on('connect', () => {
+    nc.on('connect', (c, url) => {
+        t.is(url, s2.nats);
         setTimeout(() => {
             stopServer(s2);
         }, 200);
     });
 
-    nc.on('reconnect', () => {
+    nc.on('reconnect', (c, url) => {
+        t.is(url, s1.nats);
         t.is(servers.getCurrentServer().url.href, s1.nats);
         setTimeout(() => {
             stopServer(s1);
@@ -156,7 +158,7 @@ test('fails after maxReconnectAttempts when servers killed', async (t) => {
     });
 
     nc.on('close', () => {
-        t.is(reconnectings, 12);
+        t.is(reconnectings, 11);
         t.is(disconnects, 2);
         lock.unlock();
     });

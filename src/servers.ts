@@ -14,9 +14,10 @@
  *
  */
 import url = require('url');
-import _ = require('lodash');
 import {DEFAULT_URI} from "./const";
 import {ServerInfo} from "./types";
+import {shuffle} from "./util";
+import {ServersChangedEvent} from "./nats";
 
 export class Server {
     url: url.Url;
@@ -43,11 +44,6 @@ export class Server {
     }
 }
 
-export interface ServerChanges {
-    added: string[];
-    deleted: string[];
-}
-
 export class Servers {
     private readonly servers: Server[];
     private currentServer: Server;
@@ -59,7 +55,7 @@ export class Servers {
                 this.servers.push(new Server(element));
             });
             if (randomize) {
-                this.servers = _.shuffle(this.servers);
+                this.servers = shuffle(this.servers);
             }
         }
 
@@ -120,7 +116,7 @@ export class Servers {
         return this.servers;
     }
 
-    processServerUpdate(info: ServerInfo): ServerChanges {
+    processServerUpdate(info: ServerInfo): ServersChangedEvent {
         let added = [];
         let deleted : string[] = [];
 
@@ -160,6 +156,6 @@ export class Servers {
                 }
             }
         }
-        return {added: added, deleted: deleted} as ServerChanges;
+        return {added: added, deleted: deleted} as ServersChangedEvent;
     }
 }
