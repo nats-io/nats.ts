@@ -237,7 +237,7 @@ The nats client is an `EventEmitter`, and thus emits various notifications:
 
 | Event                  | Argument               | Description
 |--------                |---------               |------------
-| `close`                |                        | Emitted when the client closes. A close client is finished, and cannot be reused.
+| `close`                |                        | Emitted when the client closes. A closed client is finished, and cannot be reused.
 | `connect`              | `Client`, url (string) | Emitted when the client first connects to a NATS server. Only happens once.
 | `connecting`           | url (string)           | Emitted when the client first attempts to connect to a server.
 | `disconnect`           | url                    | Emitted when the client disconnects from a server.
@@ -266,7 +266,7 @@ The following is the list of connection options and default values.
 | `name`                 |                           | Optional client name (useful for debugging a client on the server output `-DV`)
 | `noRandomize`          | `false`                   | If set, the order of user-specified servers is randomized.
 | `pass`                 |                           | Sets the password for a connection
-| `payload`                `Payload.STRING`          | Sets the payload type [Payload.STRING, Payload.BINARY, or Payload.JSON].
+| `payload`              | `Payload.STRING`          | Sets the payload type [`Payload.STRING`, `Payload.BINARY`, or `Payload.JSON`].
 | `pedantic`             | `false`                   | Turns on strict subject format checks
 | `pingInterval`         | `120000`                  | Number of milliseconds between client-sent pings
 | `reconnect`            | `true`                    | If false server will not attempt reconnecting
