@@ -240,7 +240,7 @@ The nats client is an `EventEmitter`, and thus emits various notifications:
 | `close`                |                        | Emitted when the client closes. A close client is finished, and cannot be reused.
 | `connect`              | `Client`, url (string) | Emitted when the client first connects to a NATS server. Only happens once.
 | `connecting`           | url (string)           | Emitted when the client first attempts to connect to a server.
-| `disconnect`           |                        | Emitted when the client disconnects from a server.
+| `disconnect`           | url                    | Emitted when the client disconnects from a server.
 | `error`                | `NatsError`            | Emitted when the client receives an error. If an error handler is not set, the node process will exit.
 | `permissionError`      | `NatsError`            | Emitted when the server emits a permission error when subscribing or publishing to a subject that the client is not allowed to.
 | `reconnect`            | `Client`, url (string) | Emitted when the server connects to a different server
@@ -263,7 +263,7 @@ The following is the list of connection options and default values.
 | `encoding`             | `"utf8"`                  | Encoding specified by the client to encode/decode data
 | `maxPingOut`           | `2`                       | Max number of pings the client will allow unanswered before rasing a stale connection error
 | `maxReconnectAttempts` | `10`                      | Sets the maximun number of reconnect attempts. The value of `-1` specifies no limit
-| `name`                                             | Optional client name (useful for debugging a client on the server output `-DV`)
+| `name`                 |                           | Optional client name (useful for debugging a client on the server output `-DV`)
 | `noRandomize`          | `false`                   | If set, the order of user-specified servers is randomized.
 | `pass`                 |                           | Sets the password for a connection
 | `payload`                `Payload.STRING`          | Sets the payload type [Payload.STRING, Payload.BINARY, or Payload.JSON].
