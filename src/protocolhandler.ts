@@ -383,7 +383,7 @@ export class ProtocolHandler extends EventEmitter {
             //@ts-ignore - guaranteed to be set
             let mra = parseInt(this.options.maxReconnectAttempts, 10);
             if(wasConnected) {
-                this.client.emit('disconnect');
+                this.client.emit('disconnect', this.currentServer.url.href);
             }
             if(this.closed) {
                 this.client.emit('close');

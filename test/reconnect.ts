@@ -108,7 +108,7 @@ test('should receive when some servers are invalid', async (t) => {
 });
 
 test('reconnect events', async (t) => {
-    t.plan(4);
+    t.plan(5);
     let lock = new Lock();
 
     let server = await startServer();
@@ -134,7 +134,10 @@ test('reconnect events', async (t) => {
     // we get a disconnect event for the initial connection
     // and for each of the failed reattempts
     let disconnects = 0;
-    nc.on('disconnect', () => {
+    nc.on('disconnect', (url) => {
+        if(disconnects === 0) {
+            t.is(url, server.nats);
+        }
         disconnects++;
     });
 
