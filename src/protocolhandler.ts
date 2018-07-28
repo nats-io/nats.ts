@@ -150,10 +150,11 @@ export class ProtocolHandler extends EventEmitter {
                         resolve(ph);
                     })
                     .catch((ex) => {
+                        // FIXME: cannot honor a delay
                         lastError = ex;
                         setTimeout(() => {
                             fn(n-1);
-                        }, ph.options.reconnectTimeWait || 0);
+                        }, ph.options.reconnectTimeWait || 0)
                     });
             };
             fn(ph.servers.length());
@@ -391,10 +392,13 @@ export class ProtocolHandler extends EventEmitter {
                 this.client.emit('disconnect', this.currentServer.url.href);
             }
             if(this.closed) {
+                this.client.close();
                 this.client.emit('close');
             } else if(this.options.reconnect === false) {
+                this.client.close();
                 this.client.emit('close');
             } else if(mra > -1 && this.reconnects >= mra) {
+                this.client.close();
                 this.client.emit('close');
             } else {
                 this.scheduleReconnect();

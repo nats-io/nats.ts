@@ -58,7 +58,7 @@
   },
   "typings": "./lib/nats.d.ts",
   "ava": {
-    "failFast": true,
+    "failFast": false,
     "require": [],
     "files": [
       "./lib/test/**/*.js",
