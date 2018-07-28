@@ -5,8 +5,8 @@ A [Node.js](http://nodejs.org/) client for the [NATS messaging system](https://n
 [![license](https://img.shields.io/github/license/nats-io/ts-nats.svg)](https://www.apache.org/licenses/LICENSE-2.0)
 [![Travis branch](https://img.shields.io/travis/nats-io/ts-nats/master.svg)]()
 [![Coveralls github branch](https://img.shields.io/coveralls/github/nats-io/ts-nats/master.svg)]()
-[![npm](https://img.shields.io/npm/v/ts-nats.svg)](https://www.npmjs.com/package/nats)
-[![npm](https://img.shields.io/npm/dt/ts-nats.svg)](https://www.npmjs.com/package/nats)
+[![npm](https://img.shields.io/npm/v/ts-nats.svg)](https://www.npmjs.com/package/ts-nats)
+[![npm](https://img.shields.io/npm/dt/ts-nats.svg)](https://www.npmjs.com/package/ts-nats)
 
 ts-nats is a typescript nats library for node that supports Promises and async/await patterns.
 [Full documentation](https://nats-io.github.io/ts-nats/)
@@ -21,8 +21,19 @@ npm install ts-nats
 ```typescript
 import {connect, NatsConnectionOptions, Payload} from "ts-nats";
 
-// connect takes a port, url or a NatsConnectionOptions options
-// `connect()` returns a Promise to a NATS client
+// The starting point is the `connect()` function. You can give no arguments, a port, an URL or a
+// `NatsConnectionOption` specifying detailed behaviour. Inside an async function, you can use
+// async/await pattern
+...
+try {
+    let nc = await connect({servers: ['nats://demo.nats.io:4222', 'tls://demo.nats.io:4443']});
+    // Do something with the connection
+} catch(ex) {
+    // handle the error
+}
+...
+// Since `connect()` returns a Promise, the promise pattern are supported.
+// With no arguments, it will attempt to connect to `nats://localhost:4222`
 connect()
     .then((nc) => {
         // Do something with the connection
@@ -32,15 +43,6 @@ connect()
     });
     
 
-// alternatively, inside an async function
-...
-try {
-    let nc = await connect({servers: ['nats://demo.nats.io:4222', 'nats://somehost:4443']});
-    // Do something with the connection
-} catch(ex) {
-    // handle the error
-}
-...
 
 // simple publisher
 nc.publish('greeting', 'hello world!');
@@ -75,7 +77,6 @@ let msg = await nc.request('greeter', 1000, 'me');
 // when the client is finished, the connection can be closed
 nc.close();
 ```
-
 
 
 ## Wildcard Subscriptions
@@ -287,7 +288,7 @@ The following is the list of connection options and default values.
 
 Support policy for Nodejs versions follows 
 [Nodejs release support]( https://github.com/nodejs/Release).
-We will support and build node-nats on even Nodejs versions that are current 
+We will support and build ts-nats on even Nodejs versions that are current 
 or in maintenance.
 
 
