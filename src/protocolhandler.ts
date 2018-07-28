@@ -152,7 +152,9 @@ export class ProtocolHandler extends EventEmitter {
                     .catch((ex) => {
                         // FIXME: cannot honor a delay
                         lastError = ex;
-                        fn(n-1);
+                        setTimeout(() => {
+                            fn(n-1);
+                        }, ph.options.reconnectTimeWait || 0)
                     });
             };
             fn(ph.servers.length());

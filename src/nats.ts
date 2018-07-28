@@ -336,7 +336,7 @@ export class Client extends events.EventEmitter {
             let opts = {max: 1} as RequestOptions;
             extend(r, opts);
             r.token = next();
-            //@ts-ignore
+            let request = this.protocolHandler.request(r);
             r.timeout = setTimeout(() => {
                 request.cancel();
                 reject(NatsError.errorForCode(ErrorCode.REQ_TIMEOUT));
@@ -349,7 +349,6 @@ export class Client extends events.EventEmitter {
                 }
             };
 
-            let request = this.protocolHandler.request(r);
             try {
                 this.publish(subject, data, `${this.protocolHandler.muxSubscriptions.baseInbox}${r.token}`);
             } catch(err) {
