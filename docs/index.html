@@ -912,23 +912,35 @@ img { max-width: 100%; }
 <div class="container container-main">
 	<div class="content-wrap">
 		<div class="tsd-panel tsd-typography">
-			<h1 id="nats-node-js-client">NATS - Node.js Client</h1>
-			<p>A <a href="http://nodejs.org/">Node.js</a> client for the <a href="https://nats.io">NATS messaging system</a>.</p>
+			<h1 id="typescript-nats-node-js-client">TypeScript NATS - Node.js Client</h1>
+			<p>A TypeScript <a href="http://nodejs.org/">Node.js</a> client for the <a href="https://nats.io">NATS messaging system</a>.</p>
 			<p><a href="https://www.apache.org/licenses/LICENSE-2.0"><img src="https://img.shields.io/github/license/nats-io/ts-nats.svg" alt="license"></a>
 				<a href=""><img src="https://img.shields.io/travis/nats-io/ts-nats/master.svg" alt="Travis branch"></a>
 				<a href=""><img src="https://img.shields.io/coveralls/github/nats-io/ts-nats/master.svg" alt="Coveralls github branch"></a>
-				<a href="https://www.npmjs.com/package/nats"><img src="https://img.shields.io/npm/v/ts-nats.svg" alt="npm"></a>
-			<a href="https://www.npmjs.com/package/nats"><img src="https://img.shields.io/npm/dt/ts-nats.svg" alt="npm"></a></p>
-			<p>ts-nats is a typescript nats library for node that supports Promises and async/await patterns.</p>
+				<a href="https://www.npmjs.com/package/ts-nats"><img src="https://img.shields.io/npm/v/ts-nats.svg" alt="npm"></a>
+			<a href="https://www.npmjs.com/package/ts-nats"><img src="https://img.shields.io/npm/dt/ts-nats.svg" alt="npm"></a></p>
+			<p>ts-nats is a typescript nats library for node that supports Promises and async/await patterns.
+			<a href="https://nats-io.github.io/ts-nats/">Full documentation</a></p>
 			<h2 id="installation">Installation</h2>
 			<pre><code class="lang-bash">npm install ts-nats
 </code></pre>
 			<h2 id="basic-usage">Basic Usage</h2>
-			<pre><code class="lang-typescript"><span class="hljs-keyword">import</span> {connect, NatsConnectionOptions, Payload} <span class="hljs-keyword">from</span> <span class="hljs-string">"ts-nats"</span>;
+			<p>The starting point is the <code>connect()</code> function. You can give no arguments, a port, an URL or a
+				<a href="https://nats-io.github.io/ts-nats/interfaces/_nats_.natsconnectionoptions.html"><code>NatsConnectionOption</code></a>
+			specifying detailed behaviour. Inside an async function, you can use async/await pattern.</p>
+			<pre><code class="lang-typescript"><span class="hljs-keyword">import</span> {connect, NatsConnectionOptions, Payload} <span class="hljs-keyword">from</span> <span class="hljs-string">'ts-nats'</span>;
 
-<span class="hljs-comment">// connect takes a port, url or a NatsConnectionOptions options</span>
-<span class="hljs-comment">// `connect()` returns a Promise to a NATS client</span>
-connect()
+...
+<span class="hljs-keyword">try</span> {
+    <span class="hljs-keyword">let</span> nc = <span class="hljs-keyword">await</span> connect({servers: [<span class="hljs-string">'nats://demo.nats.io:4222'</span>, <span class="hljs-string">'tls://demo.nats.io:4443'</span>]});
+    <span class="hljs-comment">// Do something with the connection</span>
+} <span class="hljs-keyword">catch</span>(ex) {
+    <span class="hljs-comment">// handle the error</span>
+}
+...
+</code></pre>
+			<p>Since <code>connect()</code> returns a Promise, the promise patterns are supported. With no arguments, it will attempt to connect to <code>nats://localhost:4222</code></p>
+			<pre><code class="lang-typescript">connect()
     .then(<span class="hljs-function">(<span class="hljs-params">nc</span>) =&gt;</span> {
         <span class="hljs-comment">// Do something with the connection</span>
     })
@@ -936,20 +948,12 @@ connect()
         <span class="hljs-comment">// handle the error</span>
     });
 
-<span class="hljs-comment">// alternatively, inside an async function</span>
-...
-<span class="hljs-keyword">try</span> {
-    <span class="hljs-keyword">let</span> nc = <span class="hljs-keyword">await</span> connect({servers: [<span class="hljs-string">'nats://demo.nats.io:4222'</span>, <span class="hljs-string">'nats://somehost:4443'</span>]});
-    <span class="hljs-comment">// Do something with the connection</span>
-} <span class="hljs-keyword">catch</span>(ex) {
-    <span class="hljs-comment">// handle the error</span>
-}
-...
-
-<span class="hljs-comment">// simple publisher</span>
-nc.publish(<span class="hljs-string">'greeting'</span>, <span class="hljs-string">'hello world!'</span>);
-
-<span class="hljs-comment">// simple subscription - subscribe returns a promise to a subscription object</span>
+</code></pre>
+			<p>Once you have a connection, you can publish data:</p>
+			<pre><code class="lang-typescript">nc.publish(<span class="hljs-string">'greeting'</span>, <span class="hljs-string">'hello world!'</span>);
+</code></pre>
+			<p>Subscribing allows you to receive messages published on a subject:</p>
+			<pre><code class="lang-typescript"><span class="hljs-comment">// simple subscription - subscribe returns a promise to a subscription object</span>
 <span class="hljs-keyword">let</span> sub = <span class="hljs-keyword">await</span> nc.subscribe(<span class="hljs-string">'greeting'</span>, <span class="hljs-function">(<span class="hljs-params">err, msg</span>) =&gt;</span> {
     <span class="hljs-keyword">if</span>(err) {
         <span class="hljs-comment">// do something</span>
@@ -957,65 +961,99 @@ nc.publish(<span class="hljs-string">'greeting'</span>, <span class="hljs-string
         <span class="hljs-comment">// do something with msg.data</span>
     }
 });
-
-<span class="hljs-comment">// a subscription can respond to request messages:</span>
-<span class="hljs-keyword">let</span> sub = <span class="hljs-keyword">await</span> nc.subscribe(<span class="hljs-string">'greeter'</span>, <span class="hljs-function">(<span class="hljs-params">err, msg</span>) =&gt;</span> {
+</code></pre>
+			<p>Subscription can respond to the publisher if the publisher sets a reply subject:</p>
+			<pre><code class="lang-typescript"><span class="hljs-keyword">let</span> service = <span class="hljs-keyword">await</span> nc.subscribe(<span class="hljs-string">'greeter'</span>, <span class="hljs-function">(<span class="hljs-params">err, msg</span>) =&gt;</span> {
     <span class="hljs-keyword">if</span>(err) {
-        <span class="hljs-comment">// do something</span>
+        <span class="hljs-comment">// handle the error</span>
     } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (msg.reply) {
         nc.publish(msg.reply, <span class="hljs-string">`hello there <span class="hljs-subst">${msg.data}</span>`</span>);
     }
 });
 
-<span class="hljs-comment">// stop getting messages on the subscription</span>
-sub.unsubscribe();
+<span class="hljs-comment">// create an unique subject just to receive a response message</span>
+<span class="hljs-keyword">let</span> inbox = nc.createInbox();
+<span class="hljs-keyword">let</span> sub2 = <span class="hljs-keyword">await</span> nc.subscribe(inbox, <span class="hljs-function">(<span class="hljs-params">err, msg</span>) =&gt;</span> {
+    <span class="hljs-keyword">if</span>(err) {
+        <span class="hljs-comment">// handle the error</span>
+    } <span class="hljs-keyword">else</span> {
+        <span class="hljs-built_in">console</span>.log(msg.data);
+    }
+}, {max: <span class="hljs-number">1</span>});
 
-<span class="hljs-comment">// request publishes a message with a reply subject, and creates a</span>
-<span class="hljs-comment">// subscription to handle the first reply. Requests specify a timeout</span>
-<span class="hljs-comment">// at which point the request will throw an error. Requests return</span>
-<span class="hljs-comment">// a Promise to a message.</span>
-<span class="hljs-keyword">let</span> msg = <span class="hljs-keyword">await</span> nc.request(<span class="hljs-string">'greeter'</span>, <span class="hljs-number">1000</span>, <span class="hljs-string">'me'</span>);
+<span class="hljs-comment">// publish a 'request' message</span>
+nc.publish(<span class="hljs-string">'greeter'</span>, <span class="hljs-string">"NATS"</span>, inbox)
 
-<span class="hljs-comment">// when the client is finished, the connection can be closed</span>
-nc.close();
+<span class="hljs-comment">// stop getting messages on the service subscription</span>
+service.unsubscribe();
+
+<span class="hljs-comment">// didn't have to specify unsubscribe for sub2, the `{max: 1}` auto unsubscribes</span>
+<span class="hljs-comment">// when the first message is received.</span>
+</code></pre>
+			<p>The above pattern is called Request/Reply - because it is so pervasive, ts-nats makes
+				it very easy to make a request and handle a single response. The request API returns
+				a Promise to a response message. All the bookkeeping, creating an inbox subject,
+				creating a subscription to manage the response, and publishing details are handled
+				by the call. Since requests are expected to have a response, they require a timeout.
+			If the request does not receive a response within the specified timeout, the promise rejects.</p>
+			<p>Subscriptions to handle request responses are very efficient since they utilize a shared
+				subscription on the server. The client multiplexes the response without having to create
+			and destroy subscriptions server-side.</p>
+			<pre><code class="lang-typescript"><span class="hljs-keyword">let</span> msg = <span class="hljs-keyword">await</span> nc.request(<span class="hljs-string">'greeter'</span>, <span class="hljs-number">1000</span>, <span class="hljs-string">'me'</span>);
+</code></pre>
+			<p>When done using a connection, closing it releases all resources, and cancels all
+			subscriptions.</p>
+			<pre><code class="lang-typescript">nc.close();
 </code></pre>
 			<h2 id="wildcard-subscriptions">Wildcard Subscriptions</h2>
-			<pre><code class="lang-typescript"><span class="hljs-comment">// "*" matches all values in a token (foo.bar.baz, foo.a.baz, ...)</span>
-<span class="hljs-comment">// to work as a regex it must be the only character in the token.</span>
-<span class="hljs-comment">// Asterisks that are part of a token value are interpreted as string</span>
-<span class="hljs-comment">// literals,`foo.a*.bar` and will only match the literal value of `foo.a*.bar`.</span>
-<span class="hljs-keyword">let</span> sub1 = <span class="hljs-keyword">await</span> nc.subscribe(<span class="hljs-string">'foo.*.baz'</span>, <span class="hljs-function">(<span class="hljs-params">err, msg</span>) =&gt;</span> {
+			<p>A single subscription can can process related messages. When the subject
+				specifies wildcards tokens, those parts of the subject can match different things.
+				One of the wildcards is the <code>*</code> (asterisk). The asterisk in <code>foo.*.baz</code> matches
+			all values in that token&#39;s position (<code>foo.bar.baz</code>, f<code>oo.a.baz</code>, ...). </p>
+			<p>To work as a wildcard, the wildcard character must be the only character in the token.
+				Asterisks that are part of a token value are interpreted as string literals,
+			<code>foo.a*.bar</code> and will only match the literal value of <code>foo.a*.bar</code>.</p>
+			<pre><code class="lang-typescript"><span class="hljs-keyword">let</span> sub1 = <span class="hljs-keyword">await</span> nc.subscribe(<span class="hljs-string">'foo.*.baz'</span>, <span class="hljs-function">(<span class="hljs-params">err, msg</span>) =&gt;</span> {
     <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'message received on'</span>, msg.subject, <span class="hljs-string">":"</span>, msg.data);
 });
-
-<span class="hljs-comment">// "&gt;" matches any length of the tail of a subject. It can only be</span>
-<span class="hljs-comment">// the last token E.g. 'foo.&gt;' will match 'foo.bar', 'foo.bar.baz',</span>
-<span class="hljs-comment">// 'foo.foo.bar.bax.22'. If part of a token it is interpreted as a</span>
-<span class="hljs-comment">// string literal `foo.bar.a&gt;` will only match `foo.bar.a&gt;`.</span>
-<span class="hljs-keyword">let</span> sub2 = <span class="hljs-keyword">await</span> nc.subscribe(<span class="hljs-string">'foo.baz.&gt;'</span>, <span class="hljs-function">(<span class="hljs-params">err, msg</span>) =&gt;</span> {
+</code></pre>
+			<p>Another wildcard is the <code>&gt;</code> (greater than symbol). <code>&gt;</code> tokens can only appear
+				as the last token in a subject. <code>foo.&gt;</code> will match <code>foo.bar</code>, <code>foo.bar.baz</code>,
+				<code>foo.foo.bar.bax.22</code>. When part of a token it is interpreted as a string
+				literal <code>foo.bar.a&gt;</code> will only match <code>foo.bar.a&gt;</code>. Subscribing to <code>&gt;</code> will
+			match all subjects.</p>
+			<pre><code class="lang-typescript"><span class="hljs-keyword">let</span> sub2 = <span class="hljs-keyword">await</span> nc.subscribe(<span class="hljs-string">'foo.baz.&gt;'</span>, <span class="hljs-function">(<span class="hljs-params">err, msg</span>) =&gt;</span> {
     <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'message received on'</span>, msg.subject, <span class="hljs-string">":"</span>, msg.data);
 });
 
 </code></pre>
 			<h2 id="queue-groups">Queue Groups</h2>
-			<pre><code class="lang-typescript"><span class="hljs-comment">// All subscriptions with the same queue name will form a queue group.</span>
-<span class="hljs-comment">// Each message will be delivered to only a single subscriber in the queue group.</span>
-<span class="hljs-comment">// You can have as many queue groups as you wish. Normal subscribers will continue </span>
-<span class="hljs-comment">// to work as expected.</span>
-<span class="hljs-keyword">let</span> sub3 = <span class="hljs-keyword">await</span> nc.subscribe(<span class="hljs-string">'foo.baz.&gt;'</span>, <span class="hljs-function">(<span class="hljs-params">err, msg</span>) =&gt;</span> {
+			<p>All subscriptions with the same queue name will form a queue group.
+				Each message will be delivered to only a single subscriber in the queue group.
+				You can have as many queue groups as you wish. Normal subscribers and different
+			queue groups are independent.</p>
+			<pre><code class="lang-typescript"><span class="hljs-keyword">let</span> sub3 = <span class="hljs-keyword">await</span> nc.subscribe(<span class="hljs-string">'foo.baz.&gt;'</span>, <span class="hljs-function">(<span class="hljs-params">err, msg</span>) =&gt;</span> {
     <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'message received on'</span>, msg.subject, <span class="hljs-string">":"</span>, msg.data);
 }, {queue: <span class="hljs-string">'A'</span>});
 
 </code></pre>
 			<h2 id="clustered-usage">Clustered Usage</h2>
+			<p>A NATS connection can specify several servers. When the NATS client connects to one of the
+				servers, the server may gossip additional known cluster members. If the NATS client
+			disconnects, it will attempt to connect to one of them.</p>
 			<pre><code class="lang-typescript"><span class="hljs-keyword">let</span> servers = [<span class="hljs-string">'nats://demo.nats.io:4222'</span>, <span class="hljs-string">'nats://127.0.0.1:5222'</span>, <span class="hljs-string">'nats://127.0.0.1:6222'</span>];
 <span class="hljs-comment">// Randomly connect to a server in the cluster group.</span>
 <span class="hljs-keyword">let</span> nc2 = <span class="hljs-keyword">await</span> connect({servers: servers});
-
-<span class="hljs-comment">// Preserve order when connecting to servers.</span>
+</code></pre>
+			<p>The client will randomize the list of servers that it manages to prevent a <strong>thundering herd</strong>
+				of clients all at the same time trying to reconnect to the same server. To pervent randomization,
+			specify the <code>noRandomize</code> option.</p>
+			<pre><code class="lang-typescript"><span class="hljs-comment">// Preserve order when connecting to servers.</span>
 <span class="hljs-keyword">let</span> nc3 = <span class="hljs-keyword">await</span> connect({servers: servers, noRandomize: <span class="hljs-literal">true</span>});
 </code></pre>
 			<h2 id="tls">TLS</h2>
+			<p>Using a TLS connection encrypts all traffic to the client. Secure connections are easy with NATS.
+			Servers using TLS have the <code>tls</code> protocol instead of <code>nats</code>.</p>
 			<pre><code class="lang-typescript"><span class="hljs-comment">// Simple TLS connect</span>
 <span class="hljs-keyword">let</span> ncs = <span class="hljs-keyword">await</span> connect({url: <span class="hljs-string">'tls://demo.nats.io:4443'</span>});
 
@@ -1055,6 +1093,7 @@ nc.close();
 
 </code></pre>
 			<h2 id="authentication">Authentication</h2>
+			<p>User credentials can be specified in the URL or as NatsConnectionOptions.</p>
 			<pre><code class="lang-typescript"><span class="hljs-comment">// Connect with username and password in the url</span>
 <span class="hljs-keyword">let</span> nc6= <span class="hljs-keyword">await</span> connect({url: <span class="hljs-string">'nats://me:secret@127.0.0.1:4222'</span>});
 <span class="hljs-comment">// Connect with username and password in the options</span>
@@ -1065,56 +1104,65 @@ nc.close();
 <span class="hljs-keyword">let</span> nc9= <span class="hljs-keyword">await</span> connect({url: <span class="hljs-string">'nats://127.0.0.1:4222'</span>, token: <span class="hljs-string">'token'</span>});
 </code></pre>
 			<h2 id="advanced-usage">Advanced Usage</h2>
-			<pre><code class="lang-javascript"><span class="hljs-comment">// Flush the connection, and get notified when the server has finished processing</span>
+			<p>NATS typically buffers messages sent to the server to reduce the number of kernel calls.
+				This yields greater performance. The NATS client automatically buffers commands from the
+				client and sends them. This buffering behaviour also allows a NATS client to briefly
+				disconnect and continue publishing messages and creating subscriptions. On reconnect,
+			the client sends all buffered messages and subscriptions to the server.</p>
+			<p>Sometimes a client wants to make sure that outgoing messages have been processed by the NATS
+				server. The <code>flush()</code> will call you on an user provided callback when the round trip
+			to the server is done.</p>
+			<pre><code class="lang-typescript"><span class="hljs-comment">// Flush the connection, and get notified when the server has finished processing</span>
 <span class="hljs-keyword">let</span> ok = <span class="hljs-keyword">await</span> nc.flush();
 
 <span class="hljs-comment">// or</span>
 nc.flush(<span class="hljs-function"><span class="hljs-params">()</span> =&gt;</span> {
     <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'done'</span>);
 });
-
-<span class="hljs-comment">// If you want to make sure NATS yields during the processing</span>
-<span class="hljs-comment">// of messages, you can use an option to specify a yieldTime in ms.</span>
-<span class="hljs-comment">// During the processing of the inbound stream, the client will yield</span>
-<span class="hljs-comment">// if it spends more than yieldTime milliseconds processing.</span>
-<span class="hljs-keyword">let</span> nc10 = <span class="hljs-keyword">await</span> connect({<span class="hljs-attr">port</span>: PORT, <span class="hljs-attr">yieldTime</span>: <span class="hljs-number">10</span>});
-
-<span class="hljs-comment">// Auto-cancel a subscription after a specified message count:</span>
-nc.subscribe(<span class="hljs-string">'foo'</span>, (err, msg) =&gt; {
+</code></pre>
+			<p>A client can insure that when the processing of incoming messages takes longer
+				than some threshold, that time is given to other waiting IO tasks.
+				In the example below, when processing takes longer than 10ms, the client
+			will yield.</p>
+			<pre><code class="lang-typescript"><span class="hljs-keyword">let</span> nc10 = <span class="hljs-keyword">await</span> connect({port: PORT, yieldTime: <span class="hljs-number">10</span>});
+</code></pre>
+			<p>Subscriptions can auto cancel after it has received some specified
+			number of messages:</p>
+			<pre><code class="lang-typescript">nc.subscribe(<span class="hljs-string">'foo'</span>, <span class="hljs-function">(<span class="hljs-params">err, msg</span>) =&gt;</span> {
     <span class="hljs-comment">// do something</span>
-}, {<span class="hljs-attr">max</span>: <span class="hljs-number">10</span>});
-
-<span class="hljs-comment">// Timeout if 10 messages are not received in specified time:</span>
-nc.subscribe(<span class="hljs-string">'foo'</span>, (err, msg) =&gt; {
+}, {max: <span class="hljs-number">10</span>});
+</code></pre>
+			<p>Or if the expected message count is not received to timeout:</p>
+			<pre><code class="lang-typescript"><span class="hljs-comment">// Timeout if 10 messages are not received in specified time:</span>
+nc.subscribe(<span class="hljs-string">'foo'</span>, <span class="hljs-function">(<span class="hljs-params">err, msg</span>) =&gt;</span> {
     <span class="hljs-comment">// do something</span>
-}, {<span class="hljs-attr">max</span>: <span class="hljs-number">10</span>, <span class="hljs-attr">timeout</span>: <span class="hljs-number">1000</span>});
-
-<span class="hljs-comment">// or</span>
-<span class="hljs-keyword">let</span> sub2 = <span class="hljs-keyword">await</span> nc.subscribe(<span class="hljs-string">'foo'</span>, (err, msg) =&gt; {
+}, {max: <span class="hljs-number">10</span>, timeout: <span class="hljs-number">1000</span>});
+</code></pre>
+			<p>Timeouts and expected message counts can be specified via the
+			subscription after it the subscription resolves:</p>
+			<pre><code class="lang-typescript"><span class="hljs-keyword">let</span> sub2 = <span class="hljs-keyword">await</span> nc.subscribe(<span class="hljs-string">'foo'</span>, <span class="hljs-function">(<span class="hljs-params">err, msg</span>) =&gt;</span> {
     <span class="hljs-comment">// do something</span>
 });
 sub2.unsubscribe(<span class="hljs-number">10</span>);
 sub2.setTimeout(<span class="hljs-number">1000</span>);
-
-<span class="hljs-comment">// Message Payloads can be strings, binary, or json</span>
-<span class="hljs-comment">// Payloads determine the type of `msg.data` on subscriptions</span>
-<span class="hljs-comment">// string, Buffer, or javascript object</span>
-<span class="hljs-keyword">let</span> nc12 = <span class="hljs-keyword">await</span> connect({<span class="hljs-attr">payload</span>: Payload.STRING});
-<span class="hljs-keyword">let</span> nc13 = <span class="hljs-keyword">await</span> connect({<span class="hljs-attr">payload</span>: Payload.JSON});
-<span class="hljs-keyword">let</span> nc14 = <span class="hljs-keyword">await</span> connect({<span class="hljs-attr">payload</span>: Payload.BINARY});
-
-<span class="hljs-comment">// String encodings can be set to node supported string encodings.</span>
-<span class="hljs-comment">// Default encoding is "utf-8", it only affects string payloads.</span>
-<span class="hljs-keyword">let</span> nc14 = <span class="hljs-keyword">await</span> connect({<span class="hljs-attr">payload</span>: Payload.STRING, <span class="hljs-attr">encoding</span>: <span class="hljs-string">"ascii"</span>});
-
-<span class="hljs-comment">// Reconnect Attempts and Time between reconnects</span>
-
-<span class="hljs-comment">// By default a NATS connection will try to reconnect to a server 10 times</span>
-<span class="hljs-comment">// waiting 2 seconds between reconnect attempts. If the maximum number of</span>
-<span class="hljs-comment">// retries is reached, the client will close the connection.</span>
-
-<span class="hljs-comment">// Keep trying to reconnect forever, and attempt to reconnect every 250ms</span>
-<span class="hljs-keyword">let</span> nc15 = <span class="hljs-keyword">await</span> connect({<span class="hljs-attr">maxReconnectAttempts</span>: <span class="hljs-number">-1</span>, <span class="hljs-attr">reconnectTimeWait</span>: <span class="hljs-number">250</span>});
+</code></pre>
+			<p>Message payloads can be strings, binary, or json
+				Payloads determine the type of <code>msg.data</code> on subscriptions
+			<code>string</code>, <code>Buffer</code>, or <code>javascript object</code>.</p>
+			<pre><code class="lang-typescript"><span class="hljs-keyword">let</span> nc12 = <span class="hljs-keyword">await</span> connect({payload: Payload.STRING});
+<span class="hljs-keyword">let</span> nc13 = <span class="hljs-keyword">await</span> connect({payload: Payload.JSON});
+<span class="hljs-keyword">let</span> nc14 = <span class="hljs-keyword">await</span> connect({payload: Payload.BINARY});
+</code></pre>
+			<p>String encodings can be set to node supported string encodings.
+			Default encoding is <code>utf-8</code>, it only affects string payloads.</p>
+			<pre><code class="lang-typescript"><span class="hljs-keyword">let</span> nc14 = <span class="hljs-keyword">await</span> connect({payload: Payload.STRING, encoding: <span class="hljs-string">"ascii"</span>});
+</code></pre>
+			<p>Connect and reconnect behaviours can be configured. You can specify the number
+				of attempts and the interval between attempts on reconnects. By default a NATS connection
+				will try to reconnect to a server 10 times, waiting 2 seconds between reconnect attempts.
+			If the maximum number of retries is reached, the client will <code>close()</code> the connection.</p>
+			<pre><code class="lang-typescript"><span class="hljs-comment">// Keep trying to reconnect forever, and attempt to reconnect every 250ms</span>
+<span class="hljs-keyword">let</span> nc15 = <span class="hljs-keyword">await</span> connect({maxReconnectAttempts: <span class="hljs-number">-1</span>, reconnectTimeWait: <span class="hljs-number">250</span>});
 
 </code></pre>
 			<h2 id="notifications">Notifications</h2>
@@ -1302,7 +1350,7 @@ sub2.setTimeout(<span class="hljs-number">1000</span>);
 			<h2 id="supported-node-versions">Supported Node Versions</h2>
 			<p>Support policy for Nodejs versions follows
 				<a href="https://github.com/nodejs/Release">Nodejs release support</a>.
-				We will support and build node-nats on even Nodejs versions that are current
+				We will support and build ts-nats on even Nodejs versions that are current
 			or in maintenance.</p>
 			<h2 id="license">License</h2>
 			<p>Unless otherwise noted, the NATS source files are distributed under the Apache Version 2.0 license found in the LICENSE file.</p>

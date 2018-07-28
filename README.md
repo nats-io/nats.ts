@@ -1,6 +1,6 @@
-# NATS - Node.js Client
+# TypeScript NATS - Node.js Client
 
-A [Node.js](http://nodejs.org/) client for the [NATS messaging system](https://nats.io).
+A TypeScript [Node.js](http://nodejs.org/) client for the [NATS messaging system](https://nats.io).
 
 [![license](https://img.shields.io/github/license/nats-io/ts-nats.svg)](https://www.apache.org/licenses/LICENSE-2.0)
 [![Travis branch](https://img.shields.io/travis/nats-io/ts-nats/master.svg)]()
