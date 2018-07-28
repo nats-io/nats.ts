@@ -9,6 +9,7 @@ A [Node.js](http://nodejs.org/) client for the [NATS messaging system](https://n
 [![npm](https://img.shields.io/npm/dt/ts-nats.svg)](https://www.npmjs.com/package/nats)
 
 ts-nats is a typescript nats library for node that supports Promises and async/await patterns.
+[Full documentation](https://nats-io.github.io/ts-nats/)
 
 ## Installation
 

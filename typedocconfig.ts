@@ -9,5 +9,5 @@ module.exports = {
     excludeProtected: true,
     excludeExternals: true,
     theme: 'minimal',
-    out: './doc'
+    out: './docs'
 };
