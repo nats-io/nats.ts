@@ -24,7 +24,7 @@ import {
     Req,
     Sub,
     SubEvent,
-    Subscription
+    Subscription, VERSION
 } from "./nats";
 import {MuxSubscriptions} from "./muxsubscriptions";
 import {Callback, Transport, TransportHandlers} from "./transport";
@@ -75,8 +75,10 @@ enum ParserState {
     AWAITING_MSG_PAYLOAD = 1
 }
 
+/**
+ * @hidden
+ */
 export class ProtocolHandler extends EventEmitter {
-    static VERSION = "0.0.10";
     options: NatsConnectionOptions;
     subscriptions: Subscriptions;
     muxSubscriptions = new MuxSubscriptions();
@@ -980,7 +982,7 @@ export class Request {
 
 export class Connect {
     lang: string = "typescript";
-    version: string = ProtocolHandler.VERSION;
+    version: string = VERSION;
     verbose: boolean = false;
     pedantic: boolean = false;
     protocol: number = 1;

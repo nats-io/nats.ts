@@ -21,6 +21,9 @@ import {ConnectionOptions, TLSSocket} from "tls";
 import {Transport, TransportHandlers} from "./transport";
 import {UrlObject} from "url";
 
+/**
+ * @hidden
+ */
 export class TCPTransport implements Transport {
     connectedOnce: boolean = false;
     stream: net.Socket | TLSSocket | null = null;

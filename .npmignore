@@ -6,7 +6,7 @@ npm-debug.log
 lib/test/*
 lib/src/*
 src/*
-
+doc/*
 *.log
 *.heapsnapshot
 *.sock

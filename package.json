@@ -38,7 +38,8 @@
     "pack": "npm pack",
     "debugtest": "tsc && node $NODE_DEBUG_OPTION node_modules/.bin/ava --verbose -T 6500000 -m",
     "test": "tsc && nyc ava --verbose -T 15000",
-    "publish-npm:beta": "npm run build && npm run copy:dist && npm publish --tag=next"
+    "publish-npm:beta": "npm run build && npm run copy:dist && npm publish --tag=next",
+    "doc": "node_modules/.bin/typedoc --options ./typedocconfig.ts"
   },
   "engines": {
     "node": ">= 4.5.0"
@@ -55,6 +56,8 @@
     "if-node-version": "^1.1.1",
     "nyc": "^12.0.2",
     "ts-node": "^6.0.3",
+    "typedoc": "^0.11.1",
+    "typedoc-plugin-markdown": "^1.1.13",
     "typescript": "^2.8.3",
     "why-is-node-running": "^2.0.2"
   },
