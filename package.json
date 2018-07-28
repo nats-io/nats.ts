@@ -33,7 +33,8 @@
     "clean": "npm run clean:dist",
     "clean:dist": "rm -rf lib",
     "copy:dist": "cp lib/src/* lib/",
-    "cover": "nyc report --reporter=html && open coverage/index.html",
+    "cover:html": "nyc report --reporter=html && open coverage/index.html",
+    "cover:coveralls": "nyc report --reporter=text-lcov | coveralls",
     "pack": "npm pack",
     "debugtest": "tsc && node $NODE_DEBUG_OPTION node_modules/.bin/ava --verbose -T 6500000 -m",
     "test": "tsc && nyc ava --verbose -T 15000",
@@ -49,6 +50,7 @@
   "devDependencies": {
     "@types/node": "^9.6.13",
     "ava": "^1.0.0-beta.6",
+    "coveralls": "^3.0.2",
     "dependency-check": "2.5.x",
     "if-node-version": "^1.1.1",
     "nyc": "^12.0.2",
