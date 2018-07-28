@@ -19,6 +19,9 @@ import {ServerInfo} from "./types";
 import {shuffle} from "./util";
 import {ServersChangedEvent} from "./nats";
 
+/**
+ * @hidden
+ */
 export class Server {
     url: url.Url;
     didConnect: boolean;
@@ -44,6 +47,9 @@ export class Server {
     }
 }
 
+/**
+ * @hidden
+ */
 export class Servers {
     private readonly servers: Server[];
     private currentServer: Server;

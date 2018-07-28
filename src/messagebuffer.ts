@@ -18,6 +18,9 @@ import {ErrorCode, NatsError} from "./error";
 import {Msg, Payload} from "./nats";
 import {CR_LF_LEN} from "./const";
 
+/**
+ * @hidden
+ */
 export class MsgBuffer {
     msg: Msg;
     length: number;

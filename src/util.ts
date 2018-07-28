@@ -18,14 +18,14 @@ import nuid = require('nuid');
 
 /**
  * Create a properly formatted inbox subject.
- *
- * @api public
  */
 export function createInbox() {
     return (`_INBOX.${nuid.next()}`);
 }
 
-
+/**
+ * @hidden
+ */
 export function extend(a: any, ...b: any[]): any {
     for (let i = 0; i < b.length; i++) {
         let o = b[i];
@@ -36,7 +36,9 @@ export function extend(a: any, ...b: any[]): any {
     return a;
 }
 
-
+/**
+ * @hidden
+ */
 export function shuffle(a: any[]) {
     for (let i = a.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));

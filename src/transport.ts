@@ -35,6 +35,9 @@ export interface TransportHandlers {
     data: DataCallback
 }
 
+/**
+ * @hidden
+ */
 export interface Transport {
     close(): void;
 

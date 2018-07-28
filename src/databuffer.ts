@@ -14,6 +14,9 @@
  *
  */
 
+/**
+ * @hidden
+ */
 export class DataBuffer {
     buffers: Buffer[] = [];
     byteLength: number = 0;

@@ -17,6 +17,9 @@
 import {Sub} from "./nats";
 import {EventEmitter} from "events";
 
+/**
+ * @hidden
+ */
 export class Subscriptions extends EventEmitter {
     mux!: Sub;
     subs: { [key: number]: Sub } = {};

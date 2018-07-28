@@ -19,6 +19,9 @@ import {Msg, Req} from "./nats";
 import {createInbox} from "./util";
 import {NatsError} from "./error";
 
+/**
+ * @hidden
+ */
 export class MuxSubscriptions {
     baseInbox!: string;
     reqs: { [key: string]: Req } = {};

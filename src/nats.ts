@@ -31,8 +31,12 @@ import {
 import {ConnectionOptions} from "tls";
 import {next} from 'nuid';
 
-export const VERSION = ProtocolHandler.VERSION;
+/** Version of the ts-nats library */
+export const VERSION = "0.0.10";
 
+/**
+ * @hidden
+ */
 export interface Base {
     subject: string;
     callback: MsgCallback;
@@ -41,99 +45,157 @@ export interface Base {
     max?: number | undefined;
 }
 
+/**
+ * @hidden
+ */
 export function defaultSub(): Sub {
     return {sid: 0, subject: "", received: 0} as Sub;
 }
 
+/** Argument provided to `subscribe` and `unsubscribe` event handlers. */
 export interface SubEvent {
+    /** subscription subject */
     subject: string;
+    /** subscription id */
     sid: number;
+    /** subscription queue name if a queue subscription */
     queue?: string;
 }
 
+/** Argument provided to `serversChanged` event handlers. */
 export interface ServersChangedEvent {
+    /** Server URLs learned via cluster gossip */
     added: string[];
+    /** Semoved server URLs (only added servers are removed). */
     deleted: string[];
 }
 
+/**
+ * @hidden
+ */
 export interface Sub extends Base {
     sid: number;
     queue?: string | null;
 }
 
+/**
+ * @hidden
+ */
 export interface Req extends Base {
     token: string;
 }
 
-
+/**
+ * Message object provided to subscription and requests.
+ */
 export interface Msg {
+    /** subject used to publish the message */
     subject: string;
+    /** optional reply subject where replies may be sent. */
     reply?: string;
+    /** optional payload for the message. Type is controlled by [[NatsConnectionOptions.payload]]. */
     data?: any;
+    /** Internal subscription id */
     sid: number;
+    /** Number of bytes in the payload */
     size: number;
 }
 
+/**
+ * Payload specifies the type of [[Msg.data]] that will be sent and received by the client.
+ * The payload affects all client subscribers and publishers. If using mixed types, either
+ * create multiple connections, or select [[Payload.BINARY]] and perform your own decoding.
+ */
 export enum Payload {
+    /** Specifies a string payload. This is default [[NatsConnectionOptions.payload]] setting */
     STRING = "string",
+    /** Specifies payloads are JSON. */
     JSON = "json",
+    /** Specifies payloads are binary (Buffer) */
     BINARY = "binary"
 }
 
+/** Optional callback argument for [[Client.flush]] */
 export interface FlushCallback {
-    (err: NatsError | null): void;
+    (err?: NatsError): void;
 }
 
+/** [[Client.subscribe]] callbacks. First argument will be an error if an error occurred (such as a timeout) or null. Message argument is the received message. */
 export interface MsgCallback {
     (err: NatsError | null, msg: Msg): void;
 }
 
+/** Additional options that can be provided to [[Client.subscribe]]. */
 export interface SubscriptionOptions {
+    /** Name of the queue group for the subscription */
     queue?: string;
+    /** Maximum number of messages expected. When this number of messages is received the subscription auto [[Subscription.unsubscribe]]. */
     max?: number;
 }
 
+/** @hidden */
 export interface RequestOptions {
     max?: number;
     timeout?: number;
 }
 
 export interface NatsConnectionOptions {
+    /** Sets the encoding type used when dealing with [[Payload.STRING]] messages. Only node-supported encoding allowed. */
     encoding?: BufferEncoding;
+    /** Maximum number of client PINGs that can be outstanding before the connection is considered stale. */
     maxPingOut?: number;
+    /** Maximum number of consecutive reconnect attempts before the client closes the connection. Specify `-1` to retry forever. */
     maxReconnectAttempts?: number;
+    /** A name for the client. Useful for identifying a client on the server monitoring and logs. */
     name?: string;
+    /** When `true` does not randomize the order of servers provided to connect. */
     noRandomize?: boolean;
+    /** User password. */
     pass?: string;
+    /** Specifies the payload type of the message. See [[Payload]]. Payload determines [[Msg.data]] types and types published. */
     payload?: Payload;
+    /** @hidden */
     pedantic?: boolean;
+    /** Interval in milliseconds that the client will send PINGs to the server. See [[NatsConnectionOptions.maxPingOut]] */
     pingInterval?: number;
+    /** Specifies the port on the localhost to make a connection. */
     port?: number;
+    /** Specifies whether the client should attempt reconnects. */
     reconnect?: boolean;
+    /** Specifies the interval in milliseconds between reconnect attempts. */
     reconnectTimeWait?: number;
+    /** A list of server URLs where the client should attempt a connection. */
     servers?: Array<string>;
+    /** If true, or set as a tls.TlsOption object, requires the connection to be secure. Fine grain tls settings, such as certificates can be specified by using a tls.TlsOptions object. */
     tls?: boolean | tls.TlsOptions;
+    /** Token to use for authentication. */
     token?: string;
+    /** Server URL where the client should attempt a connection */
     url?: string;
+    /** NATS username. */
     user?: string;
+    /** @hidden */
     verbose?: boolean;
+    /** If true, the client will perform reconnect logic if it fails to connect when first started. Normal behaviour is for the client to try the supplied list of servers and close if none succeed. */
     waitOnFirstConnect?: boolean;
+    /** Specifies the max amount of time the client is allowed to process inbound messages before yielding for other IO tasks. When exceeded the client will yield. */
     yieldTime?: number;
 }
 
+/** @hidden */
 function defaultReq(): Req {
     return {token: "", subject: "", received: 0, max: 1} as Req;
 }
 
+/**
+ * NATS server Client object.
+ */
 export class Client extends events.EventEmitter {
-    /**
-     * Allow createInbox to be called on a client.
-     *
-     * @api public
-     */
+    /** Returns an unique and properly formatted inbox subject that can be used for replies */
     createInbox = createInbox;
     private protocolHandler!: ProtocolHandler;
 
+    /** @hidden */
     constructor() {
         super();
         events.EventEmitter.call(this);
@@ -170,6 +232,7 @@ export class Client extends events.EventEmitter {
     //     });
     // }
 
+    /** @hidden */
     static connect(opts?: NatsConnectionOptions | string | number): Promise<Client> {
         return new Promise((resolve, reject) => {
             let options = Client.parseOptions(opts);
@@ -184,6 +247,9 @@ export class Client extends events.EventEmitter {
         });
     }
 
+    /**
+     * @hidden
+     */
     private static defaultOptions(): ConnectionOptions {
         return {
             encoding: "utf8",
@@ -200,6 +266,9 @@ export class Client extends events.EventEmitter {
         } as ConnectionOptions
     }
 
+    /**
+     * @hidden
+     */
     private static parseOptions(args?: string | number | NatsConnectionOptions): NatsConnectionOptions {
         if (args === undefined || args === null) {
             args = {url: DEFAULT_URI} as NatsConnectionOptions;
@@ -235,11 +304,9 @@ export class Client extends events.EventEmitter {
     }
 
     /**
-     * Flush outbound queue to server and call optional callback when server has processed
-     * all data.
-     *
-     * @param {Function} [cb]
-     * @api public
+     * Flush outbound queue to server and call optional callback when server has processed all data.
+     * @param cb is optional, if not provided a Promise is returned. Flush is completed when promise resolves.
+     * @return Promise<void> or void if a callback was provided.
      */
     flush(cb?: FlushCallback): Promise<void> | void {
         if (cb === undefined) {
@@ -258,14 +325,10 @@ export class Client extends events.EventEmitter {
     }
 
     /**
-     * Publish a message to the given subject, with optional reply and callback.
-     *
-     * @param {String} subject
-     * @param {String} [data]
-     * @param {String} [reply]
-     * @param {Function} [opt_callback]
-     * @api public
-     * @throws NatsError - if the subject is missing
+     * Publish a message to the given subject, with optional payload and reply subject.
+     * @param subject
+     * @param data optional (can be a string, JSON object, or Buffer. Must match [[NatsConnectionOptions.payload].)
+     * @param reply optional
      */
     publish(subject: string, data: any = undefined, reply: string = ""): void {
         if (!subject) {
@@ -276,14 +339,11 @@ export class Client extends events.EventEmitter {
     }
 
     /**
-     * Subscribe to a given subject, with optional options and callback. opts can be
-     * ommitted, even with a callback. The Subscriber Id is returned.
-     *
-     * @param {String} subject
-     * @param {Function} cb?
-     * @param {Object} [opts?]
-     * @return {Number}
-     * @api public
+     * Subscribe to a given subject. Messages are passed to the provided callback.
+     * @param subject
+     * @param cb
+     * @param opts   Optional subscription options
+     * @return Promise<Subscription>
      */
     subscribe(subject: string, cb: MsgCallback, opts: SubscriptionOptions = {}): Promise<Subscription> {
         return new Promise<Subscription>((resolve, reject) => {
@@ -307,21 +367,16 @@ export class Client extends events.EventEmitter {
 
 
     /**
-     * Publish a message with an implicit inbox listener as the reply. Message is optional.
+     * Publish a request message with an implicit inbox listener as the reply. Message is optional.
      * This should be treated as a subscription. The subscription is auto-cancelled after the
      * first reply is received or the timeout in millisecond is reached.
      *
-     * If a timeout is reached, the callback is invoked with a NatsError with it's code set to
-     * `REQ_TIMEOUT` on the first argument of the callback function, and the subscription is
-     * cancelled.
+     * If a timeout is reached, the promise is rejected. Returns the received message if resolved.
      *
-     * The Subscriber Id is returned.
-     *
-     * @param {String} subject
-     * @param {Number} timeout
-     * @param {any} [data]
-     * @return {Promise<Msg>}
-     * @api public
+     * @param subject
+     * @param timeout
+     * @param data optional (can be a string, JSON object, or Buffer. Must match specified Payload option)
+     * @return Promise<Msg>
      */
     request(subject: string, timeout: number = 1000, data: any = undefined): Promise<Msg> {
         return new Promise<Msg>((resolve, reject) => {
@@ -358,19 +413,24 @@ export class Client extends events.EventEmitter {
         });
     };
 
+    /**
+     * Closes the connection to the NATS server. A closed client cannot be reconnected.
+     */
     close(): void {
         this.protocolHandler.close();
     }
 
+    /**
+     * @return true if the NATS client is closed.
+     */
     isClosed(): boolean {
         return this.protocolHandler.isClosed();
     }
 
     /**
-     * Report number of outstanding subscriptions on this connection.
+     * Report number of subscriptions on this connection.
      *
      * @return {Number}
-     * @api public
      */
     numSubscriptions(): number {
         return this.protocolHandler.numSubscriptions();
@@ -379,28 +439,32 @@ export class Client extends events.EventEmitter {
 
 
 /**
- * Connect to a nats-server and return the client.
- * Argument can be a url, or an object with a 'url'
- * property and additional options.
- *
- * @params {Mixed} [opts]
- *
- * @api public
+ * Creates a NATS [[Client]] by connecting to the specified server, port or using the specified [[NatsConnectionOptions]].
+ * @param opts
+ * @return Promise<Client>
  */
 export function connect(opts?: NatsConnectionOptions | string | number): Promise<Client> {
     return Client.connect(opts);
 }
 
-
+/**
+ * Type returned when a subscribe call resolved. Provides methods to manage the subscription.
+ */
 export class Subscription {
     sid: number;
     private protocol: ProtocolHandler;
 
+    /**
+     * @hidden
+     */
     constructor(sub: Sub, protocol: ProtocolHandler) {
         this.sid = sub.sid;
         this.protocol = protocol;
     }
 
+    /**
+     * @hidden
+     */
     static cancelTimeout(s: Sub | null): void {
         if (s && s.timeout) {
             clearTimeout(s.timeout);
@@ -408,21 +472,44 @@ export class Subscription {
         }
     }
 
+    /**
+     * Cancels the subscription after the specified number of messages has been received.
+     * If max is not specified, the subscription cancels immediately.
+     * @param max
+     */
     unsubscribe(max?: number): void {
         this.protocol.unsubscribe(this.sid, max);
     }
 
+    /**
+     * Returns true if the subscription has an associated timeout.
+     */
     hasTimeout(): boolean {
         let sub = this.protocol.subscriptions.get(this.sid);
         return sub !== null && sub.hasOwnProperty('timeout');
     }
 
+    /**
+     * Cancels a timeout associated with the subscription
+     */
     cancelTimeout(): void {
         let sub = this.protocol.subscriptions.get(this.sid);
         Subscription.cancelTimeout(sub);
 
     }
 
+    /**
+     * Sets a timeout on a subscription. The timeout will fire by calling
+     * the subscription's callback with an error argument if the expected
+     * number of messages (specified via max) has not been received by the
+     * subscription before the timer expires. If max is not specified,
+     * the subscription times out if no messages are received within the timeout
+     * specified.
+     *
+     * Returns `true` if the subscription was found and the timeout was registered.
+     *
+     * @param millis
+     */
     setTimeout(millis: number): boolean {
         let sub = this.protocol.subscriptions.get(this.sid);
         Subscription.cancelTimeout(sub);
@@ -438,6 +525,9 @@ export class Subscription {
         return false;
     }
 
+    /**
+     * Returns the number of messages received by the subscription.
+     */
     getReceived(): number {
         let sub = this.protocol.subscriptions.get(this.sid);
         if (sub) {
@@ -446,6 +536,11 @@ export class Subscription {
         return 0;
     }
 
+    /**
+     * Returns the number of messages expected by the subscription.
+     * If `0`, the subscription was not found or was auto-cancelled.
+     * If `-1`, the subscription didn't specify a count for expected messages.
+     */
     getMax(): number {
         let sub = this.protocol.subscriptions.get(this.sid);
         if(! sub) {
@@ -457,9 +552,10 @@ export class Subscription {
         return -1;
     }
 
+    /**
+     * @return true if the subscription is not found.
+     */
     isCancelled(): boolean {
         return this.protocol.subscriptions.get(this.sid) === undefined;
     }
-
-
 }
