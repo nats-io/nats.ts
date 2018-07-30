@@ -1,6 +1,6 @@
 {
   "name": "ts-nats",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Typescript Node.js client for NATS, a lightweight, high-performance cloud native messaging system",
   "keywords": [
     "nats",
@@ -45,7 +45,6 @@
     "node": ">= 4.5.0"
   },
   "dependencies": {
-    "lodash": "^4.17.10",
     "nuid": "^1.0.0"
   },
   "devDependencies": {
@@ -75,7 +74,9 @@
   },
   "nyc": {
     "exclude": [
-      "lib/test/**"
+      "lib/test/**",
+      "examples/**",
+      "benchmark/**"
     ]
   }
 }

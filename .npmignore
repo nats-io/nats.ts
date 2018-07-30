@@ -5,8 +5,10 @@ npm-debug.log
 .settings/
 lib/test/*
 lib/src/*
+lib/examples/*
 src/*
-doc/*
+docs/*
+coverage/*
 *.log
 *.heapsnapshot
 *.sock
