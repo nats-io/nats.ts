@@ -349,7 +349,9 @@ export class ProtocolHandler extends EventEmitter {
 
         let buf: Buffer;
         if (typeof cmd === 'string') {
-            buf = Buffer.from(cmd, "utf8");
+            let len = Buffer.byteLength(cmd);
+            buf = Buffer.allocUnsafe(len);
+            buf.write(cmd, 0, len, "utf8");
         } else {
             buf = cmd as Buffer;
         }
