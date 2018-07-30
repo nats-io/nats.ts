@@ -32,7 +32,7 @@ import {ConnectionOptions} from "tls";
 import {next} from 'nuid';
 
 /** Version of the ts-nats library */
-export const VERSION = "0.0.10";
+export const VERSION = "1.0.0";
 
 /**
  * @hidden
