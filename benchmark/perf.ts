@@ -114,29 +114,31 @@ async function pubTest() {
 }
 
 async function pubsubTest() {
-    let nc2 = await connect({url: pargs.server, payload: Payload.BINARY});
-    let start = Date.now();
-    let i = 0;
-    let sub = await nc2.subscribe(pargs.subject, (err, msg) => {
-        i++;
-        if(i % hash === 0) {
-            process.stdout.write('=');
+    let nc1 = await connect({url: pargs.server, payload: Payload.STRING});
+    let received = 0;
+    let sub = await nc1.subscribe(pargs.subject, (err, msg) => {
+        received++;
+        if(received === loop) {
+            let millis = Date.now() - start;
+            let mps = Math.round((loop / (millis / 1000)));
+            console.log('\npubsub at', mps, 'msgs/sec', '[', loop, "msgs", ']');
+            log("pubsub.csv", "pubsub", loop, millis);
+            nc1.close();
+            nc.close();
         }
     }, {max: loop});
 
-    nc2.on('unsubscribe', () => {
-        let millis = Date.now() - start;
-        let mps = Math.round((loop / (millis / 1000)));
-        console.log('\npubsub at',mps, 'msgs/sec', '[', loop, "msgs", ']');
-        log("pubsub.csv", "pubsub", loop, millis);
-        nc.close();
-        nc2.close();
-    });
-    nc2.flush(() => {
-        for(let i=0; i < count; i++) {
-            nc.publish(pargs.subject, payload);
+
+    await nc1.flush();
+    await nc.flush();
+
+    let start = Date.now();
+    for(let i=0; i < loop; i++) {
+        nc.publish(pargs.subject, payload);
+        if(i % hash === 0) {
+            process.stdout.write('=');
         }
-    });
+    }
 }
 
 async function reqrepTest() {
@@ -146,37 +148,33 @@ async function reqrepTest() {
         if(msg.reply) {
             r++;
             nc2.publish(msg.reply, 'ok');
-            if(r % hash === 0) {
-                process.stdout.write('=');
-            }
         }
-    }, {max: loop, queue: 'A'});
+    }, {max: loop});
 
     await nc2.flush();
 
+    let received = 0;
     let start = Date.now();
-    let promises = [];
+    for(let i=1; i <= loop; i++) {
+        nc.request('request.test', 60000)
+            .then((m) => {
+                received++;
+                if(received % hash === 0) {
+                    process.stdout.write('=');
+                }
+                if(received === loop) {
+                    let millis = Date.now() - start;
+                    let rps = Math.round((loop / (millis / 1000)));
+                    console.log('\n' + rps + ' request-responses/sec');
 
-    for(let i=0; i < loop; i++) {
-        promises.push(nc.request('request.test', 60000));
+                    let lat = Math.round((millis * 1000) / (loop * 2)); // Request=2, Reponse=2 RTs
+                    console.log('Avg roundtrip latency', lat, 'microseconds');
+                    log("rr.csv", "rr", loop, millis);
+                    nc2.close();
+                    nc.close();
+                }
+            });
     }
-    Promise.all(promises)
-        .then(() => {
-            let millis = Date.now() - start;
-            let rps = Math.round((loop / (millis / 1000)));
-            console.log('\n' + rps + ' request-responses/sec');
-
-            let lat = Math.round((millis * 1000) / (loop * 2)); // Request=2, Reponse=2 RTs
-            console.log('Avg roundtrip latency', lat, 'microseconds');
-            log("rr.csv", "rr", loop, millis);
-            nc2.close();
-            nc.close();
-        })
-        .catch((ex) => {
-            console.log('error during reqreply test', ex);
-            process.exit(-1);
-        });
-
 }
 
 function usage() {

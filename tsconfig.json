@@ -74,6 +74,7 @@
   "include": [
     "./src/**/*",
     "./test/**/*",
-    "./examples/**/*"
+    "./examples/**/*",
+    "./benchmark/**/*"
   ]
 }

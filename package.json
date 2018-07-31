@@ -38,6 +38,7 @@
     "pack": "npm pack",
     "debugtest": "tsc && node $NODE_DEBUG_OPTION node_modules/.bin/ava --verbose -T 6500000 -m",
     "test": "tsc && nyc ava --verbose -T 15000",
+    "publish-npm": "npm run build && npm run copy:dist && npm publish",
     "publish-npm:beta": "npm run build && npm run copy:dist && npm publish --tag=next",
     "doc": "node_modules/.bin/typedoc --options ./typedocconfig.ts && touch ./docs/.nojekyll"
   },

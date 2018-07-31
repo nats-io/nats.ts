@@ -68,6 +68,8 @@ const MAX_CONTROL_LINE_SIZE = 1024,
 
     FLUSH_THRESHOLD = 65536;
 
+const CRLF_BUF = Buffer.from('\r\n');
+
 // Parser state
 enum ParserState {
     CLOSED = -1,
@@ -317,7 +319,6 @@ export class ProtocolHandler extends EventEmitter {
     // Fixme: protocol shoudn't have crlf
     // payload shouldn't have crlf
     private buildProtocolMessage(protocol: string, payload?: Buffer): Buffer {
-        let crlf = Buffer.from('\r\n');
         let protoLen = Buffer.byteLength(protocol);
         let cmd = protoLen + 2;
         let len = cmd;
@@ -326,10 +327,10 @@ export class ProtocolHandler extends EventEmitter {
         }
         let buf = Buffer.allocUnsafe(len);
         buf.write(protocol);
-        crlf.copy(buf, protoLen);
+        CRLF_BUF.copy(buf, protoLen);
         if (payload) {
             payload.copy(buf, cmd);
-            crlf.copy(buf, buf.byteLength - 2);
+            CRLF_BUF.copy(buf, buf.byteLength - 2);
         }
         return buf;
     }

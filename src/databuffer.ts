@@ -14,6 +14,8 @@
  *
  */
 
+const EMPTY_BUF = Buffer.allocUnsafe(0);
+
 /**
  * @hidden
  */
@@ -46,7 +48,7 @@ export class DataBuffer {
                 return d;
             }
         }
-        return Buffer.allocUnsafe(0);
+        return EMPTY_BUF;
     }
 
     fill(data: Buffer): void {
@@ -61,7 +63,7 @@ export class DataBuffer {
             this.pack();
             return this.buffers[0];
         }
-        return Buffer.allocUnsafe(0);
+        return EMPTY_BUF;
     }
 
     size(): number {
@@ -78,5 +80,4 @@ export class DataBuffer {
         this.byteLength = 0;
         return a;
     }
-
 }
