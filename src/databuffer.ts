@@ -15,6 +15,8 @@
  */
 
 const EMPTY_BUF = Buffer.allocUnsafe(0);
+const CR = 13;
+const LF = 10;
 
 /**
  * @hidden
@@ -32,19 +34,19 @@ export class DataBuffer {
     }
 
     drain(n?: number): Buffer {
-        if (this.buffers.length) {
+        if (n === undefined) {
+            n = this.byteLength;
+        }
+
+        if (this.byteLength >= n) {
             this.pack();
             let v = this.buffers.pop();
             if (v) {
-                let max = this.byteLength;
-                if (n === undefined || n > max) {
-                    n = max;
-                }
                 let d = v.slice(0, n);
-                if (max > n) {
+                if (this.byteLength > n) {
                     this.buffers.push(v.slice(n));
                 }
-                this.byteLength = max - n;
+                this.byteLength -= n;
                 return d;
             }
         }
@@ -56,6 +58,21 @@ export class DataBuffer {
             this.buffers.push(data);
             this.byteLength += data.byteLength;
         }
+    }
+
+    protoLen(): number {
+        let offset = 0;
+        for(let j=0; j < this.buffers.length; j++) {
+            let cb = this.buffers[j];
+            for (let i = 0; i < cb.byteLength; i++) {
+                let n = i + 1;
+                if (cb.byteLength > n && cb.readUInt8(i) === CR && cb.readUInt8(n) === LF) {
+                    return offset + n + 1;
+                }
+            }
+            offset += cb.byteLength;
+        }
+        return -1;
     }
 
     peek(): Buffer {

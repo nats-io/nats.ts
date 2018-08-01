@@ -24,7 +24,8 @@ let args = process.argv.slice(3);
 // push the default subject
 args.push('test');
 
-let pargs = parseFlags(args , usage, ["count", "size", "nosave"]);
+let pargs = parseFlags(args , usage, ["count", "size", "nosave", "tag"]);
+let tag = pargs.options["tag"] || "";
 let count = pargs.options["count"] || 1000000;
 let loop = parseInt(count.toString(), 10);
 let hash = parseInt((loop / 80).toString(), 10);
@@ -89,7 +90,7 @@ async function subTest() {
         let millis = Date.now() - start;
         let mps = Math.round((loop / (millis / 1000)));
         console.log('\nReceived at ' + mps + ' msgs/sec');
-        log("sub.csv", "sub", loop, millis);
+        log("sub.csv", "sub", loop, millis, tag);
         nc.close();
     });
 }
@@ -107,7 +108,7 @@ async function pubTest() {
     let mps = Math.round((loop / (millis / 1000)));
     console.log('\nPublished at ' + mps + ' msgs/sec');
     if(pargs.options.nosave === undefined) {
-        log("pub.csv", "pub", loop, millis);
+        log("pub.csv", "pub", loop, millis, tag);
     } else {
         process.exit();
     }
@@ -122,7 +123,7 @@ async function pubsubTest() {
             let millis = Date.now() - start;
             let mps = Math.round((loop / (millis / 1000)));
             console.log('\npubsub at', mps, 'msgs/sec', '[', loop, "msgs", ']');
-            log("pubsub.csv", "pubsub", loop, millis);
+            log("pubsub.csv", "pubsub", loop, millis, tag);
             nc1.close();
             nc.close();
         }
@@ -169,7 +170,7 @@ async function reqrepTest() {
 
                     let lat = Math.round((millis * 1000) / (loop * 2)); // Request=2, Reponse=2 RTs
                     console.log('Avg roundtrip latency', lat, 'microseconds');
-                    log("rr.csv", "rr", loop, millis);
+                    log("rr.csv", "rr", loop, millis, tag);
                     nc2.close();
                     nc.close();
                 }
@@ -178,6 +179,6 @@ async function reqrepTest() {
 }
 
 function usage() {
-    console.log('tsnode_perf <pub|sub|pubsub|reqrep> [-s <server>] [-count <count>]');
+    console.log('tsnode_perf <pub|sub|pubsub|reqrep> [-s <server>] [-count <count>] [-tag <tag>]');
     process.exit(-1);
 }

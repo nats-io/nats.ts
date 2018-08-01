@@ -584,11 +584,18 @@ export class ProtocolHandler extends EventEmitter {
 
         while (!this.closed && this.inbound.size()) {
             switch (this.state) {
-
                 case ParserState.AWAITING_CONTROL:
                     // Regex only works on strings, so convert once to be more efficient.
                     // Long term answer is a hand rolled parser, not regex.
-                    let buf = this.inbound.peek().toString('binary', 0, MAX_CONTROL_LINE_SIZE);
+                    let len = this.inbound.protoLen();
+                    if(len === -1)  {
+                        return;
+                    }
+                    let bb = this.inbound.drain(len);
+                    if(bb.byteLength === 0) {
+                        return;
+                    }
+                    let buf = bb.toString("ascii");
 
                     if ((m = MSG.exec(buf)) !== null) {
                         this.msgBuffer = new MsgBuffer(m, this.payload, this.encoding);
@@ -686,16 +693,16 @@ export class ProtocolHandler extends EventEmitter {
             }
 
             // This is applicable for a regex match to eat the bytes we used from a control line.
-            if (m) {
-                // Chop inbound
-                let payloadSize = m[0].length;
-                if (payloadSize >= this.inbound.size()) {
-                    this.inbound.drain();
-                } else {
-                    this.inbound.drain(payloadSize);
-                }
-                m = null;
-            }
+            // if (m) {
+            //     // Chop inbound
+            //     let payloadSize = m[0].length;
+            //     if (payloadSize >= this.inbound.size()) {
+            //         this.inbound.drain();
+            //     } else {
+            //         this.inbound.drain(payloadSize);
+            //     }
+            //     m = null;
+            // }
         }
     }
 
