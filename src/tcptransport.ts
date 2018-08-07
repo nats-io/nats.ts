@@ -149,7 +149,7 @@ export class TCPTransport implements Transport {
     }
 
     resume(): void {
-        if(this.stream) {
+        if(this.stream && this.stream.isPaused()) {
             this.stream.resume();
         }
     }

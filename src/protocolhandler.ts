@@ -44,11 +44,10 @@ import Timer = NodeJS.Timer;
 
 const PERMISSIONS_ERR = "permissions violation";
 const STALE_CONNECTION_ERR = "stale connection";
-const MAX_CONTROL_LINE_SIZE = 1024,
 
 
     // Protocol
-    MSG = /^MSG\s+([^\s\r\n]+)\s+([^\s\r\n]+)\s+(([^\s\r\n]+)[^\S\r\n]+)?(\d+)\r\n/i,
+const MSG = /^MSG\s+([^\s\r\n]+)\s+([^\s\r\n]+)\s+(([^\s\r\n]+)[^\S\r\n]+)?(\d+)\r\n/i,
     OK = /^\+OK\s*\r\n/i,
     ERR = /^-ERR\s+('.+')?\r\n/i,
     PING = /^PING\r\n/i,
@@ -595,7 +594,8 @@ export class ProtocolHandler extends EventEmitter {
                     if(bb.byteLength === 0) {
                         return;
                     }
-                    let buf = bb.toString("ascii");
+                    // specifying an encoding here like 'ascii' slows it down
+                    let buf = bb.toString();
 
                     if ((m = MSG.exec(buf)) !== null) {
                         this.msgBuffer = new MsgBuffer(m, this.payload, this.encoding);
@@ -620,7 +620,7 @@ export class ProtocolHandler extends EventEmitter {
                     } else if ((m = INFO.exec(buf)) !== null) {
                         this.info = JSON.parse(m[1]);
                         // Check on TLS mismatch.
-                        if (this.checkTLSMismatch() === true) {
+                        if (this.checkTLSMismatch()) {
                             return;
                         }
 
@@ -669,8 +669,8 @@ export class ProtocolHandler extends EventEmitter {
                     }
                     // drain what we have collected
                     if (this.inbound.size() < this.msgBuffer.length) {
-                        let d = this.inbound.drain();
-                        this.msgBuffer.fill(d);
+                        // let d = this.inbound.drain();
+                        // this.msgBuffer.fill(d);
                         return;
                     }
                     // drain the number of bytes we need
@@ -685,24 +685,14 @@ export class ProtocolHandler extends EventEmitter {
                         if ((Date.now() - start) > this.options.yieldTime) {
                             this.transport.pause();
                             this.client.emit('yield');
-                            setImmediate(this.processInbound.bind(this));
+                            setImmediate(() => {
+                                this.processInbound();
+                            });
                             return;
                         }
                     }
                     break;
             }
-
-            // This is applicable for a regex match to eat the bytes we used from a control line.
-            // if (m) {
-            //     // Chop inbound
-            //     let payloadSize = m[0].length;
-            //     if (payloadSize >= this.inbound.size()) {
-            //         this.inbound.drain();
-            //     } else {
-            //         this.inbound.drain(payloadSize);
-            //     }
-            //     m = null;
-            // }
         }
     }
 

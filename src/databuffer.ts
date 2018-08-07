@@ -18,6 +18,11 @@ const EMPTY_BUF = Buffer.allocUnsafe(0);
 const CR = 13;
 const LF = 10;
 
+enum ParserState {
+    START,
+    CR
+}
+
 /**
  * @hidden
  */
@@ -61,13 +66,30 @@ export class DataBuffer {
     }
 
     protoLen(): number {
+        let ps = ParserState.START;
         let offset = 0;
         for(let j=0; j < this.buffers.length; j++) {
             let cb = this.buffers[j];
             for (let i = 0; i < cb.byteLength; i++) {
-                let n = i + 1;
-                if (cb.byteLength > n && cb.readUInt8(i) === CR && cb.readUInt8(n) === LF) {
-                    return offset + n + 1;
+                let v = cb.readUInt8(i);
+                switch(ps) {
+                    case ParserState.START:
+                        switch(v) {
+                            case CR:
+                                ps = ParserState.CR;
+                                break;
+                            default:
+                        }
+                        break;
+                    case ParserState.CR:
+                        switch(v) {
+                            case LF:
+                                // we want a length not an index
+                                return offset+i+1;
+                            default:
+                                ps = ParserState.START;
+                        }
+                        break;
                 }
             }
             offset += cb.byteLength;

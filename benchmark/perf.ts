@@ -157,7 +157,7 @@ async function reqrepTest() {
     let received = 0;
     let start = Date.now();
     for(let i=1; i <= loop; i++) {
-        nc.request('request.test', 60000)
+        nc.request('request.test', 60000, payload)
             .then((m) => {
                 received++;
                 if(received % hash === 0) {
