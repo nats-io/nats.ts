@@ -15,21 +15,28 @@
  */
 
 import {Client, connect, Payload} from '../src/nats'
-import {parseFlags} from "../test/helpers/argparser";
+import {parseFlags} from '../test/helpers/argparser';
 import {randomBytes} from 'crypto';
-import {log} from "../test/helpers/perflog";
+import {log} from '../test/helpers/perflog';
+import {ChildProcess, spawn} from 'child_process';
+import {Server, startServer, stopServer} from '../test/helpers/nats_server_control';
+import {appendFileSync, mkdtemp} from 'fs';
+import {join} from 'path';
+import {tmpdir} from 'os';
+import {promisify} from 'util';
 
 
 let args = process.argv.slice(3);
 // push the default subject
 args.push('test');
 
-let pargs = parseFlags(args , usage, ["count", "size", "nosave", "tag"]);
-let tag = pargs.options["tag"] || "";
-let count = pargs.options["count"] || 1000000;
+
+let pargs = parseFlags(args , usage, ['count', 'size', 'tag']);
+let tag = pargs.options['tag'] || "";
+let count = pargs.options['count'] || 1000000;
 let loop = parseInt(count.toString(), 10);
 let hash = parseInt((loop / 80).toString(), 10);
-let size = pargs.options["size"] || 2;
+let size = pargs.options['size'] || 2;
 size = parseInt(size.toString(), 10);
 let payload = randomBytes(size);
 pargs.payload = payload;
@@ -38,36 +45,51 @@ pargs.payload = payload;
 let test = process.argv[2];
 let testFn : Function;
 switch(test) {
-    case "pub":
+    case 'pub':
         testFn = pubTest;
         break;
-    case "sub":
+    case 'sub':
         testFn = subTest;
         break;
-    case "pubsub":
+    case 'pubsub':
         testFn = pubsubTest;
         break;
-    case "reqrep":
+    case 'reqrep':
         testFn = reqrepTest;
-        loop = 100000;
         break;
     default:
         usage();
 }
 
 let nc : Client;
+let server: Server;
+
 
 start()
     .catch((ex) => {
-        console.log("error running test", pargs.server || "nats://localhost:4222", ": ", ex);
+        console.log("error running test", pargs.server, ": ", ex);
         process.exit(1);
     });
 
 async function start() {
+    if(! pargs.server) {
+        // create a config file - reqrep needs to have a write_dealine for large volume
+        let mktmp = promisify(mkdtemp);
+        let dir = await mktmp(join(tmpdir(), "nats"));
+        let conf = join(dir, "nats.conf");
+        appendFileSync(conf, "write_deadline: \"1000s\"\n");
+        server = await startServer("", ['-c', conf]);
+        pargs.server = server.nats;
+    }
     nc = await connect({url: pargs.server, payload: Payload.BINARY});
     nc.on('connect', () => {
         testFn();
-    })
+    });
+    nc.on('close', () => {
+        if(server) {
+            stopServer(server as Server);
+        }
+    });
 }
 
 async function subTest() {
@@ -84,13 +106,30 @@ async function subTest() {
     }, {max: loop});
     nc.flush(() => {
         console.log('Waiting for', loop, 'messages');
+        try {
+            let process = spawn('nats-bench', ['-s', pargs.server || "", '-n', count.toString(), '-ns', '0', '-np', '1', "-ms", size.toString(), "test"]);
+            process.stderr.on('data', (data) => {
+                let lines = data.toString().split('\n');
+                lines.forEach((m) => {
+                    console.log(m);
+                });
+            });
+            process.stdout.on('data', (data) => {
+                let lines = data.toString().split('\n');
+                lines.forEach((m) => {
+                    console.log(m);
+                });
+            });
+        } catch(ex) {
+            console.log(ex);
+        }
     });
 
     nc.on('unsubscribe', () => {
         let millis = Date.now() - start;
         let mps = Math.round((loop / (millis / 1000)));
         console.log('\nReceived at ' + mps + ' msgs/sec');
-        log("sub.csv", "sub", loop, millis, tag);
+        log('metrics.csv', 'sub', loop, millis, tag);
         nc.close();
     });
 }
@@ -107,11 +146,8 @@ async function pubTest() {
     let millis = Date.now() - start;
     let mps = Math.round((loop / (millis / 1000)));
     console.log('\nPublished at ' + mps + ' msgs/sec');
-    if(pargs.options.nosave === undefined) {
-        log("pub.csv", "pub", loop, millis, tag);
-    } else {
-        process.exit();
-    }
+    log('metrics.csv', 'pub', loop, millis, tag);
+    nc.close();
 }
 
 async function pubsubTest() {
@@ -123,7 +159,7 @@ async function pubsubTest() {
             let millis = Date.now() - start;
             let mps = Math.round((loop / (millis / 1000)));
             console.log('\npubsub at', mps, 'msgs/sec', '[', loop, "msgs", ']');
-            log("pubsub.csv", "pubsub", loop, millis, tag);
+            log('metrics.csv', 'pubsub', loop, millis, tag);
             nc1.close();
             nc.close();
         }
@@ -169,8 +205,8 @@ async function reqrepTest() {
                     console.log('\n' + rps + ' request-responses/sec');
 
                     let lat = Math.round((millis * 1000) / (loop * 2)); // Request=2, Reponse=2 RTs
-                    console.log('Avg roundtrip latency', lat, 'microseconds');
-                    log("rr.csv", "rr", loop, millis, tag);
+                    console.log('Avg round-trip latency', lat, 'microseconds');
+                    log('metrics.csv', 'reqrep', loop, millis, tag);
                     nc2.close();
                     nc.close();
                 }
