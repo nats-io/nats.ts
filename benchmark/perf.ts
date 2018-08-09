@@ -30,6 +30,7 @@ let args = process.argv.slice(3);
 // push the default subject
 args.push('test');
 
+
 let pargs = parseFlags(args , usage, ['count', 'size', 'tag']);
 let tag = pargs.options['tag'] || "";
 let count = pargs.options['count'] || 1000000;
