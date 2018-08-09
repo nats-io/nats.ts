@@ -14,11 +14,19 @@
  *
  */
 
-import {appendFile} from 'fs';
+import {appendFile, existsSync} from 'fs';
 import {VERSION} from '../../src/nats';
 
 export function log(file: string, op: string, count: number, time: number, tag ="") {
-    appendFile(file, [op, count, time, new Date().toDateString(), VERSION+tag].join(",") + "\n", function (err) {
+    if(!existsSync(file)) {
+        appendFile(file, ["Metric","Count","Millis","Date","Version"].join(",") + "\n", function (err) {
+            if (err) {
+                console.log(err);
+                process.exit();
+            }
+        });
+    }
+    appendFile(file, [op, count, time, new Date().toJSON(), VERSION+tag].join(",") + "\n", function (err) {
         if (err) {
             console.log(err);
         }
