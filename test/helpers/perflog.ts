@@ -17,8 +17,8 @@
 import {appendFile} from 'fs';
 import {VERSION} from '../../src/nats';
 
-export function log(file: string, op: string, count: number, time: number, extra = "") {
-    appendFile(file, [op, count, time, new Date().toDateString(), VERSION, extra].join(",") + "\n", function (err) {
+export function log(file: string, op: string, count: number, time: number, tag ="") {
+    appendFile(file, [op, count, time, new Date().toDateString(), VERSION+tag].join(",") + "\n", function (err) {
         if (err) {
             console.log(err);
         }

@@ -17,6 +17,7 @@
 import {SC, startServer, stopServer} from "./helpers/nats_server_control";
 import test from "ava";
 import {connect, Payload} from "../src/nats";
+import {randomBytes} from "crypto";
 import {next} from 'nuid'
 
 
@@ -51,4 +52,4 @@ async function macro(t: any, input: any, payload: Payload) : Promise<any> {
 
 test('large # of utf8 messages from split buffers', macro, '½ + ¼ = ¾', Payload.STRING);
 test('large # of messages from split buffers', macro, 'hello world', Payload.STRING);
-test('large # of binary messages from split buffers', macro, Buffer.allocUnsafe(50), Payload.BINARY);
+test('large # of binary messages from split buffers', macro, randomBytes(50), Payload.BINARY);

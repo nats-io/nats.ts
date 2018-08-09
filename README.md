@@ -4,7 +4,7 @@ A TypeScript [Node.js](http://nodejs.org/) client for the [NATS messaging system
 
 [![license](https://img.shields.io/github/license/nats-io/ts-nats.svg)](https://www.apache.org/licenses/LICENSE-2.0)
 [![Travis branch](https://img.shields.io/travis/nats-io/ts-nats/master.svg)]()
-[![Coveralls github branch](https://img.shields.io/coveralls/github/nats-io/ts-nats/master.svg)]()
+[![Coveralls github branch](https://img.shields.io/coveralls/github/nats-io/ts-nats/master.svg)](https://coveralls.io/github/nats-io/ts-nats)
 [![npm](https://img.shields.io/npm/v/ts-nats.svg)](https://www.npmjs.com/package/ts-nats)
 [![npm](https://img.shields.io/npm/dt/ts-nats.svg)](https://www.npmjs.com/package/ts-nats)
 

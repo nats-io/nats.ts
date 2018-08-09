@@ -14,6 +14,15 @@
  *
  */
 
+const EMPTY_BUF = Buffer.allocUnsafe(0);
+const CR = 13;
+const LF = 10;
+
+enum ParserState {
+    START,
+    CR
+}
+
 /**
  * @hidden
  */
@@ -30,23 +39,23 @@ export class DataBuffer {
     }
 
     drain(n?: number): Buffer {
-        if (this.buffers.length) {
+        if (n === undefined) {
+            n = this.byteLength;
+        }
+
+        if (this.byteLength >= n) {
             this.pack();
             let v = this.buffers.pop();
             if (v) {
-                let max = this.byteLength;
-                if (n === undefined || n > max) {
-                    n = max;
-                }
                 let d = v.slice(0, n);
-                if (max > n) {
+                if (this.byteLength > n) {
                     this.buffers.push(v.slice(n));
                 }
-                this.byteLength = max - n;
+                this.byteLength -= n;
                 return d;
             }
         }
-        return Buffer.allocUnsafe(0);
+        return EMPTY_BUF;
     }
 
     fill(data: Buffer): void {
@@ -56,12 +65,44 @@ export class DataBuffer {
         }
     }
 
+    protoLen(): number {
+        let ps = ParserState.START;
+        let offset = 0;
+        for(let j=0; j < this.buffers.length; j++) {
+            let cb = this.buffers[j];
+            for (let i = 0; i < cb.byteLength; i++) {
+                let v = cb.readUInt8(i);
+                switch(ps) {
+                    case ParserState.START:
+                        switch(v) {
+                            case CR:
+                                ps = ParserState.CR;
+                                break;
+                            default:
+                        }
+                        break;
+                    case ParserState.CR:
+                        switch(v) {
+                            case LF:
+                                // we want a length not an index
+                                return offset+i+1;
+                            default:
+                                ps = ParserState.START;
+                        }
+                        break;
+                }
+            }
+            offset += cb.byteLength;
+        }
+        return -1;
+    }
+
     peek(): Buffer {
         if (this.buffers.length) {
             this.pack();
             return this.buffers[0];
         }
-        return Buffer.allocUnsafe(0);
+        return EMPTY_BUF;
     }
 
     size(): number {
@@ -78,5 +119,4 @@ export class DataBuffer {
         this.byteLength = 0;
         return a;
     }
-
 }

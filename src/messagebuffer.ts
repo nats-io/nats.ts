@@ -21,13 +21,14 @@ import {CR_LF_LEN} from "./const";
 /**
  * @hidden
  */
+
 export class MsgBuffer {
     msg: Msg;
     length: number;
     payload: Payload;
     error?: NatsError;
     private readonly encoding: BufferEncoding;
-    private buf!: Buffer | null;
+    private buffers: Buffer[] = [];
 
     constructor(chunks: RegExpExecArray, payload: Payload, encoding: BufferEncoding) {
         this.msg = {} as Msg;
@@ -41,18 +42,14 @@ export class MsgBuffer {
     }
 
     fill(data: Buffer) {
-        if (!this.buf) {
-            this.buf = data;
-        } else {
-            this.buf = Buffer.concat([this.buf, data]);
-        }
+        this.buffers.push(data);
         this.length -= data.byteLength;
-
         if (this.length === 0) {
-            this.buf = this.buf.slice(0, this.buf.byteLength - 2);
+            let buf = this.pack();
+            buf = buf.slice(0, buf.byteLength - 2);
             switch (this.payload) {
                 case Payload.JSON:
-                    this.msg.data = this.buf.toString();
+                    this.msg.data = buf.toString();
                     try {
                         this.msg.data = JSON.parse(this.msg.data);
                     } catch (ex) {
@@ -60,13 +57,21 @@ export class MsgBuffer {
                     }
                     break;
                 case Payload.STRING:
-                    this.msg.data = this.buf.toString(this.encoding);
+                    this.msg.data = buf.toString(this.encoding);
                     break;
                 case Payload.BINARY:
-                    this.msg.data = this.buf;
+                    this.msg.data = buf;
                     break;
             }
-            this.buf = null;
+            this.buffers = [];
+        }
+    }
+
+    pack() : Buffer {
+        if(this.buffers.length === 1) {
+            return this.buffers[0];
+        } else {
+            return Buffer.concat(this.buffers);
         }
     }
 }
