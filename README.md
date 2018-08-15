@@ -332,8 +332,7 @@ The nats client is an `EventEmitter`, and thus emits various notifications:
 | Event                  | Argument               | Description
 |--------                |---------               |------------
 | `close`                |                        | Emitted when the client closes. A closed client is finished, and cannot be reused.
-| `connect`              | `Client`, url (string) | Emitted when the client first connects to a NATS server. Only happens once.
-| `connecting`           | url (string)           | Emitted when the client first attempts to connect to a server.
+| `connect`              | `Client`, url (string), `ServerInfo` | Emitted when the client first connects to a NATS server. Only happens once.
 | `disconnect`           | url                    | Emitted when the client disconnects from a server.
 | `error`                | `NatsError`            | Emitted when the client receives an error. If an error handler is not set, the node process will exit.
 | `permissionError`      | `NatsError`            | Emitted when the server emits a permission error when subscribing or publishing to a subject that the client is not allowed to.

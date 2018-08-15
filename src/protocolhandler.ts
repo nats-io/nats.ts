@@ -22,13 +22,13 @@ import {
     NatsConnectionOptions,
     Payload,
     Req,
+    ServerInfo,
     Sub,
-    SubEvent,
-    Subscription, VERSION
+    Subscription,
+    VERSION
 } from "./nats";
 import {MuxSubscriptions} from "./muxsubscriptions";
 import {Callback, Transport, TransportHandlers} from "./transport";
-import {ServerInfo} from "./types";
 import {CONN_ERR_PREFIX, ErrorCode, NatsError} from "./error";
 
 import {EventEmitter} from "events";
@@ -177,11 +177,6 @@ export class ProtocolHandler extends EventEmitter {
         this.sendCommand(this.buildProtocolMessage('PING'));
     }
 
-    /**
-     * Close the connection to the server.
-     *
-     * @api public
-     */
     close(): void {
         if (this.pingTimer) {
             clearTimeout(this.pingTimer);
@@ -243,27 +238,6 @@ export class ProtocolHandler extends EventEmitter {
         }
     }
 
-    /**
-     * Publish a message with an implicit inbox listener as the reply. Message is optional.
-     * This should be treated as a subscription. You can optionally indicate how many
-     * messages you only want to receive using opt_options = {max:N}. Otherwise you
-     * will need to unsubscribe to stop the message stream.
-     *
-     * You can also optionally specify the number of milliseconds to wait for the messages
-     * to receive using opt_options = {timeout: N}. When the number of messages specified
-     * is received before a timeout, the subscription auto-cancels. If the number of messages
-     * is not specified, it is the responsibility of the client to unsubscribe to prevent
-     * a timeout.
-     *
-     * The Subscriber Id is returned.
-     *
-     * @param {String} subject
-     * @param {String} [data]
-     * @param {Object} [opt_options]
-     * @param {Function} [callback]
-     * @return {Number}
-     * @api public
-     */
     request(r: Req): Request {
         if (this.closed) {
             throw (NatsError.errorForCode(ErrorCode.CONN_CLOSED));
@@ -298,8 +272,6 @@ export class ProtocolHandler extends EventEmitter {
         this.prepareConnection();
         if (this.currentServer.didConnect) {
             this.client.emit('reconnecting', this.url.href);
-        } else {
-            this.client.emit('connecting', this.url.href);
         }
         return this.transport.connect(this.url);
     }
@@ -315,8 +287,6 @@ export class ProtocolHandler extends EventEmitter {
         }
     }
 
-    // Fixme: protocol shoudn't have crlf
-    // payload shouldn't have crlf
     private buildProtocolMessage(protocol: string, payload?: Buffer): Buffer {
         let protoLen = Buffer.byteLength(protocol);
         let cmd = protoLen + 2;
@@ -334,11 +304,6 @@ export class ProtocolHandler extends EventEmitter {
         return buf;
     }
 
-    /**
-     * Send commands to the server or queue them up if connection pending.
-     *
-     * @api private
-     */
     private sendCommand(cmd: string | Buffer): void {
         // Buffer to cut down on system calls, increase throughput.
         // When receive gets faster, should make this Buffer based..
@@ -370,11 +335,6 @@ export class ProtocolHandler extends EventEmitter {
         }
     }
 
-    /**
-     * Properly setup a stream event handlers.
-     *
-     * @api private
-     */
     private getTransportHandlers(): TransportHandlers {
         let handlers = {} as TransportHandlers;
         handlers.connect = () => {
@@ -450,11 +410,6 @@ export class ProtocolHandler extends EventEmitter {
         return handlers;
     }
 
-    /**
-     * Properly setup a stream connection with proper events.
-     *
-     * @api private
-     */
     private prepareConnection(): void {
         // Commands may have been queued during reconnect. Discard everything except:
         // 1) ping requests with a pong callback
@@ -497,20 +452,12 @@ export class ProtocolHandler extends EventEmitter {
         this.selectServer();
     };
 
-    /**
-     * Close down the stream and clear state.
-     *
-     * @api private
-     */
-    private closeStream(): void {
-        this.transport.destroy();
-        if (this.connected === true || this.closed === true) {
-            this.pongs = [];
-            this.pout = 0;
-            this.connected = false;
-            this.inbound.reset();
+    getInfo(): ServerInfo | null {
+        if (this.infoReceived) {
+            return this.info;
         }
-    };
+        return null;
+    }
 
     /**
      * Strips all SUBS commands from pending during initial connection completed since
@@ -574,7 +521,6 @@ export class ProtocolHandler extends EventEmitter {
             return;
         }
         // unpause if needed.
-        // FIXME(dlc) client.stream.isPaused() causes 0.10 to fail
         this.transport.resume();
 
         if (this.options.yieldTime !== undefined) {
@@ -807,21 +753,19 @@ export class ProtocolHandler extends EventEmitter {
     };
 
     /**
-     * Reconnect to the server.
+     * Close down the stream and clear state.
      *
      * @api private
      */
-    private reconnect(): void {
-        if (this.closed) {
-            return;
+    private closeStream(): void {
+        this.transport.destroy();
+        if (this.connected || this.closed) {
+            this.pongs = [];
+            this.pout = 0;
+            this.connected = false;
+            this.inbound.reset();
         }
-        this.reconnects += 1;
-        this.connect().then(() => {
-                // all good the pong handler deals with it
-        }).catch((err) => {
-            // the stream handler deals with it
-        });
-    }
+    };
 
     /**
      * Setup a timer event to attempt reconnect.
@@ -882,20 +826,20 @@ export class ProtocolHandler extends EventEmitter {
     }
 
     /**
-     * Callback for first flush/connect.
+     * Reconnect to the server.
      *
      * @api private
      */
-    private connectCB(): void {
-        let event = this.reconnecting ? 'reconnect' : 'connect';
-        this.reconnecting = false;
-        this.reconnects = 0;
-        this.wasConnected = true;
-        if (this.currentServer) {
-            this.currentServer.didConnect = true;
+    private reconnect(): void {
+        if (this.closed) {
+            return;
         }
-        this.client.emit(event, this.client, this.currentServer.url.href);
-        this.flushPending();
+        this.reconnects += 1;
+        this.connect().then(() => {
+            // all good the pong handler deals with it
+        }).catch(() => {
+            // the stream handler deals with it
+        });
     }
 
     /**
@@ -962,6 +906,32 @@ export class ProtocolHandler extends EventEmitter {
             this.subscriptions.setMux(sub);
             this.subscribe(sub);
         }
+    }
+
+    /**
+     * Callback for first flush/connect.
+     *
+     * @api private
+     */
+    private connectCB(): void {
+        let event = this.reconnecting ? 'reconnect' : 'connect';
+        this.reconnecting = false;
+        this.reconnects = 0;
+        this.wasConnected = true;
+        if (this.currentServer) {
+            this.currentServer.didConnect = true;
+        }
+
+        // copy the info
+        let info: ServerInfo = {} as ServerInfo;
+        try {
+            info = JSON.parse(JSON.stringify(this.info));
+        } catch (err) {
+            // ignore
+        }
+
+        this.client.emit(event, this.client, this.currentServer.url.href, info);
+        this.flushPending();
     }
 }
 

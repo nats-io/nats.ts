@@ -17,12 +17,6 @@
 import Timer = NodeJS.Timer;
 
 
-export interface ServerInfo {
-    tls_required: boolean;
-    tls_verify: boolean;
-    connect_urls?: string[];
-}
-
 export interface RequestConfiguration {
     token: string
     callback: Function;

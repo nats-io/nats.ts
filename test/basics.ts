@@ -243,11 +243,12 @@ test('unsubscribe notifications only once', async (t) => {
 
     let subj = createInbox();
     let count = 0;
-    nc.on('unsubscribe', (se: SubEvent) => {
+    nc.on('unsubscribe', () => {
         count++;
     });
 
-    let sub = await nc.subscribe(subj, () => {}, {queue: 'A', max: 5});
+    await nc.subscribe(subj, () => {
+    }, {queue: 'A', max: 5});
     for (let i=0; i < 5; i++) {
         nc.publish(subj);
     }
@@ -360,7 +361,6 @@ test('flush can be a callback', async (t) => {
 
 test('unsubscribe after close', async (t) => {
     t.plan(1);
-    let lock = new Lock();
     let sc = t.context as SC;
     let nc = await connect(sc.server.nats);
     let sub = await nc.subscribe(createInbox(), () => {
@@ -450,7 +450,7 @@ test('unsubscribe unsubscribes', async (t) => {
     let nc = await connect({url: sc.server.nats, payload: Payload.STRING} as NatsConnectionOptions);
     let subj = createInbox();
 
-    let sub = await nc.subscribe(subj, (err, msg) => {
+    let sub = await nc.subscribe(subj, () => {
     });
     t.is(nc.numSubscriptions(), 1);
     sub.unsubscribe();
@@ -491,4 +491,24 @@ test('error if publish after close', async (t) => {
     await t.throws(() => {
         nc.publish("foo")
     }, {code: ErrorCode.CONN_CLOSED});
+});
+
+test('server info', async (t) => {
+    let lock = new Lock();
+    t.plan(4);
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+    nc.on('connect', (nc, url, info) => {
+        t.truthy(info);
+        //@ts-ignore
+        t.truthy(info.client_id > 0);
+        //@ts-ignore
+        t.truthy(info.max_payload > 0);
+        //@ts-ignore
+        t.truthy(info.proto > 0);
+        lock.unlock();
+    });
+
+    await lock.latch;
+    nc.close();
 });

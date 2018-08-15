@@ -52,6 +52,18 @@ export function defaultSub(): Sub {
     return {sid: 0, subject: "", received: 0} as Sub;
 }
 
+/** ServerInfo received from the server */
+export interface ServerInfo {
+    tls_required?: boolean;
+    tls_verify?: boolean;
+    connect_urls?: string[];
+    max_payload: number;
+    client_id: number;
+    proto: number;
+    server_id: string;
+    version: string;
+}
+
 /** Argument provided to `subscribe` and `unsubscribe` event handlers. */
 export interface SubEvent {
     /** subscription subject */
@@ -66,7 +78,7 @@ export interface SubEvent {
 export interface ServersChangedEvent {
     /** Server URLs learned via cluster gossip */
     added: string[];
-    /** Semoved server URLs (only added servers are removed). */
+    /** Removed server URLs (only added servers are removed). */
     deleted: string[];
 }
 
@@ -113,6 +125,36 @@ export enum Payload {
     JSON = "json",
     /** Specifies payloads are binary (Buffer) */
     BINARY = "binary"
+}
+
+/** Optional callback interface for 'connect' and 'reconnect' events */
+export interface ConnectReconnectCallback {
+    (connection: Client, serverURL: string, info: ServerInfo): void
+}
+
+/** Optional callback interface for 'disconnect' and 'reconnecting' events */
+export interface ReconnectingDisconnectCallback {
+    (serverURL: string): void
+}
+
+/** Optional callback interface for 'permissionError' events */
+export interface PermissionsErrorCallback {
+    (err: NatsError): void
+}
+
+/** Optional callback for 'serversChanged' events */
+export interface ServersChangedCallback {
+    (e: ServersChangedEvent): void;
+}
+
+/** Optional callback for 'subscribe' and 'unsubscribe' events */
+export interface SubscribeUnsubscribeCallback {
+    (e: SubEvent): void
+}
+
+/** Optional callback for 'yield'events */
+export interface YieldCallback {
+    (): void
 }
 
 /** Optional callback argument for [[Client.flush]] */
