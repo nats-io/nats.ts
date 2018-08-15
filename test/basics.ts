@@ -34,7 +34,7 @@ test.after.always((t) => {
 });
 
 test('fail connect', async (t) => {
-    await t.throws(connect);
+    await t.throwsAsync(connect);
 });
 
 test('connect with port', async (t) => {
@@ -64,7 +64,7 @@ test('sub subject is required', async (t) => {
     let sc = t.context as SC;
     let nc = await connect(sc.server.nats);
     //@ts-ignore
-    await t.throws(nc.subscribe(),
+    await t.throwsAsync(nc.subscribe(),
         {code: ErrorCode.BAD_SUBJECT});
 });
 
@@ -73,7 +73,7 @@ test('sub callback is required', async (t) => {
     let sc = t.context as SC;
     let nc = await connect(sc.server.nats);
     //@ts-ignore
-    await t.throws(nc.subscribe("foo"),
+    await t.throwsAsync(nc.subscribe("foo"),
         {code: ErrorCode.API_ERROR});
 });
 
@@ -83,7 +83,7 @@ test('subs require connection', async (t) => {
     let nc = await connect(sc.server.nats);
     nc.close();
     //@ts-ignore
-    await t.throws(nc.subscribe("foo", () => {
+    await t.throwsAsync(nc.subscribe("foo", () => {
         }),
         {code: ErrorCode.CONN_CLOSED});
 });
@@ -243,11 +243,12 @@ test('unsubscribe notifications only once', async (t) => {
 
     let subj = createInbox();
     let count = 0;
-    nc.on('unsubscribe', (se: SubEvent) => {
+    nc.on('unsubscribe', () => {
         count++;
     });
 
-    let sub = await nc.subscribe(subj, () => {}, {queue: 'A', max: 5});
+    await nc.subscribe(subj, () => {
+    }, {queue: 'A', max: 5});
     for (let i=0; i < 5; i++) {
         nc.publish(subj);
     }
@@ -260,7 +261,7 @@ test('request subject is required', async (t) => {
     let sc = t.context as SC;
     let nc = await connect(sc.server.nats);
     //@ts-ignore
-    await t.throws(nc.request(), {code: ErrorCode.BAD_SUBJECT});
+    await t.throwsAsync(nc.request(), {code: ErrorCode.BAD_SUBJECT});
 });
 
 test('requests require connection', async (t) => {
@@ -269,7 +270,7 @@ test('requests require connection', async (t) => {
     let nc = await connect(sc.server.nats);
     nc.close();
     //@ts-ignore
-    await t.throws(nc.request("foo"), {code: ErrorCode.CONN_CLOSED});
+    await t.throwsAsync(nc.request("foo"), {code: ErrorCode.CONN_CLOSED});
 });
 
 test('request reply', async (t) => {
@@ -360,7 +361,6 @@ test('flush can be a callback', async (t) => {
 
 test('unsubscribe after close', async (t) => {
     t.plan(1);
-    let lock = new Lock();
     let sc = t.context as SC;
     let nc = await connect(sc.server.nats);
     let sub = await nc.subscribe(createInbox(), () => {
@@ -450,7 +450,7 @@ test('unsubscribe unsubscribes', async (t) => {
     let nc = await connect({url: sc.server.nats, payload: Payload.STRING} as NatsConnectionOptions);
     let subj = createInbox();
 
-    let sub = await nc.subscribe(subj, (err, msg) => {
+    let sub = await nc.subscribe(subj, () => {
     });
     t.is(nc.numSubscriptions(), 1);
     sub.unsubscribe();
@@ -478,7 +478,8 @@ test('flush reject on close', async (t) => {
     let sc = t.context as SC;
     let nc = await connect(sc.server.nats);
     nc.close();
-    await t.throws(() => {
+    //@ts-ignore
+    await t.throwsAsync(() => {
         return nc.flush()
     }, {code: ErrorCode.CONN_CLOSED});
 });
@@ -491,4 +492,24 @@ test('error if publish after close', async (t) => {
     await t.throws(() => {
         nc.publish("foo")
     }, {code: ErrorCode.CONN_CLOSED});
+});
+
+test('server info', async (t) => {
+    let lock = new Lock();
+    t.plan(4);
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+    nc.on('connect', (nc, url, info) => {
+        t.truthy(info);
+        //@ts-ignore
+        t.truthy(info.client_id > 0);
+        //@ts-ignore
+        t.truthy(info.max_payload > 0);
+        //@ts-ignore
+        t.truthy(info.proto > 0);
+        lock.unlock();
+    });
+
+    await lock.latch;
+    nc.close();
 });

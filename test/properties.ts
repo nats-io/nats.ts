@@ -14,7 +14,7 @@
  *
  */
 
-import {test, ExecutionContext} from "ava";
+import test, {ExecutionContext} from "ava";
 import {connect, NatsConnectionOptions, Payload, VERSION} from "../src/nats";
 import {SC, Server, startServer, stopServer} from "./helpers/nats_server_control";
 import {Lock} from "./helpers/latch";

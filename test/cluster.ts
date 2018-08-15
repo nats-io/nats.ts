@@ -70,7 +70,7 @@ test('connects to first valid server', async (t) => {
 test('reject if no valid server', async (t) => {
     t.plan(1);
     let a = ['nats://localhost:7'];
-    await t.throws(() => {
+    await t.throwsAsync(() => {
         return connect({servers: a});
     }, {code: "ECONNREFUSED"});
 });

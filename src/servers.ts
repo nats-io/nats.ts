@@ -15,9 +15,8 @@
  */
 import url = require('url');
 import {DEFAULT_URI} from "./const";
-import {ServerInfo} from "./types";
 import {shuffle} from "./util";
-import {ServersChangedEvent} from "./nats";
+import {ServerInfo, ServersChangedEvent} from "./nats";
 
 /**
  * @hidden
@@ -131,8 +130,7 @@ export class Servers {
 
             info.connect_urls.forEach(server => {
                 let u = `nats://${server}`;
-                let s = new Server(u, true);
-                discovered[u] = s;
+                discovered[u] = new Server(u, true);
             });
 
             // remove implicit servers that are no longer reported

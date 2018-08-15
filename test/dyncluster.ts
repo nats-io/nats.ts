@@ -15,10 +15,9 @@
  */
 
 import {SC, Server, startServer, stopServer} from "./helpers/nats_server_control";
-import {test, ExecutionContext} from "ava";
+import test, {ExecutionContext} from "ava";
 import {Client, connect} from "../src/nats";
-import {Lock, wait} from "./helpers/latch";
-import * as NATS from "../src/nats";
+import {Lock} from "./helpers/latch";
 
 test.before(async (t) => {
     t.context = {servers: []};
