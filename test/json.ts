@@ -14,7 +14,7 @@
  *
  */
 
-import {test} from "ava";
+import test from "ava";
 import {connect, Payload} from "../src/nats";
 import {Lock} from "./helpers/latch";
 import {SC, startServer, stopServer} from "./helpers/nats_server_control";
@@ -71,7 +71,7 @@ test('reqrep should fail circular json', async (t) => {
     //@ts-ignore
     o.a = o;
     let nc = await connect({url: sc.server.nats, payload: Payload.JSON});
-    await t.throws(nc.request(next(), 1000, o),{code: ErrorCode.BAD_JSON});
+    await t.throwsAsync(nc.request(next(), 1000, o), {code: ErrorCode.BAD_JSON});
     nc.close();
 });
 

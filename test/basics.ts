@@ -34,7 +34,7 @@ test.after.always((t) => {
 });
 
 test('fail connect', async (t) => {
-    await t.throws(connect);
+    await t.throwsAsync(connect);
 });
 
 test('connect with port', async (t) => {
@@ -64,7 +64,7 @@ test('sub subject is required', async (t) => {
     let sc = t.context as SC;
     let nc = await connect(sc.server.nats);
     //@ts-ignore
-    await t.throws(nc.subscribe(),
+    await t.throwsAsync(nc.subscribe(),
         {code: ErrorCode.BAD_SUBJECT});
 });
 
@@ -73,7 +73,7 @@ test('sub callback is required', async (t) => {
     let sc = t.context as SC;
     let nc = await connect(sc.server.nats);
     //@ts-ignore
-    await t.throws(nc.subscribe("foo"),
+    await t.throwsAsync(nc.subscribe("foo"),
         {code: ErrorCode.API_ERROR});
 });
 
@@ -83,7 +83,7 @@ test('subs require connection', async (t) => {
     let nc = await connect(sc.server.nats);
     nc.close();
     //@ts-ignore
-    await t.throws(nc.subscribe("foo", () => {
+    await t.throwsAsync(nc.subscribe("foo", () => {
         }),
         {code: ErrorCode.CONN_CLOSED});
 });
@@ -261,7 +261,7 @@ test('request subject is required', async (t) => {
     let sc = t.context as SC;
     let nc = await connect(sc.server.nats);
     //@ts-ignore
-    await t.throws(nc.request(), {code: ErrorCode.BAD_SUBJECT});
+    await t.throwsAsync(nc.request(), {code: ErrorCode.BAD_SUBJECT});
 });
 
 test('requests require connection', async (t) => {
@@ -270,7 +270,7 @@ test('requests require connection', async (t) => {
     let nc = await connect(sc.server.nats);
     nc.close();
     //@ts-ignore
-    await t.throws(nc.request("foo"), {code: ErrorCode.CONN_CLOSED});
+    await t.throwsAsync(nc.request("foo"), {code: ErrorCode.CONN_CLOSED});
 });
 
 test('request reply', async (t) => {
@@ -478,7 +478,8 @@ test('flush reject on close', async (t) => {
     let sc = t.context as SC;
     let nc = await connect(sc.server.nats);
     nc.close();
-    await t.throws(() => {
+    //@ts-ignore
+    await t.throwsAsync(() => {
         return nc.flush()
     }, {code: ErrorCode.CONN_CLOSED});
 });

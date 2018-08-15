@@ -87,6 +87,6 @@ test('unsupported encoding', async (t) => {
     //@ts-ignore
     let opts = {url: sc.server.nats, encoding: "foobar"} as NatsConnectionOptions;
     let error = connect(opts);
-    await t.throws(error, {instanceOf: NatsError, code: 'INVALID_ENCODING'});
+    await t.throwsAsync(error, {instanceOf: NatsError, code: 'INVALID_ENCODING'});
 });
 
