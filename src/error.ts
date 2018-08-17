@@ -28,6 +28,7 @@ export enum ErrorCode {
     CONN_DRAINING = 'CONN_DRAINING',
     CONN_ERR = 'CONN_ERR',
     INVALID_ENCODING = 'INVALID_ENCODING',
+    NO_ECHO_NOT_SUPPORTED = "NO_ECHO_NOT_SUPPORTED",
     NON_SECURE_CONN_REQ = 'NON_SECURE_CONN_REQ',
     REQ_TIMEOUT = 'REQ_TIMEOUT',
     SECURE_CONN_REQ = 'SECURE_CONN_REQ',
@@ -59,6 +60,10 @@ export class Messages {
         this.messages[ErrorCode.BAD_SUBJECT] = 'Subject must be supplied';
         this.messages[ErrorCode.CLIENT_CERT_REQ] = 'Server requires a client certificate.';
         this.messages[ErrorCode.CONN_CLOSED] = 'Connection closed';
+        this.messages[ErrorCode.NO_ECHO_NOT_SUPPORTED] = 'No echo option is not supported by this server';
+        this.messages[ErrorCode.NON_SECURE_CONN_REQ] = 'Server does not support a secure connection.';
+        this.messages[ErrorCode.REQ_TIMEOUT] = 'Request timed out.';
+        this.messages[ErrorCode.SECURE_CONN_REQ] = 'Server requires a secure connection.';
         this.messages[ErrorCode.CONN_DRAINING] = 'Connection draining';
         this.messages[ErrorCode.NON_SECURE_CONN_REQ] = 'Server does not support a secure connection.';
         this.messages[ErrorCode.REQ_TIMEOUT] = 'Request timed out.';

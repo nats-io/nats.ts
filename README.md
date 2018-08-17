@@ -399,6 +399,7 @@ The following is the list of connection options and default values.
 | `maxPingOut`           | `2`                       | Max number of pings the client will allow unanswered before rasing a stale connection error
 | `maxReconnectAttempts` | `10`                      | Sets the maximun number of reconnect attempts. The value of `-1` specifies no limit
 | `name`                 |                           | Optional client name (useful for debugging a client on the server output `-DV`)
+| `noEcho`               | `false`                   | If set, the client's matching subscriptions won't receive messages published by the client. Requires server support 1.2.0+.
 | `noRandomize`          | `false`                   | If set, the order of user-specified servers is randomized.
 | `pass`                 |                           | Sets the password for a connection
 | `payload`              | `Payload.STRING`          | Sets the payload type [`Payload.STRING`, `Payload.BINARY`, or `Payload.JSON`].

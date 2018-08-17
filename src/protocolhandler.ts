@@ -644,7 +644,9 @@ export class ProtocolHandler extends EventEmitter {
                         if (this.checkTLSMismatch()) {
                             return;
                         }
-
+                        if(this.checkNoEchoMismatch()) {
+                            return;
+                        }
                         // Always try to read the connect_urls from info
                         let change = this.servers.processServerUpdate(this.info);
                         if (change.deleted.length > 0 || change.added.length > 0) {
@@ -741,6 +743,19 @@ export class ProtocolHandler extends EventEmitter {
         }
         if (this.info.tls_verify && !cert) {
             this.client.emit('error', NatsError.errorForCode(ErrorCode.CLIENT_CERT_REQ));
+            this.closeStream();
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Check no echo
+     * @api private
+     */
+    private checkNoEchoMismatch(): boolean {
+        if ((this.info.proto === undefined || this.info.proto < 1) && this.options.noEcho) {
+            this.client.emit('error', NatsError.errorForCode(ErrorCode.NO_ECHO_NOT_SUPPORTED));
             this.closeStream();
             return true;
         }
@@ -1033,6 +1048,7 @@ export class Connect {
     pass?: string;
     auth_token?: string;
     name?: string;
+    echo?: boolean;
 
     constructor(opts?: NatsConnectionOptions) {
         opts = opts || {} as NatsConnectionOptions;
@@ -1052,6 +1068,9 @@ export class Connect {
 
         if (opts.pedantic !== undefined) {
             this.pedantic = opts.pedantic;
+        }
+        if (opts.noEcho) {
+            this.echo = false;
         }
     }
 }
