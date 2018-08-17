@@ -923,6 +923,9 @@ img { max-width: 100%; }
 					<a href="_nats_.subscription.html#canceltimeout" class="tsd-kind-icon">cancel<wbr>Timeout</a>
 				</li>
 				<li class=" tsd-kind-method tsd-parent-kind-class">
+					<a href="_nats_.subscription.html#drain" class="tsd-kind-icon">drain</a>
+				</li>
+				<li class=" tsd-kind-method tsd-parent-kind-class">
 					<a href="_nats_.subscription.html#getmax" class="tsd-kind-icon">get<wbr>Max</a>
 				</li>
 				<li class=" tsd-kind-method tsd-parent-kind-class">
@@ -933,6 +936,9 @@ img { max-width: 100%; }
 				</li>
 				<li class=" tsd-kind-method tsd-parent-kind-class">
 					<a href="_nats_.subscription.html#iscancelled" class="tsd-kind-icon">is<wbr>Cancelled</a>
+				</li>
+				<li class=" tsd-kind-method tsd-parent-kind-class">
+					<a href="_nats_.subscription.html#isdraining" class="tsd-kind-icon">is<wbr>Draining</a>
 				</li>
 				<li class=" tsd-kind-method tsd-parent-kind-class">
 					<a href="_nats_.subscription.html#settimeout" class="tsd-kind-icon">set<wbr>Timeout</a>
@@ -1023,10 +1029,12 @@ img { max-width: 100%; }
 						<h3>Methods</h3>
 						<ul class="tsd-index-list">
 							<li class="tsd-kind-method tsd-parent-kind-class"><a href="_nats_.subscription.html#canceltimeout" class="tsd-kind-icon">cancel<wbr>Timeout</a></li>
+							<li class="tsd-kind-method tsd-parent-kind-class"><a href="_nats_.subscription.html#drain" class="tsd-kind-icon">drain</a></li>
 							<li class="tsd-kind-method tsd-parent-kind-class"><a href="_nats_.subscription.html#getmax" class="tsd-kind-icon">get<wbr>Max</a></li>
 							<li class="tsd-kind-method tsd-parent-kind-class"><a href="_nats_.subscription.html#getreceived" class="tsd-kind-icon">get<wbr>Received</a></li>
 							<li class="tsd-kind-method tsd-parent-kind-class"><a href="_nats_.subscription.html#hastimeout" class="tsd-kind-icon">has<wbr>Timeout</a></li>
 							<li class="tsd-kind-method tsd-parent-kind-class"><a href="_nats_.subscription.html#iscancelled" class="tsd-kind-icon">is<wbr>Cancelled</a></li>
+							<li class="tsd-kind-method tsd-parent-kind-class"><a href="_nats_.subscription.html#isdraining" class="tsd-kind-icon">is<wbr>Draining</a></li>
 							<li class="tsd-kind-method tsd-parent-kind-class"><a href="_nats_.subscription.html#settimeout" class="tsd-kind-icon">set<wbr>Timeout</a></li>
 							<li class="tsd-kind-method tsd-parent-kind-class"><a href="_nats_.subscription.html#unsubscribe" class="tsd-kind-icon">unsubscribe</a></li>
 						</ul>
@@ -1042,7 +1050,7 @@ img { max-width: 100%; }
 				<div class="tsd-signature tsd-kind-icon">sid<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span></div>
 				<aside class="tsd-sources">
 					<ul>
-						<li>Defined in nats.ts:496</li>
+						<li>Defined in nats.ts:509</li>
 					</ul>
 				</aside>
 			</section>
@@ -1059,7 +1067,7 @@ img { max-width: 100%; }
 					<li class="tsd-description">
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in nats.ts:537</li>
+								<li>Defined in nats.ts:563</li>
 							</ul>
 						</aside>
 						<div class="tsd-comment tsd-typography">
@@ -1068,6 +1076,36 @@ img { max-width: 100%; }
 							</div>
 						</div>
 						<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
+					</li>
+				</ul>
+			</section>
+			<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-class">
+				<a name="drain" class="tsd-anchor"></a>
+				<h3>drain</h3>
+				<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class">
+					<li class="tsd-signature tsd-kind-icon">drain<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">&gt;</span></li>
+				</ul>
+				<ul class="tsd-descriptions">
+					<li class="tsd-description">
+						<aside class="tsd-sources">
+							<ul>
+								<li>Defined in nats.ts:548</li>
+							</ul>
+						</aside>
+						<div class="tsd-comment tsd-typography">
+							<div class="lead">
+								<p>Draining a subscription is similar to unsubscribe but inbound pending messages are
+									not discarded. When the last in-flight message is processed, the subscription handler
+								is removed.</p>
+							</div>
+							<dl class="tsd-comment-tags">
+								<dt>see</dt>
+								<dd><p><a href="_nats_.subscription.html#unsubscribe">unsubscribe</a></p>
+								</dd>
+							</dl>
+						</div>
+						<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">&gt;</span></h4>
+						<p>a Promise that resolves when the draining a subscription completes</p>
 					</li>
 				</ul>
 			</section>
@@ -1081,7 +1119,7 @@ img { max-width: 100%; }
 					<li class="tsd-description">
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in nats.ts:586</li>
+								<li>Defined in nats.ts:612</li>
 							</ul>
 						</aside>
 						<div class="tsd-comment tsd-typography">
@@ -1105,7 +1143,7 @@ img { max-width: 100%; }
 					<li class="tsd-description">
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in nats.ts:573</li>
+								<li>Defined in nats.ts:599</li>
 							</ul>
 						</aside>
 						<div class="tsd-comment tsd-typography">
@@ -1127,7 +1165,7 @@ img { max-width: 100%; }
 					<li class="tsd-description">
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in nats.ts:529</li>
+								<li>Defined in nats.ts:555</li>
 							</ul>
 						</aside>
 						<div class="tsd-comment tsd-typography">
@@ -1149,13 +1187,38 @@ img { max-width: 100%; }
 					<li class="tsd-description">
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in nats.ts:600</li>
+								<li>Defined in nats.ts:626</li>
 							</ul>
 						</aside>
 						<div class="tsd-comment tsd-typography">
 						</div>
 						<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">boolean</span></h4>
 						<p>true if the subscription is not found.</p>
+					</li>
+				</ul>
+			</section>
+			<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-class">
+				<a name="isdraining" class="tsd-anchor"></a>
+				<h3>is<wbr>Draining</h3>
+				<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class">
+					<li class="tsd-signature tsd-kind-icon">is<wbr>Draining<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">boolean</span></li>
+				</ul>
+				<ul class="tsd-descriptions">
+					<li class="tsd-description">
+						<aside class="tsd-sources">
+							<ul>
+								<li>Defined in nats.ts:634</li>
+							</ul>
+						</aside>
+						<div class="tsd-comment tsd-typography">
+							<dl class="tsd-comment-tags">
+								<dt>see</dt>
+								<dd><p><a href="_nats_.subscription.html#drain">drain</a></p>
+								</dd>
+							</dl>
+						</div>
+						<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">boolean</span></h4>
+						<p>true if the subscription is draining.</p>
 					</li>
 				</ul>
 			</section>
@@ -1169,7 +1232,7 @@ img { max-width: 100%; }
 					<li class="tsd-description">
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in nats.ts:555</li>
+								<li>Defined in nats.ts:581</li>
 							</ul>
 						</aside>
 						<div class="tsd-comment tsd-typography">
@@ -1205,21 +1268,25 @@ img { max-width: 100%; }
 					<li class="tsd-description">
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in nats.ts:522</li>
+								<li>Defined in nats.ts:537</li>
 							</ul>
 						</aside>
 						<div class="tsd-comment tsd-typography">
 							<div class="lead">
 								<p>Cancels the subscription after the specified number of messages has been received.
-								If max is not specified, the subscription cancels immediately.</p>
+									If max is not specified, the subscription cancels immediately. A cancelled subscription
+								will not process messages that are inbound but not yet handled.</p>
 							</div>
+							<dl class="tsd-comment-tags">
+								<dt>see</dt>
+								<dd><p><a href="_nats_.subscription.html#drain">drain</a></p>
+								</dd>
+							</dl>
 						</div>
 						<h4 class="tsd-parameters-title">Parameters</h4>
 						<ul class="tsd-parameters">
 							<li>
 								<h5><span class="tsd-flag ts-flagOptional">Optional</span> max: <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">number</span></h5>
-								<div class="tsd-comment tsd-typography">
-								</div>
 							</li>
 						</ul>
 						<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>

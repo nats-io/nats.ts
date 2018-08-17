@@ -4,7 +4,7 @@ module.exports = {
         './src/error.ts',
         './src/const.ts'
     ],
-    readme: '',
+    readme: 'none',
     excludePrivate: true,
     excludeProtected: true,
     excludeExternals: true,

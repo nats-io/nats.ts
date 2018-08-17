@@ -938,6 +938,9 @@ img { max-width: 100%; }
 					<a href="_error_.errorcode.html#conn_closed" class="tsd-kind-icon">CONN_<wbr>CLOSED</a>
 				</li>
 				<li class=" tsd-kind-enum-member tsd-parent-kind-enum">
+					<a href="_error_.errorcode.html#conn_draining" class="tsd-kind-icon">CONN_<wbr>DRAINING</a>
+				</li>
+				<li class=" tsd-kind-enum-member tsd-parent-kind-enum">
 					<a href="_error_.errorcode.html#conn_err" class="tsd-kind-icon">CONN_<wbr>ERR</a>
 				</li>
 				<li class=" tsd-kind-enum-member tsd-parent-kind-enum">
@@ -950,6 +953,9 @@ img { max-width: 100%; }
 					<a href="_error_.errorcode.html#non_secure_conn_req" class="tsd-kind-icon">NON_<wbr>SECURE_<wbr>CONN_<wbr>REQ</a>
 				</li>
 				<li class=" tsd-kind-enum-member tsd-parent-kind-enum">
+					<a href="_error_.errorcode.html#no_echo_not_supported" class="tsd-kind-icon">NO_<wbr>ECHO_<wbr>NOT_<wbr>SUPPORTED</a>
+				</li>
+				<li class=" tsd-kind-enum-member tsd-parent-kind-enum">
 					<a href="_error_.errorcode.html#permissions_violation" class="tsd-kind-icon">PERMISSIONS_<wbr>VIOLATION</a>
 				</li>
 				<li class=" tsd-kind-enum-member tsd-parent-kind-enum">
@@ -957,6 +963,12 @@ img { max-width: 100%; }
 				</li>
 				<li class=" tsd-kind-enum-member tsd-parent-kind-enum">
 					<a href="_error_.errorcode.html#secure_conn_req" class="tsd-kind-icon">SECURE_<wbr>CONN_<wbr>REQ</a>
+				</li>
+				<li class=" tsd-kind-enum-member tsd-parent-kind-enum">
+					<a href="_error_.errorcode.html#sub_closed" class="tsd-kind-icon">SUB_<wbr>CLOSED</a>
+				</li>
+				<li class=" tsd-kind-enum-member tsd-parent-kind-enum">
+					<a href="_error_.errorcode.html#sub_draining" class="tsd-kind-icon">SUB_<wbr>DRAINING</a>
 				</li>
 				<li class=" tsd-kind-enum-member tsd-parent-kind-enum">
 					<a href="_error_.errorcode.html#sub_timeout" class="tsd-kind-icon">SUB_<wbr>TIMEOUT</a>
@@ -998,13 +1010,17 @@ img { max-width: 100%; }
 							<li class="tsd-kind-enum-member tsd-parent-kind-enum"><a href="_error_.errorcode.html#bad_subject" class="tsd-kind-icon">BAD_<wbr>SUBJECT</a></li>
 							<li class="tsd-kind-enum-member tsd-parent-kind-enum"><a href="_error_.errorcode.html#client_cert_req" class="tsd-kind-icon">CLIENT_<wbr>CERT_<wbr>REQ</a></li>
 							<li class="tsd-kind-enum-member tsd-parent-kind-enum"><a href="_error_.errorcode.html#conn_closed" class="tsd-kind-icon">CONN_<wbr>CLOSED</a></li>
+							<li class="tsd-kind-enum-member tsd-parent-kind-enum"><a href="_error_.errorcode.html#conn_draining" class="tsd-kind-icon">CONN_<wbr>DRAINING</a></li>
 							<li class="tsd-kind-enum-member tsd-parent-kind-enum"><a href="_error_.errorcode.html#conn_err" class="tsd-kind-icon">CONN_<wbr>ERR</a></li>
 							<li class="tsd-kind-enum-member tsd-parent-kind-enum"><a href="_error_.errorcode.html#invalid_encoding" class="tsd-kind-icon">INVALID_<wbr>ENCODING</a></li>
 							<li class="tsd-kind-enum-member tsd-parent-kind-enum"><a href="_error_.errorcode.html#nats_protocol_err" class="tsd-kind-icon">NATS_<wbr>PROTOCOL_<wbr>ERR</a></li>
 							<li class="tsd-kind-enum-member tsd-parent-kind-enum"><a href="_error_.errorcode.html#non_secure_conn_req" class="tsd-kind-icon">NON_<wbr>SECURE_<wbr>CONN_<wbr>REQ</a></li>
+							<li class="tsd-kind-enum-member tsd-parent-kind-enum"><a href="_error_.errorcode.html#no_echo_not_supported" class="tsd-kind-icon">NO_<wbr>ECHO_<wbr>NOT_<wbr>SUPPORTED</a></li>
 							<li class="tsd-kind-enum-member tsd-parent-kind-enum"><a href="_error_.errorcode.html#permissions_violation" class="tsd-kind-icon">PERMISSIONS_<wbr>VIOLATION</a></li>
 							<li class="tsd-kind-enum-member tsd-parent-kind-enum"><a href="_error_.errorcode.html#req_timeout" class="tsd-kind-icon">REQ_<wbr>TIMEOUT</a></li>
 							<li class="tsd-kind-enum-member tsd-parent-kind-enum"><a href="_error_.errorcode.html#secure_conn_req" class="tsd-kind-icon">SECURE_<wbr>CONN_<wbr>REQ</a></li>
+							<li class="tsd-kind-enum-member tsd-parent-kind-enum"><a href="_error_.errorcode.html#sub_closed" class="tsd-kind-icon">SUB_<wbr>CLOSED</a></li>
+							<li class="tsd-kind-enum-member tsd-parent-kind-enum"><a href="_error_.errorcode.html#sub_draining" class="tsd-kind-icon">SUB_<wbr>DRAINING</a></li>
 							<li class="tsd-kind-enum-member tsd-parent-kind-enum"><a href="_error_.errorcode.html#sub_timeout" class="tsd-kind-icon">SUB_<wbr>TIMEOUT</a></li>
 						</ul>
 					</section>
@@ -1029,7 +1045,7 @@ img { max-width: 100%; }
 				<div class="tsd-signature tsd-kind-icon">AUTHORIZATION_<wbr>VIOLATION<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol"> =&nbsp;&quot;AUTHORIZATION_VIOLATION&quot;</span></div>
 				<aside class="tsd-sources">
 					<ul>
-						<li>Defined in error.ts:36</li>
+						<li>Defined in error.ts:40</li>
 					</ul>
 				</aside>
 			</section>
@@ -1104,12 +1120,22 @@ img { max-width: 100%; }
 				</aside>
 			</section>
 			<section class="tsd-panel tsd-member tsd-kind-enum-member tsd-parent-kind-enum">
+				<a name="conn_draining" class="tsd-anchor"></a>
+				<h3>CONN_<wbr>DRAINING</h3>
+				<div class="tsd-signature tsd-kind-icon">CONN_<wbr>DRAINING<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol"> =&nbsp;&quot;CONN_DRAINING&quot;</span></div>
+				<aside class="tsd-sources">
+					<ul>
+						<li>Defined in error.ts:28</li>
+					</ul>
+				</aside>
+			</section>
+			<section class="tsd-panel tsd-member tsd-kind-enum-member tsd-parent-kind-enum">
 				<a name="conn_err" class="tsd-anchor"></a>
 				<h3>CONN_<wbr>ERR</h3>
 				<div class="tsd-signature tsd-kind-icon">CONN_<wbr>ERR<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol"> =&nbsp;&quot;CONN_ERR&quot;</span></div>
 				<aside class="tsd-sources">
 					<ul>
-						<li>Defined in error.ts:28</li>
+						<li>Defined in error.ts:29</li>
 					</ul>
 				</aside>
 			</section>
@@ -1119,7 +1145,7 @@ img { max-width: 100%; }
 				<div class="tsd-signature tsd-kind-icon">INVALID_<wbr>ENCODING<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol"> =&nbsp;&quot;INVALID_ENCODING&quot;</span></div>
 				<aside class="tsd-sources">
 					<ul>
-						<li>Defined in error.ts:29</li>
+						<li>Defined in error.ts:30</li>
 					</ul>
 				</aside>
 			</section>
@@ -1129,7 +1155,7 @@ img { max-width: 100%; }
 				<div class="tsd-signature tsd-kind-icon">NATS_<wbr>PROTOCOL_<wbr>ERR<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol"> =&nbsp;&quot;NATS_PROTOCOL_ERR&quot;</span></div>
 				<aside class="tsd-sources">
 					<ul>
-						<li>Defined in error.ts:37</li>
+						<li>Defined in error.ts:41</li>
 					</ul>
 				</aside>
 			</section>
@@ -1139,7 +1165,17 @@ img { max-width: 100%; }
 				<div class="tsd-signature tsd-kind-icon">NON_<wbr>SECURE_<wbr>CONN_<wbr>REQ<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol"> =&nbsp;&quot;NON_SECURE_CONN_REQ&quot;</span></div>
 				<aside class="tsd-sources">
 					<ul>
-						<li>Defined in error.ts:30</li>
+						<li>Defined in error.ts:32</li>
+					</ul>
+				</aside>
+			</section>
+			<section class="tsd-panel tsd-member tsd-kind-enum-member tsd-parent-kind-enum">
+				<a name="no_echo_not_supported" class="tsd-anchor"></a>
+				<h3>NO_<wbr>ECHO_<wbr>NOT_<wbr>SUPPORTED</h3>
+				<div class="tsd-signature tsd-kind-icon">NO_<wbr>ECHO_<wbr>NOT_<wbr>SUPPORTED<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol"> =&nbsp;&quot;NO_ECHO_NOT_SUPPORTED&quot;</span></div>
+				<aside class="tsd-sources">
+					<ul>
+						<li>Defined in error.ts:31</li>
 					</ul>
 				</aside>
 			</section>
@@ -1149,7 +1185,7 @@ img { max-width: 100%; }
 				<div class="tsd-signature tsd-kind-icon">PERMISSIONS_<wbr>VIOLATION<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol"> =&nbsp;&quot;PERMISSIONS_VIOLATION&quot;</span></div>
 				<aside class="tsd-sources">
 					<ul>
-						<li>Defined in error.ts:38</li>
+						<li>Defined in error.ts:42</li>
 					</ul>
 				</aside>
 			</section>
@@ -1159,7 +1195,7 @@ img { max-width: 100%; }
 				<div class="tsd-signature tsd-kind-icon">REQ_<wbr>TIMEOUT<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol"> =&nbsp;&quot;REQ_TIMEOUT&quot;</span></div>
 				<aside class="tsd-sources">
 					<ul>
-						<li>Defined in error.ts:31</li>
+						<li>Defined in error.ts:33</li>
 					</ul>
 				</aside>
 			</section>
@@ -1169,7 +1205,27 @@ img { max-width: 100%; }
 				<div class="tsd-signature tsd-kind-icon">SECURE_<wbr>CONN_<wbr>REQ<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol"> =&nbsp;&quot;SECURE_CONN_REQ&quot;</span></div>
 				<aside class="tsd-sources">
 					<ul>
-						<li>Defined in error.ts:33</li>
+						<li>Defined in error.ts:34</li>
+					</ul>
+				</aside>
+			</section>
+			<section class="tsd-panel tsd-member tsd-kind-enum-member tsd-parent-kind-enum">
+				<a name="sub_closed" class="tsd-anchor"></a>
+				<h3>SUB_<wbr>CLOSED</h3>
+				<div class="tsd-signature tsd-kind-icon">SUB_<wbr>CLOSED<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol"> =&nbsp;&quot;SUB_CLOSED&quot;</span></div>
+				<aside class="tsd-sources">
+					<ul>
+						<li>Defined in error.ts:35</li>
+					</ul>
+				</aside>
+			</section>
+			<section class="tsd-panel tsd-member tsd-kind-enum-member tsd-parent-kind-enum">
+				<a name="sub_draining" class="tsd-anchor"></a>
+				<h3>SUB_<wbr>DRAINING</h3>
+				<div class="tsd-signature tsd-kind-icon">SUB_<wbr>DRAINING<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol"> =&nbsp;&quot;SUB_DRAINING&quot;</span></div>
+				<aside class="tsd-sources">
+					<ul>
+						<li>Defined in error.ts:36</li>
 					</ul>
 				</aside>
 			</section>
@@ -1179,7 +1235,7 @@ img { max-width: 100%; }
 				<div class="tsd-signature tsd-kind-icon">SUB_<wbr>TIMEOUT<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol"> =&nbsp;&quot;SUB_TIMEOUT&quot;</span></div>
 				<aside class="tsd-sources">
 					<ul>
-						<li>Defined in error.ts:32</li>
+						<li>Defined in error.ts:37</li>
 					</ul>
 				</aside>
 			</section>

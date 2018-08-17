@@ -32,7 +32,7 @@ import {ConnectionOptions} from "tls";
 import {next} from 'nuid';
 
 /** Version of the ts-nats library */
-export const VERSION = "1.0.2";
+export const VERSION = "1.0.3";
 
 /**
  * @hidden
@@ -414,6 +414,7 @@ export class Client extends events.EventEmitter {
      * subscriptions. As soon as all messages for the draining subscriptions are processed, it is also impossible
      * to publish new messages.
      * A drained connection should be closed as soon as the returned Promise resolves.
+     * @see [[Subscription.drain]]
      */
     drain(): Promise<any> {
         return this.protocolHandler.drain();
@@ -531,7 +532,7 @@ export class Subscription {
      * If max is not specified, the subscription cancels immediately. A cancelled subscription
      * will not process messages that are inbound but not yet handled.
      * @param max
-     * @see Subscription#drain()
+     * @see [[drain]]
      */
     unsubscribe(max?: number): void {
         this.protocol.unsubscribe(this.sid, max);
@@ -542,7 +543,7 @@ export class Subscription {
      * not discarded. When the last in-flight message is processed, the subscription handler
      * is removed.
      * @return a Promise that resolves when the draining a subscription completes
-     * @see Subscription#unsubscribe()
+     * @see [[unsubscribe]]
      */
     drain(): Promise<any> {
         return this.protocol.drainSubscription(this.sid);
@@ -628,7 +629,7 @@ export class Subscription {
 
     /**
      * @return true if the subscription is draining.
-     * @see Subscription#drain()
+     * @see [[drain]]
      */
     isDraining(): boolean {
         let sub = this.protocol.subscriptions.get(this.sid);
