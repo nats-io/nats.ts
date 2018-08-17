@@ -944,6 +944,9 @@ img { max-width: 100%; }
 					<a href="_nats_.natsconnectionoptions.html#name" class="tsd-kind-icon">name</a>
 				</li>
 				<li class=" tsd-kind-property tsd-parent-kind-interface">
+					<a href="_nats_.natsconnectionoptions.html#noecho" class="tsd-kind-icon">no<wbr>Echo</a>
+				</li>
+				<li class=" tsd-kind-property tsd-parent-kind-interface">
 					<a href="_nats_.natsconnectionoptions.html#norandomize" class="tsd-kind-icon">no<wbr>Randomize</a>
 				</li>
 				<li class=" tsd-kind-property tsd-parent-kind-interface">
@@ -1043,6 +1046,7 @@ img { max-width: 100%; }
 							<li class="tsd-kind-property tsd-parent-kind-interface"><a href="_nats_.natsconnectionoptions.html#maxpingout" class="tsd-kind-icon">max<wbr>Ping<wbr>Out</a></li>
 							<li class="tsd-kind-property tsd-parent-kind-interface"><a href="_nats_.natsconnectionoptions.html#maxreconnectattempts" class="tsd-kind-icon">max<wbr>Reconnect<wbr>Attempts</a></li>
 							<li class="tsd-kind-property tsd-parent-kind-interface"><a href="_nats_.natsconnectionoptions.html#name" class="tsd-kind-icon">name</a></li>
+							<li class="tsd-kind-property tsd-parent-kind-interface"><a href="_nats_.natsconnectionoptions.html#noecho" class="tsd-kind-icon">no<wbr>Echo</a></li>
 							<li class="tsd-kind-property tsd-parent-kind-interface"><a href="_nats_.natsconnectionoptions.html#norandomize" class="tsd-kind-icon">no<wbr>Randomize</a></li>
 							<li class="tsd-kind-property tsd-parent-kind-interface"><a href="_nats_.natsconnectionoptions.html#pass" class="tsd-kind-icon">pass</a></li>
 							<li class="tsd-kind-property tsd-parent-kind-interface"><a href="_nats_.natsconnectionoptions.html#payload" class="tsd-kind-icon">payload</a></li>
@@ -1070,7 +1074,7 @@ img { max-width: 100%; }
 				<div class="tsd-signature tsd-kind-icon">encoding<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">BufferEncoding</span></div>
 				<aside class="tsd-sources">
 					<ul>
-						<li>Defined in nats.ts:186</li>
+						<li>Defined in nats.ts:191</li>
 					</ul>
 				</aside>
 				<div class="tsd-comment tsd-typography">
@@ -1085,7 +1089,7 @@ img { max-width: 100%; }
 				<div class="tsd-signature tsd-kind-icon">max<wbr>Ping<wbr>Out<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">number</span></div>
 				<aside class="tsd-sources">
 					<ul>
-						<li>Defined in nats.ts:188</li>
+						<li>Defined in nats.ts:193</li>
 					</ul>
 				</aside>
 				<div class="tsd-comment tsd-typography">
@@ -1100,7 +1104,7 @@ img { max-width: 100%; }
 				<div class="tsd-signature tsd-kind-icon">max<wbr>Reconnect<wbr>Attempts<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">number</span></div>
 				<aside class="tsd-sources">
 					<ul>
-						<li>Defined in nats.ts:190</li>
+						<li>Defined in nats.ts:195</li>
 					</ul>
 				</aside>
 				<div class="tsd-comment tsd-typography">
@@ -1115,7 +1119,7 @@ img { max-width: 100%; }
 				<div class="tsd-signature tsd-kind-icon">name<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">string</span></div>
 				<aside class="tsd-sources">
 					<ul>
-						<li>Defined in nats.ts:192</li>
+						<li>Defined in nats.ts:197</li>
 					</ul>
 				</aside>
 				<div class="tsd-comment tsd-typography">
@@ -1125,12 +1129,28 @@ img { max-width: 100%; }
 				</div>
 			</section>
 			<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+				<a name="noecho" class="tsd-anchor"></a>
+				<h3><span class="tsd-flag ts-flagOptional">Optional</span> no<wbr>Echo</h3>
+				<div class="tsd-signature tsd-kind-icon">no<wbr>Echo<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">true</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">false</span></div>
+				<aside class="tsd-sources">
+					<ul>
+						<li>Defined in nats.ts:189</li>
+					</ul>
+				</aside>
+				<div class="tsd-comment tsd-typography">
+					<div class="lead">
+						<p>Requires server support 1.2.0+. When set to <code>true</code>, the server will not forward messages published by the client
+						to the client&#39;s subscriptions. By default value is ignored unless it is set to <code>true</code> explicitly</p>
+					</div>
+				</div>
+			</section>
+			<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
 				<a name="norandomize" class="tsd-anchor"></a>
 				<h3><span class="tsd-flag ts-flagOptional">Optional</span> no<wbr>Randomize</h3>
 				<div class="tsd-signature tsd-kind-icon">no<wbr>Randomize<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">true</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">false</span></div>
 				<aside class="tsd-sources">
 					<ul>
-						<li>Defined in nats.ts:194</li>
+						<li>Defined in nats.ts:199</li>
 					</ul>
 				</aside>
 				<div class="tsd-comment tsd-typography">
@@ -1145,7 +1165,7 @@ img { max-width: 100%; }
 				<div class="tsd-signature tsd-kind-icon">pass<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">string</span></div>
 				<aside class="tsd-sources">
 					<ul>
-						<li>Defined in nats.ts:196</li>
+						<li>Defined in nats.ts:201</li>
 					</ul>
 				</aside>
 				<div class="tsd-comment tsd-typography">
@@ -1160,7 +1180,7 @@ img { max-width: 100%; }
 				<div class="tsd-signature tsd-kind-icon">payload<span class="tsd-signature-symbol">:</span> <a href="../enums/_nats_.payload.html" class="tsd-signature-type">Payload</a></div>
 				<aside class="tsd-sources">
 					<ul>
-						<li>Defined in nats.ts:198</li>
+						<li>Defined in nats.ts:203</li>
 					</ul>
 				</aside>
 				<div class="tsd-comment tsd-typography">
@@ -1175,7 +1195,7 @@ img { max-width: 100%; }
 				<div class="tsd-signature tsd-kind-icon">ping<wbr>Interval<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">number</span></div>
 				<aside class="tsd-sources">
 					<ul>
-						<li>Defined in nats.ts:202</li>
+						<li>Defined in nats.ts:207</li>
 					</ul>
 				</aside>
 				<div class="tsd-comment tsd-typography">
@@ -1190,7 +1210,7 @@ img { max-width: 100%; }
 				<div class="tsd-signature tsd-kind-icon">port<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">number</span></div>
 				<aside class="tsd-sources">
 					<ul>
-						<li>Defined in nats.ts:204</li>
+						<li>Defined in nats.ts:209</li>
 					</ul>
 				</aside>
 				<div class="tsd-comment tsd-typography">
@@ -1205,7 +1225,7 @@ img { max-width: 100%; }
 				<div class="tsd-signature tsd-kind-icon">reconnect<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">true</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">false</span></div>
 				<aside class="tsd-sources">
 					<ul>
-						<li>Defined in nats.ts:206</li>
+						<li>Defined in nats.ts:211</li>
 					</ul>
 				</aside>
 				<div class="tsd-comment tsd-typography">
@@ -1220,7 +1240,7 @@ img { max-width: 100%; }
 				<div class="tsd-signature tsd-kind-icon">reconnect<wbr>Time<wbr>Wait<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">number</span></div>
 				<aside class="tsd-sources">
 					<ul>
-						<li>Defined in nats.ts:208</li>
+						<li>Defined in nats.ts:213</li>
 					</ul>
 				</aside>
 				<div class="tsd-comment tsd-typography">
@@ -1235,7 +1255,7 @@ img { max-width: 100%; }
 				<div class="tsd-signature tsd-kind-icon">servers<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Array</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">&gt;</span></div>
 				<aside class="tsd-sources">
 					<ul>
-						<li>Defined in nats.ts:210</li>
+						<li>Defined in nats.ts:215</li>
 					</ul>
 				</aside>
 				<div class="tsd-comment tsd-typography">
@@ -1250,7 +1270,7 @@ img { max-width: 100%; }
 				<div class="tsd-signature tsd-kind-icon">tls<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">TlsOptions</span></div>
 				<aside class="tsd-sources">
 					<ul>
-						<li>Defined in nats.ts:212</li>
+						<li>Defined in nats.ts:217</li>
 					</ul>
 				</aside>
 				<div class="tsd-comment tsd-typography">
@@ -1265,7 +1285,7 @@ img { max-width: 100%; }
 				<div class="tsd-signature tsd-kind-icon">token<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">string</span></div>
 				<aside class="tsd-sources">
 					<ul>
-						<li>Defined in nats.ts:214</li>
+						<li>Defined in nats.ts:219</li>
 					</ul>
 				</aside>
 				<div class="tsd-comment tsd-typography">
@@ -1280,7 +1300,7 @@ img { max-width: 100%; }
 				<div class="tsd-signature tsd-kind-icon">url<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">string</span></div>
 				<aside class="tsd-sources">
 					<ul>
-						<li>Defined in nats.ts:216</li>
+						<li>Defined in nats.ts:221</li>
 					</ul>
 				</aside>
 				<div class="tsd-comment tsd-typography">
@@ -1295,7 +1315,7 @@ img { max-width: 100%; }
 				<div class="tsd-signature tsd-kind-icon">user<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">string</span></div>
 				<aside class="tsd-sources">
 					<ul>
-						<li>Defined in nats.ts:218</li>
+						<li>Defined in nats.ts:223</li>
 					</ul>
 				</aside>
 				<div class="tsd-comment tsd-typography">
@@ -1310,7 +1330,7 @@ img { max-width: 100%; }
 				<div class="tsd-signature tsd-kind-icon">wait<wbr>OnFirst<wbr>Connect<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">true</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">false</span></div>
 				<aside class="tsd-sources">
 					<ul>
-						<li>Defined in nats.ts:222</li>
+						<li>Defined in nats.ts:227</li>
 					</ul>
 				</aside>
 				<div class="tsd-comment tsd-typography">
@@ -1325,7 +1345,7 @@ img { max-width: 100%; }
 				<div class="tsd-signature tsd-kind-icon">yield<wbr>Time<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">number</span></div>
 				<aside class="tsd-sources">
 					<ul>
-						<li>Defined in nats.ts:224</li>
+						<li>Defined in nats.ts:229</li>
 					</ul>
 				</aside>
 				<div class="tsd-comment tsd-typography">

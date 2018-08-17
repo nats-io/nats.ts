@@ -925,6 +925,9 @@ img { max-width: 100%; }
 				<li class=" tsd-kind-method tsd-parent-kind-class">
 					<a href="_nats_.client.html#close" class="tsd-kind-icon">close</a>
 				</li>
+				<li class=" tsd-kind-method tsd-parent-kind-class">
+					<a href="_nats_.client.html#drain" class="tsd-kind-icon">drain</a>
+				</li>
 				<li class=" tsd-kind-method tsd-parent-kind-class tsd-is-overwrite tsd-is-inherited">
 					<a href="_nats_.client.html#emit" class="tsd-kind-icon">emit</a>
 				</li>
@@ -1078,6 +1081,7 @@ img { max-width: 100%; }
 						<ul class="tsd-index-list">
 							<li class="tsd-kind-method tsd-parent-kind-class tsd-is-overwrite tsd-is-inherited"><a href="_nats_.client.html#addlistener" class="tsd-kind-icon">add<wbr>Listener</a></li>
 							<li class="tsd-kind-method tsd-parent-kind-class"><a href="_nats_.client.html#close" class="tsd-kind-icon">close</a></li>
+							<li class="tsd-kind-method tsd-parent-kind-class"><a href="_nats_.client.html#drain" class="tsd-kind-icon">drain</a></li>
 							<li class="tsd-kind-method tsd-parent-kind-class tsd-is-overwrite tsd-is-inherited"><a href="_nats_.client.html#emit" class="tsd-kind-icon">emit</a></li>
 							<li class="tsd-kind-method tsd-parent-kind-class tsd-is-overwrite tsd-is-inherited"><a href="_nats_.client.html#eventnames" class="tsd-kind-icon">event<wbr>Names</a></li>
 							<li class="tsd-kind-method tsd-parent-kind-class"><a href="_nats_.client.html#flush" class="tsd-kind-icon">flush</a></li>
@@ -1111,7 +1115,7 @@ img { max-width: 100%; }
 				<div class="tsd-signature tsd-kind-icon">create<wbr>Inbox<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">createInbox</span><span class="tsd-signature-symbol"> =&nbsp;createInbox</span></div>
 				<aside class="tsd-sources">
 					<ul>
-						<li>Defined in nats.ts:237</li>
+						<li>Defined in nats.ts:242</li>
 					</ul>
 				</aside>
 				<div class="tsd-comment tsd-typography">
@@ -1190,7 +1194,7 @@ img { max-width: 100%; }
 					<li class="tsd-description">
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in nats.ts:461</li>
+								<li>Defined in nats.ts:474</li>
 							</ul>
 						</aside>
 						<div class="tsd-comment tsd-typography">
@@ -1199,6 +1203,37 @@ img { max-width: 100%; }
 							</div>
 						</div>
 						<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
+					</li>
+				</ul>
+			</section>
+			<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-class">
+				<a name="drain" class="tsd-anchor"></a>
+				<h3>drain</h3>
+				<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class">
+					<li class="tsd-signature tsd-kind-icon">drain<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">&gt;</span></li>
+				</ul>
+				<ul class="tsd-descriptions">
+					<li class="tsd-description">
+						<aside class="tsd-sources">
+							<ul>
+								<li>Defined in nats.ts:419</li>
+							</ul>
+						</aside>
+						<div class="tsd-comment tsd-typography">
+							<div class="lead">
+								<p>Drains all subscriptions. Returns a Promise that when resolved, indicates that all subscriptions have finished,
+									and the client can call Client#close(). Note that after calling drain, it is impossible to create new
+									subscriptions. As soon as all messages for the draining subscriptions are processed, it is also impossible
+									to publish new messages.
+								A drained connection should be closed as soon as the returned Promise resolves.</p>
+							</div>
+							<dl class="tsd-comment-tags">
+								<dt>see</dt>
+								<dd><p><a href="_nats_.subscription.html#drain">Subscription.drain</a></p>
+								</dd>
+							</dl>
+						</div>
+						<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">&gt;</span></h4>
 					</li>
 				</ul>
 			</section>
@@ -1259,7 +1294,7 @@ img { max-width: 100%; }
 					<li class="tsd-description">
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in nats.ts:353</li>
+								<li>Defined in nats.ts:358</li>
 							</ul>
 						</aside>
 						<div class="tsd-comment tsd-typography">
@@ -1313,7 +1348,7 @@ img { max-width: 100%; }
 					<li class="tsd-description">
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in nats.ts:468</li>
+								<li>Defined in nats.ts:481</li>
 							</ul>
 						</aside>
 						<div class="tsd-comment tsd-typography">
@@ -1383,7 +1418,7 @@ img { max-width: 100%; }
 					<li class="tsd-description">
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in nats.ts:477</li>
+								<li>Defined in nats.ts:490</li>
 							</ul>
 						</aside>
 						<div class="tsd-comment tsd-typography">
@@ -1589,7 +1624,7 @@ img { max-width: 100%; }
 					<li class="tsd-description">
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in nats.ts:375</li>
+								<li>Defined in nats.ts:380</li>
 							</ul>
 						</aside>
 						<div class="tsd-comment tsd-typography">
@@ -1725,7 +1760,7 @@ img { max-width: 100%; }
 					<li class="tsd-description">
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in nats.ts:423</li>
+								<li>Defined in nats.ts:436</li>
 							</ul>
 						</aside>
 						<div class="tsd-comment tsd-typography">
@@ -1791,7 +1826,7 @@ img { max-width: 100%; }
 					<li class="tsd-description">
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in nats.ts:390</li>
+								<li>Defined in nats.ts:394</li>
 							</ul>
 						</aside>
 						<div class="tsd-comment tsd-typography">
