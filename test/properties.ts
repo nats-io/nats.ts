@@ -160,14 +160,17 @@ test('noEcho not supported', async(t) => {
     try {
         await server.start();
     } catch(ex) {
-        t.log(ex);
+        t.fail('failed to start the mock server');
+        return;
     }
     t.plan(1);
-    let nc = await connect({port: server.port, noEcho: true});
+
+    let nc = await connect({port: server.port, noEcho: true, reconnect: false});
     nc.on('error', (err) => {
         t.is(err.code, ErrorCode.NO_ECHO_NOT_SUPPORTED);
         lock.unlock();
     });
 
+    // test times out if it were to connect
     await lock.latch;
 });
