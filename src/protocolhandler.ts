@@ -219,9 +219,8 @@ export class ProtocolHandler extends EventEmitter {
                 .then((a) => {
                     this.noMorePublishing = true;
                     process.nextTick(() => {
-                        // send pending buffer and close
+                        // send pending buffer
                         this.flush(() => {
-                            // this.close();
                             resolve(a);
                         });
                     });
@@ -251,11 +250,11 @@ export class ProtocolHandler extends EventEmitter {
     }
 
     subscribe(s: Sub): Subscription {
-        if (this.draining) {
-            throw(NatsError.errorForCode(ErrorCode.CONN_DRAINING));
-        }
         if (this.isClosed()) {
             throw(NatsError.errorForCode(ErrorCode.CONN_CLOSED));
+        }
+        if (this.draining) {
+            throw(NatsError.errorForCode(ErrorCode.CONN_DRAINING));
         }
         let sub = this.subscriptions.add(s) as Sub;
         if (sub.queue) {
@@ -270,13 +269,13 @@ export class ProtocolHandler extends EventEmitter {
     }
 
     drainSubscription(sid: number): Promise<SubEvent> {
-        if (!sid) {
-            return Promise.reject(NatsError.errorForCode(ErrorCode.SUB_CLOSED));
-        }
         if (this.closed) {
             return Promise.reject(NatsError.errorForCode(ErrorCode.CONN_CLOSED));
         }
 
+        if (!sid) {
+            return Promise.reject(NatsError.errorForCode(ErrorCode.SUB_CLOSED));
+        }
         let s = this.subscriptions.get(sid);
         if (!s) {
             return Promise.reject(NatsError.errorForCode(ErrorCode.SUB_CLOSED));
