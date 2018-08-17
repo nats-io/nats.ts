@@ -124,11 +124,9 @@ test('max message cancels subscription timeout', async (t) => {
         } else {
             count++;
             if(count === 2) {
-                process.nextTick(() => {
-                    t.false(sub.isCancelled());
-                    nc.close();
-                    lock.unlock();
-                });
+                t.true(sub.isCancelled());
+                nc.close();
+                lock.unlock();
             }
         }
     }, {max: 2});

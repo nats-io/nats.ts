@@ -46,3 +46,23 @@ export function shuffle(a: any[]) {
     }
     return a;
 }
+
+
+export function settle(a: any[]): Promise<any[]> {
+    if (Array.isArray(a)) {
+        return Promise.resolve(a).then(_settle);
+    } else {
+        return Promise.reject(new TypeError("argument requires an array of promises"));
+    }
+}
+
+function _settle(a: any[]): Promise<any> {
+    return Promise.all(a.map((p) => {
+        return Promise.resolve(p).then(_resolve, _resolve);
+    }));
+}
+
+function _resolve(r: any): any {
+    return (r);
+}
+
