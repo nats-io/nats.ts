@@ -43,6 +43,7 @@ export interface Base {
     received: number;
     timeout?: Timer;
     max?: number | undefined;
+    draining?: boolean;
 }
 
 /**
@@ -380,7 +381,6 @@ export class Client extends events.EventEmitter {
         if (!subject) {
             throw NatsError.errorForCode(ErrorCode.BAD_SUBJECT);
         }
-
         this.protocolHandler.publish(subject, data, reply);
     }
 
@@ -393,9 +393,6 @@ export class Client extends events.EventEmitter {
      */
     subscribe(subject: string, cb: MsgCallback, opts: SubscriptionOptions = {}): Promise<Subscription> {
         return new Promise<Subscription>((resolve, reject) => {
-            if (this.isClosed()) {
-                reject(NatsError.errorForCode(ErrorCode.CONN_CLOSED));
-            }
             if (!subject) {
                 reject(NatsError.errorForCode(ErrorCode.BAD_SUBJECT));
             }
@@ -409,6 +406,17 @@ export class Client extends events.EventEmitter {
             s.callback = cb;
             resolve(this.protocolHandler.subscribe(s));
         });
+    }
+
+    /**
+     * Drains all subscriptions. Returns a Promise that when resolved, indicates that all subscriptions have finished,
+     * and the client can call Client#close(). Note that after calling drain, it is impossible to create new
+     * subscriptions. As soon as all messages for the draining subscriptions are processed, it is also impossible
+     * to publish new messages.
+     * A drained connection should be closed as soon as the returned Promise resolves.
+     */
+    drain(): Promise<any> {
+        return this.protocolHandler.drain();
     }
 
 
@@ -520,11 +528,24 @@ export class Subscription {
 
     /**
      * Cancels the subscription after the specified number of messages has been received.
-     * If max is not specified, the subscription cancels immediately.
+     * If max is not specified, the subscription cancels immediately. A cancelled subscription
+     * will not process messages that are inbound but not yet handled.
      * @param max
+     * @see Subscription#drain()
      */
     unsubscribe(max?: number): void {
         this.protocol.unsubscribe(this.sid, max);
+    }
+
+    /**
+     * Draining a subscription is similar to unsubscribe but inbound pending messages are
+     * not discarded. When the last in-flight message is processed, the subscription handler
+     * is removed.
+     * @return a Promise that resolves when the draining a subscription completes
+     * @see Subscription#unsubscribe()
+     */
+    drain(): Promise<any> {
+        return this.protocol.drainSubscription(this.sid);
     }
 
     /**
@@ -602,6 +623,18 @@ export class Subscription {
      * @return true if the subscription is not found.
      */
     isCancelled(): boolean {
-        return this.protocol.subscriptions.get(this.sid) === undefined;
+        return this.protocol.subscriptions.get(this.sid) === null;
+    }
+
+    /**
+     * @return true if the subscription is draining.
+     * @see Subscription#drain()
+     */
+    isDraining(): boolean {
+        let sub = this.protocol.subscriptions.get(this.sid);
+        if (sub) {
+            return sub.draining === true;
+        }
+        return false;
     }
 }

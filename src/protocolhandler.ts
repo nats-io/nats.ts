@@ -24,6 +24,7 @@ import {
     Req,
     ServerInfo,
     Sub,
+    SubEvent,
     Subscription,
     VERSION
 } from "./nats";
@@ -38,6 +39,7 @@ import {TCPTransport} from "./tcptransport";
 import {Subscriptions} from "./subscriptions";
 import {DataBuffer} from "./databuffer";
 import {MsgBuffer} from "./messagebuffer";
+import {settle} from "./util";
 import url = require('url');
 import Timer = NodeJS.Timer;
 
@@ -108,6 +110,8 @@ export class ProtocolHandler extends EventEmitter {
     private url!: url.UrlObject;
     private user?: string;
     private wasConnected: boolean = false;
+    private draining: boolean = false;
+    private noMorePublishing: boolean = false;
 
     constructor(client: Client, options: NatsConnectionOptions) {
         super();
@@ -192,9 +196,47 @@ export class ProtocolHandler extends EventEmitter {
         this.outbound.reset();
     };
 
+    drain(): Promise<any> {
+        if (this.closed) {
+            return Promise.reject(NatsError.errorForCode(ErrorCode.CONN_CLOSED));
+        }
+        if (this.draining) {
+            return Promise.reject(NatsError.errorForCode(ErrorCode.CONN_DRAINING));
+        }
+        this.draining = true;
+
+        let subs = this.subscriptions.all();
+        let promises: Promise<SubEvent>[] = [];
+        let mux = this.subscriptions.mux ? this.subscriptions.mux.sid : 0;
+        subs.forEach((sub) => {
+            if (sub.sid !== mux) {
+                let p = this.drainSubscription(sub.sid);
+                promises.push(p);
+            }
+        });
+        return new Promise((resolve) => {
+            settle(promises)
+                .then((a) => {
+                    this.noMorePublishing = true;
+                    process.nextTick(() => {
+                        // send pending buffer
+                        this.flush(() => {
+                            resolve(a);
+                        });
+                    });
+                })
+                .catch(() => {
+                    // cannot happen
+                });
+        });
+    }
+
     publish(subject: string, data: any, reply: string = ""): void {
         if (this.closed) {
             throw (NatsError.errorForCode(ErrorCode.CONN_CLOSED));
+        }
+        if (this.noMorePublishing) {
+            throw NatsError.errorForCode(ErrorCode.CONN_DRAINING);
         }
         data = this.toBuffer(data);
         let len = data.length;
@@ -208,6 +250,12 @@ export class ProtocolHandler extends EventEmitter {
     }
 
     subscribe(s: Sub): Subscription {
+        if (this.isClosed()) {
+            throw(NatsError.errorForCode(ErrorCode.CONN_CLOSED));
+        }
+        if (this.draining) {
+            throw(NatsError.errorForCode(ErrorCode.CONN_DRAINING));
+        }
         let sub = this.subscriptions.add(s) as Sub;
         if (sub.queue) {
             this.sendCommand(this.buildProtocolMessage(`SUB ${sub.subject} ${sub.queue} ${sub.sid}`));
@@ -218,6 +266,33 @@ export class ProtocolHandler extends EventEmitter {
             this.unsubscribe(this.ssid, s.max);
         }
         return new Subscription(sub, this);
+    }
+
+    drainSubscription(sid: number): Promise<SubEvent> {
+        if (this.closed) {
+            return Promise.reject(NatsError.errorForCode(ErrorCode.CONN_CLOSED));
+        }
+
+        if (!sid) {
+            return Promise.reject(NatsError.errorForCode(ErrorCode.SUB_CLOSED));
+        }
+        let s = this.subscriptions.get(sid);
+        if (!s) {
+            return Promise.reject(NatsError.errorForCode(ErrorCode.SUB_CLOSED));
+        }
+        if (s.draining) {
+            return Promise.reject(NatsError.errorForCode(ErrorCode.SUB_DRAINING));
+        }
+
+        let sub = s;
+        return new Promise((resolve) => {
+            sub.draining = true;
+            this.sendCommand(this.buildProtocolMessage(`UNSUB ${sid}`));
+            this.flush(() => {
+                this.subscriptions.cancel(sub);
+                resolve({sid: sub.sid, subject: sub.subject, queue: sub.queue} as SubEvent);
+            });
+        })
     }
 
     unsubscribe(sid: number, max?: number) {
@@ -615,10 +690,8 @@ export class ProtocolHandler extends EventEmitter {
                     if (!this.msgBuffer) {
                         break;
                     }
-                    // drain what we have collected
+                    // wait for more data to arrive
                     if (this.inbound.size() < this.msgBuffer.length) {
-                        // let d = this.inbound.drain();
-                        // this.msgBuffer.fill(d);
                         return;
                     }
                     // drain the number of bytes we need

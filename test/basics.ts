@@ -338,7 +338,8 @@ test('flush can be a promise', async (t) => {
     let sc = t.context as SC;
     let nc = await connect(sc.server.nats);
     let p = nc.flush();
-    t.true(p instanceof Promise);
+    //@ts-ignore
+    t.truthy(p.then);
     await p;
     nc.close();
 });

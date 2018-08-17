@@ -21,19 +21,20 @@ npm install ts-nats
 
 The starting point is the `connect()` function. You can give no arguments, a port, an URL or a
 [`NatsConnectionOption`](https://nats-io.github.io/ts-nats/interfaces/_nats_.natsconnectionoptions.html) 
-specifying detailed behaviour. Inside an async function, you can use async/await pattern.
+specifying detailed behaviour. Inside an async function, you can use async/await to wait for the
+promise to resolve or reject.
 
 ```typescript
 import {connect, NatsConnectionOptions, Payload} from 'ts-nats';
 
-...
+// ...
 try {
     let nc = await connect({servers: ['nats://demo.nats.io:4222', 'tls://demo.nats.io:4443']});
     // Do something with the connection
 } catch(ex) {
     // handle the error
 }
-...
+// ...
 ```
 
 
@@ -99,8 +100,7 @@ service.unsubscribe();
 The above pattern is called Request/Reply - because it is so pervasive, ts-nats makes
 it very easy to make a request and handle a single response. The request API returns
 a Promise to a response message. All the bookkeeping, creating an inbox subject,
-creating a subscription to manage the response, and publishing details are handled 
-by the call. Since requests are expected to have a response, they require a timeout. 
+creating a subscription to manage the response, and publishing details are handled.  Since requests are expected to have a response, they require a timeout. 
 If the request does not receive a response within the specified timeout, the promise rejects.
 
 Subscriptions to handle request responses are very efficient since they utilize a shared
@@ -120,10 +120,9 @@ nc.close();
 
 ## Wildcard Subscriptions
 
-A single subscription can can process related messages. When the subject
+A single subscription can process related messages. When the subject
 specifies wildcards tokens, those parts of the subject can match different things.
-One of the wildcards is the `*` (asterisk). The asterisk in `foo.*.baz` matches 
-all values in that token's position (`foo.bar.baz`, f`oo.a.baz`, ...). 
+One of the wildcards is the `*` (asterisk). The asterisk in `foo.*.baz` matches all values in that token's position (`foo.bar.baz`, f`oo.a.baz`, ...). 
 
 To work as a wildcard, the wildcard character must be the only character in the token.
  Asterisks that are part of a token value are interpreted as string literals,
@@ -172,7 +171,7 @@ let nc2 = await connect({servers: servers});
 ```
 
 The client will randomize the list of servers that it manages to prevent a __thundering herd__
-of clients all at the same time trying to reconnect to the same server. To pervent randomization,
+of clients all at the same time trying to reconnect to the same server. To prevent randomization,
 specify the `noRandomize` option.
 
 ```typescript
@@ -229,28 +228,27 @@ User credentials can be specified in the URL or as NatsConnectionOptions.
 
 ```typescript
 // Connect with username and password in the url
-let nc6= await connect({url: 'nats://me:secret@127.0.0.1:4222'});
+let nc6 = await connect({url: 'nats://me:secret@127.0.0.1:4222'});
 // Connect with username and password in the options
-let nc7= await connect({url: 'nats://127.0.0.1:4222', user: 'me', pass: 'secret'});
+let nc7 = await connect({url: 'nats://127.0.0.1:4222', user: 'me', pass: 'secret'});
 // Connect with token in url
-let nc8= await connect({url: 'nats://token@127.0.0.1:4222'});
+let nc8 = await connect({url: 'nats://token@127.0.0.1:4222'});
 // or token inside the options:
-let nc9= await connect({url: 'nats://127.0.0.1:4222', token: 'token'});
+let nc9 = await connect({url: 'nats://127.0.0.1:4222', token: 'token'});
 ```
 ## Advanced Usage
 
 NATS typically buffers messages sent to the server to reduce the number of kernel calls.
 This yields greater performance. The NATS client automatically buffers commands from the
-client and sends them. This buffering behaviour also allows a NATS client to briefly
-disconnect and continue publishing messages and creating subscriptions. On reconnect,
+client and sends them. This buffering behaviour allows a NATS client to disconnect and continue to publish messages and create subscriptions briefly. On reconnect,
 the client sends all buffered messages and subscriptions to the server.
 
-Sometimes a client wants to make sure that outgoing messages have been processed by the NATS
-server. The `flush()` will call you on an user provided callback when the round trip
+Sometimes a client wants to make sure that the NATS
+server has processed outgoing messages. The `flush()` will call a user-provided callback when the round trip
 to the server is done.
 
 ```typescript
-// Flush the connection, and get notified when the server has finished processing
+// Flush the connection and get notified when the server has finished processing
 let ok = await nc.flush();
 
 // or
@@ -259,7 +257,7 @@ nc.flush(() => {
 });
 ```
 
-A client can insure that when the processing of incoming messages takes longer
+A client can ensure that when the processing of incoming messages takes longer
 than some threshold, that time is given to other waiting IO tasks.
 In the example below, when processing takes longer than 10ms, the client
 will yield.
@@ -268,7 +266,7 @@ will yield.
 let nc10 = await connect({port: PORT, yieldTime: 10});
 ```
 
-Subscriptions can auto cancel after it has received some specified
+Subscriptions can auto cancel after it has received a specified
 number of messages:
 
 ```typescript
@@ -297,7 +295,52 @@ sub2.setTimeout(1000);
 ```
 
 
-Message payloads can be strings, binary, or json
+Normally unsubscribe will cancel a subscription by sending a command to the server
+and then cancelling the message handler for the subscription. In such cases it is
+possible for messages waiting to be processed to be dropped.
+
+To orderly unsubscribe, `drain()` sends the unsubscribe to the server and
+flushes with a handler that cancels the subscription. Because the cancel
+happens when the flush completes, drain ensures that the server will not send
+any additional messages to the subscription and that all sent messages have
+been processed by the client. 
+
+This functionality is particularly useful to queue subscribers.
+
+```typescript
+let sub3 = await nc.subscribe('foo', (err, msg) => {
+    // do something
+});
+// sometime in the future drain the subscription. Drain returns a promise
+// when the drain promise resolves, the subscription finished processing 
+// all pending inbound messages for the subscription.
+let p = await sub3.drain();
+```
+
+Similarly to subscription `drain()`, an entire connection can be drained.
+
+```typescript
+let nc10 = await connect();
+
+// create subscriptions etc
+...
+
+// When drain is called:
+// - no additional subscriptions can be created.
+// - all open subscriptions drain (except the global request/reply)
+// When all drain requests resolve:
+// - a flush is sent to the server to drain outbound messages
+// - publishing or performing request reply results in an error
+// - only action for the client is to close the connection
+await nc10.drain();
+
+// when drain resolves, client must close - no further interaction with
+// the library is possible.
+nc10.close();
+
+```
+
+Message payloads can be strings, binary, or JSON.
 Payloads determine the type of `msg.data` on subscriptions
 `string`, `Buffer`, or `javascript object`.
 
@@ -308,15 +351,14 @@ let nc14 = await connect({payload: Payload.BINARY});
 ```
 
 String encodings can be set to node supported string encodings.
-Default encoding is `utf-8`, it only affects string payloads.
+The default encoding is `utf-8`, it only affects string payloads.
 
 ```typescript
 let nc14 = await connect({payload: Payload.STRING, encoding: "ascii"});
 ```
 
 Connect and reconnect behaviours can be configured. You can specify the number
-of attempts and the interval between attempts on reconnects. By default a NATS connection 
-will try to reconnect to a server 10 times, waiting 2 seconds between reconnect attempts.
+of attempts and the interval between attempts on reconnects. By default a NATS connection will try to reconnect to a server ten times, waiting 2 seconds between reconnect attempts.
 If the maximum number of retries is reached, the client will `close()` the connection.
 
 ```typescript
