@@ -18,6 +18,9 @@ import test, {ExecutionContext} from "ava";
 import {connect, NatsConnectionOptions, Payload, VERSION} from "../src/nats";
 import {SC, Server, startServer, stopServer} from "./helpers/nats_server_control";
 import {Lock} from "./helpers/latch";
+import {createInbox} from "../src/util";
+import {ErrorCode} from "../src/error";
+import * as mockserver from "./helpers/mock_server";
 
 test.before(async (t) => {
     let server = await startServer();
@@ -119,4 +122,52 @@ test('configured options', async (t) => {
     });
 
     return lock.latch;
+});
+
+
+
+test('noEcho', async(t) => {
+    t.plan(1);
+    let lock = new Lock();
+    let sc = t.context as SC;
+    let subj = createInbox();
+    let cp = connect({url: sc.server.nats, noEcho: true});
+    cp.then(async (nc) => {
+        let c2 = 0;
+        let sub2 = nc.subscribe(subj, ()=> {
+            c2++;
+        });
+        nc.publish(subj);
+        await nc.flush();
+        t.is(c2, 0);
+        nc.close();
+        lock.unlock();
+    }).catch((err) => {
+        if(err.code === ErrorCode.NO_ECHO_NOT_SUPPORTED) {
+            t.pass();
+        } else {
+            t.fail(err);
+        }
+        lock.unlock();
+    });
+    await lock.latch;
+});
+
+
+test('noEcho not supported', async(t) => {
+    let lock = new Lock();
+    let server = new mockserver.ScriptedServer(0);
+    try {
+        await server.start();
+    } catch(ex) {
+        t.log(ex);
+    }
+    t.plan(1);
+    let nc = await connect({port: server.port, noEcho: true});
+    nc.on('error', (err) => {
+        t.is(err.code, ErrorCode.NO_ECHO_NOT_SUPPORTED);
+        lock.unlock();
+    });
+
+    await lock.latch;
 });

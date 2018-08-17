@@ -62,6 +62,7 @@ export interface ServerInfo {
     proto: number;
     server_id: string;
     version: string;
+    echo?: boolean;
 }
 
 /** Argument provided to `subscribe` and `unsubscribe` event handlers. */
@@ -182,6 +183,9 @@ export interface RequestOptions {
 }
 
 export interface NatsConnectionOptions {
+    /** Requires server support 1.2.0+. When set to `true`, the server will not forward messages published by the client
+     * to the client's subscriptions. By default value is ignored unless it is set to `true` explicitly */
+    noEcho?: boolean
     /** Sets the encoding type used when dealing with [[Payload.STRING]] messages. Only node-supported encoding allowed. */
     encoding?: BufferEncoding;
     /** Maximum number of client PINGs that can be outstanding before the connection is considered stale. */
