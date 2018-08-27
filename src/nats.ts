@@ -410,10 +410,10 @@ export class Client extends events.EventEmitter {
 
     /**
      * Drains all subscriptions. Returns a Promise that when resolved, indicates that all subscriptions have finished,
-     * and the client can call Client#close(). Note that after calling drain, it is impossible to create new
-     * subscriptions. As soon as all messages for the draining subscriptions are processed, it is also impossible
-     * to publish new messages.
-     * A drained connection should be closed as soon as the returned Promise resolves.
+     * and the client closed. Note that after calling drain, it is impossible to create new
+     * subscriptions or make any requests. As soon as all messages for the draining subscriptions are processed,
+     * it is also impossible to publish new messages.
+     * A drained connection is closed when the Promise resolves.
      * @see [[Subscription.drain]]
      */
     drain(): Promise<any> {

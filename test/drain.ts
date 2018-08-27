@@ -205,12 +205,12 @@ test('publish after drain fails', async (t) => {
     try {
         nc.publish(subj);
     } catch (err) {
-        t.is(err.code, ErrorCode.CONN_DRAINING);
+        t.is(err.code, ErrorCode.CONN_CLOSED);
     }
     nc.close();
 });
 
-test('can reqrep during drain', async (t) => {
+test('reject reqrep during connection drain', async (t) => {
     t.plan(1);
     let lock = new Lock();
     let sc = t.context as SC;
@@ -236,11 +236,12 @@ test('can reqrep during drain', async (t) => {
             first = false;
             nc2.drain();
             try {
+                // should fail
                 let rep = await nc2.request(subj + "a", 1000);
-                t.is(rep.data, "ok");
+                t.fail("shouldn't have been able to request");
                 lock.unlock();
             } catch (err) {
-                t.log(err);
+                t.is(err.code, ErrorCode.CONN_DRAINING);
                 lock.unlock();
             }
         }
@@ -267,7 +268,7 @@ test('reject drain on draining', async (t) => {
     t.plan(1);
     let sc = t.context as SC;
     let nc1 = await connect(sc.server.nats);
-    await nc1.drain();
+    nc1.drain();
     await t.throwsAsync(() => {
         return nc1.drain();
     }, {code: ErrorCode.CONN_DRAINING});
@@ -277,7 +278,7 @@ test('reject subscribe on draining', async (t) => {
     t.plan(1);
     let sc = t.context as SC;
     let nc1 = await connect(sc.server.nats);
-    await nc1.drain();
+    nc1.drain();
     await t.throwsAsync(() => {
         return nc1.subscribe("foo", () => {
         });
@@ -294,6 +295,29 @@ test('reject subscription drain on closed sub', async (t) => {
     await t.throwsAsync(() => {
         return sub.drain();
     }, {code: ErrorCode.SUB_CLOSED});
+});
+
+test('connection is closed after drain', async (t) => {
+    t.plan(1);
+    let sc = t.context as SC;
+    let nc1 = await connect(sc.server.nats);
+    let sub = await nc1.subscribe("foo", () => {
+    });
+    await nc1.drain();
+    t.true(nc1.isClosed())
+});
+
+test('closed is fired after drain', async (t) => {
+    t.plan(1);
+    let lock = new Lock();
+    let sc = t.context as SC;
+    let nc1 = await connect(sc.server.nats);
+    nc1.on('close', () => {
+        lock.unlock();
+        t.pass();
+    });
+    await nc1.drain();
+    await lock.latch;
 });
 
 test('reject subscription drain on closed', async (t) => {

@@ -326,18 +326,12 @@ let nc10 = await connect();
 ...
 
 // When drain is called:
-// - no additional subscriptions can be created.
-// - all open subscriptions drain (except the global request/reply)
+// - no additional subscriptions or requests can be made.
+// - all open subscriptions drain (including the global request/reply)
 // When all drain requests resolve:
 // - a flush is sent to the server to drain outbound messages
-// - publishing or performing request reply results in an error
-// - only action for the client is to close the connection
+// - client closes
 await nc10.drain();
-
-// when drain resolves, client must close - no further interaction with
-// the library is possible.
-nc10.close();
-
 ```
 
 Message payloads can be strings, binary, or JSON.
