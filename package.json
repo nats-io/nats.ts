@@ -35,11 +35,12 @@
     "copy:dist": "cp lib/src/* lib/",
     "cover:html": "nyc report --reporter=html && open coverage/index.html",
     "cover:coveralls": "nyc report --reporter=text-lcov | coveralls",
+    "dist": "npm run build && npm run copy:dist",
     "pack": "npm pack",
     "debugtest": "tsc && node $NODE_DEBUG_OPTION node_modules/.bin/ava --verbose -T 6500000 -m",
     "test": "tsc && nyc ava --verbose -T 15000",
-    "publish-npm": "npm run build && npm run copy:dist && npm publish",
-    "publish-npm:beta": "npm run build && npm run copy:dist && npm publish --tag=next",
+    "publish-npm": "npm run dist && npm publish",
+    "publish-npm:beta": "npm run dist && npm publish --tag=next",
     "doc": "node_modules/.bin/typedoc --options ./typedocconfig.ts && touch ./docs/.nojekyll"
   },
   "engines": {

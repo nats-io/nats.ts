@@ -207,12 +207,9 @@ export class ProtocolHandler extends EventEmitter {
 
         let subs = this.subscriptions.all();
         let promises: Promise<SubEvent>[] = [];
-        let mux = this.subscriptions.mux ? this.subscriptions.mux.sid : 0;
         subs.forEach((sub) => {
-            if (sub.sid !== mux) {
-                let p = this.drainSubscription(sub.sid);
-                promises.push(p);
-            }
+            let p = this.drainSubscription(sub.sid);
+            promises.push(p);
         });
         return new Promise((resolve) => {
             settle(promises)
@@ -221,6 +218,7 @@ export class ProtocolHandler extends EventEmitter {
                     process.nextTick(() => {
                         // send pending buffer
                         this.flush(() => {
+                            this.close();
                             resolve(a);
                         });
                     });
@@ -316,6 +314,9 @@ export class ProtocolHandler extends EventEmitter {
     request(r: Req): Request {
         if (this.closed) {
             throw (NatsError.errorForCode(ErrorCode.CONN_CLOSED));
+        }
+        if (this.draining) {
+            throw (NatsError.errorForCode(ErrorCode.CONN_DRAINING));
         }
         this.initMux();
         this.muxSubscriptions.add(r);

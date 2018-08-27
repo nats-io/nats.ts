@@ -86,6 +86,7 @@ test('auth', async (t) => {
     t.plan(1);
     let sc = t.context as SC;
     let nc = await connect({url: sc.server.nats, user: 'derek', pass: 'foobar'} as NatsConnectionOptions);
+    nc.flush();
     nc.close();
     t.pass();
 });

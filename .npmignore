@@ -6,9 +6,12 @@ npm-debug.log
 lib/test/*
 lib/src/*
 lib/examples/*
+lib/benchmark/*
 src/*
 docs/*
 coverage/*
+
+typedocconfig.ts
 *.log
 *.heapsnapshot
 *.sock
