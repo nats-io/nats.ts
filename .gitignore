@@ -6,6 +6,10 @@ lib/
 .DS_Store
 .idea
 .settings/
+.nyc_output/
+benchmark/
+coverage/
+docs/
 
 *.log
 *.heapsnapshot
