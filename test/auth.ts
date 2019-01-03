@@ -91,6 +91,17 @@ test('auth', async (t) => {
     t.pass();
 });
 
+test('urlauth', async (t) => {
+    t.plan(1);
+    let sc = t.context as SC;
+    let v = sc.server.nats;
+    v = v.replace("nats://", "nats://derek:foobar@");
+    let nc = await connect({url: v} as NatsConnectionOptions);
+    nc.flush();
+    nc.close();
+    t.pass();
+});
+
 
 test('cannot sub to foo', async (t) => {
     t.plan(1);
