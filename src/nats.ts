@@ -307,7 +307,7 @@ export class Client extends events.EventEmitter {
             pingInterval: DEFAULT_PING_INTERVAL,
             reconnect: true,
             reconnectTimeWait: DEFAULT_RECONNECT_TIME_WAIT,
-            tls: false,
+            tls: undefined,
             verbose: false,
             waitOnFirstConnect: false,
         } as ConnectionOptions

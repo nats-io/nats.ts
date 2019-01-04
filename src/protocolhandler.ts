@@ -78,6 +78,12 @@ enum ParserState {
     AWAITING_MSG_PAYLOAD = 1
 }
 
+enum TlsRequirement {
+    OFF = -1,
+    ANY = 0,
+    ON = 1
+}
+
 /**
  * @hidden
  */
@@ -660,7 +666,7 @@ export class ProtocolHandler extends EventEmitter {
 
                             // are we a tls socket?
                             let encrypted = this.transport.isEncrypted();
-                            if (this.options.tls !== false && !encrypted) {
+                            if (this.info.tls_required === true && !encrypted) {
                                 this.transport.upgrade(this.options.tls, () => {
                                     this.flushPending();
                                 });
@@ -718,24 +724,40 @@ export class ProtocolHandler extends EventEmitter {
         }
     }
 
+    private clientTLSRequirement(): TlsRequirement {
+        if (this.options.tls === undefined) {
+            return TlsRequirement.ANY;
+        }
+        if (this.options.tls === false) {
+            return TlsRequirement.OFF;
+        }
+        return TlsRequirement.ON;
+    }
+    
     /**
      * Check for TLS configuration mismatch.
      *
      * @api private
      */
     private checkTLSMismatch(): boolean {
-        if (this.info.tls_required &&
-            this.options.tls === false) {
-            this.client.emit('error', NatsError.errorForCode(ErrorCode.SECURE_CONN_REQ));
-            this.closeStream();
-            return true;
-        }
-
-        if (!this.info.tls_required &&
-            this.options.tls !== false) {
-            this.client.emit('error', NatsError.errorForCode(ErrorCode.NON_SECURE_CONN_REQ));
-            this.closeStream();
-            return true;
+        switch (this.clientTLSRequirement()) {
+            case TlsRequirement.OFF:
+                if (this.info.tls_required) {
+                    this.client.emit('error', NatsError.errorForCode(ErrorCode.SECURE_CONN_REQ));
+                    this.closeStream();
+                    return true;
+                }
+                break;
+            case TlsRequirement.ON:
+                if (!this.info.tls_required) {
+                    this.client.emit('error', NatsError.errorForCode(ErrorCode.NON_SECURE_CONN_REQ));
+                    this.closeStream();
+                    return true;
+                }
+                break;
+            case TlsRequirement.ANY:
+                // tls auto-upgrade
+                break;
         }
 
         let cert = false;
