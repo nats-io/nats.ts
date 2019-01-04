@@ -37,7 +37,7 @@ test('should not send multiple subscriptions on startup', async (t) => {
     let sc = t.context as SC;
     sc.server.stderr.on('data', function (data) {
         let lines = data.toString().split('\n');
-        lines.forEach((s) => {
+        lines.forEach((s: string) => {
             // t.log(s);
             if(subRe.test(s)) {
                 subsSeen++;

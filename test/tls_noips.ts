@@ -39,6 +39,7 @@ test.before(async (t) => {
 });
 
 test.after.always((t) => {
+    //@ts-ignore
     (t.context as SC).servers.forEach((s) => {
         stopServer(s);
     })

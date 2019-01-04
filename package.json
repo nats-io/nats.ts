@@ -44,23 +44,23 @@
     "doc": "node_modules/.bin/typedoc --options ./typedocconfig.ts && touch ./docs/.nojekyll"
   },
   "engines": {
-    "node": ">= 4.5.0"
+    "node": ">= 6.14.4"
   },
   "dependencies": {
     "nuid": "^1.0.0"
   },
   "devDependencies": {
-    "@types/node": "^9.6.13",
-    "ava": "1.0.0-beta.7",
+    "@types/node": "^10.12.18",
+    "ava": "^1.0.1",
     "coveralls": "^3.0.2",
-    "dependency-check": "2.5.x",
+    "dependency-check": "3.3.0",
     "if-node-version": "^1.1.1",
-    "nyc": "^12.0.2",
-    "ts-node": "^6.0.3",
-    "typedoc": "^0.11.1",
-    "typedoc-plugin-markdown": "^1.1.13",
-    "typescript": "^2.9.2",
-    "why-is-node-running": "^2.0.2"
+    "nyc": "^13.1.0",
+    "ts-node": "^7.0.1",
+    "typedoc": "^0.14.0",
+    "typedoc-plugin-markdown": "^1.1.20",
+    "typescript": "^3.2.2",
+    "why-is-node-running": "^2.0.3"
   },
   "typings": "./lib/nats.d.ts",
   "ava": {
