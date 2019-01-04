@@ -73,7 +73,7 @@ test('default connect properties', async (t) => {
 
 test('configured options', async (t) => {
 
-    let s1 = registerServer(t, await startServer("", ["--user", "me", "--pass", "secret"]));
+    let s1 = registerServer(t, await startServer(["--user", "me", "--pass", "secret"]));
 
 
     let nco = {} as NatsConnectionOptions;

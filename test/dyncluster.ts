@@ -14,7 +14,7 @@
  *
  */
 
-import {SC, Server, startServer, stopServer} from "./helpers/nats_server_control";
+import {addClusterMember, SC, Server, startServer, stopServer} from "./helpers/nats_server_control";
 import test, {ExecutionContext} from "ava";
 import {Client, connect} from "../src/nats";
 import {Lock} from "./helpers/latch";
@@ -35,8 +35,8 @@ function registerServer(t: ExecutionContext, s: Server) : Server {
     return s;
 }
 
-async function addClusterServer(t: ExecutionContext, to: Server) : Promise<Server> {
-    let s = await startServer("", ["--routes", `nats://127.0.0.1:${to.clusterPort}`]);
+async function addClusterServer(t: ExecutionContext, server: Server): Promise<Server> {
+    let s = await addClusterMember(server);
     return registerServer(t, s);
 }
 

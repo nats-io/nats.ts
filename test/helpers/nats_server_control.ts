@@ -59,7 +59,26 @@ export function getPort(urlString: string): number {
     return parseInt(u.port, 10);
 }
 
-export function startServer(hostport?: string, opt_flags?: string[]): Promise<Server> {
+export function addClusterMember(s: Server, opt_flags?: string[]): Promise<Server> {
+    return new Promise((resolve, reject) => {
+        opt_flags = opt_flags || [];
+        if (opt_flags.indexOf('--routes') !== -1) {
+            reject(new Error("addClusterMember doesn't take a --routes flag as an option"));
+            return
+        }
+
+        opt_flags = opt_flags.concat(["--routes", `nats://127.0.0.1:${s.clusterPort}`]);
+        startServer(opt_flags)
+            .then((v) => {
+                resolve(v)
+            })
+            .catch((err) => {
+                reject(err);
+            })
+    });
+}
+
+export function startServer(opt_flags?: string[]): Promise<Server> {
     return new Promise((resolve, reject) => {
         opt_flags = opt_flags || [];
         let flags : string[] = [];

@@ -261,7 +261,7 @@ test('indefinite reconnects', async (t) => {
     });
 
     setTimeout(async () => {
-        server = await startServer("", ['-p', port.toString()]);
+        server = await startServer(['-p', port.toString()]);
         registerServer(server, t);
     }, 1000);
 
