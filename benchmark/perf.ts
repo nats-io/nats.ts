@@ -110,13 +110,13 @@ async function subTest() {
             let process = spawn('nats-bench', ['-s', pargs.server || "", '-n', count.toString(), '-ns', '0', '-np', '1', "-ms", size.toString(), "test"]);
             process.stderr.on('data', (data) => {
                 let lines = data.toString().split('\n');
-                lines.forEach((m) => {
+                lines.forEach((m: string) => {
                     console.log(m);
                 });
             });
             process.stdout.on('data', (data) => {
                 let lines = data.toString().split('\n');
-                lines.forEach((m) => {
+                lines.forEach((m: string) => {
                     console.log(m);
                 });
             });
