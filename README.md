@@ -181,7 +181,8 @@ let nc3 = await connect({servers: servers, noRandomize: true});
 ## TLS
 
 Using a TLS connection encrypts all traffic to the client. Secure connections are easy with NATS.
-Servers using TLS have the `tls` protocol instead of `nats`.
+Servers using TLS typically specify the `tls` protocol instead of `nats`. Strict tls requirements or options
+are specified by the `tls` option.
 
 ```typescript
 // Simple TLS connect
@@ -402,7 +403,7 @@ The following is the list of connection options and default values.
 | `reconnect`            | `true`                    | If false server will not attempt reconnecting
 | `reconnectTimeWait`    | `2000`                    | If disconnected, the client will wait the specified number of milliseconds between reconnect attempts
 | `servers`              |                           | Array of connection `url`s
-| `tls`                  | `false`                   | This property can be a boolean or an Object. If true the client requires a TLS connection. If false a non-tls connection is required.  The value can also be an object specifying TLS certificate data. The properties `ca`, `key`, `cert` should contain the certificate file data. `ca` should be provided for self-signed certificates. `key` and `cert` are required for client provided certificates. `rejectUnauthorized` if `true` validates server's credentials
+| `tls`                  | `undefined`               | This property can be a boolean or an Object. If `true` the client requires a TLS connection. If `false` a non-tls connection is required. `undefined` allows connecting to either secure or non-secured.  The value can also be an object specifying TLS certificate data, which will implicitly require a secured connection. The properties `ca`, `key`, `cert` should contain the certificate file data. `ca` should be provided for self-signed certificates. `key` and `cert` are required for client provided certificates. `rejectUnauthorized` if `true` validates server's credentials
 | `token`                |                           | Sets a authorization token for a connection
 | `url`                  | `"nats://localhost:4222"` | Connection url
 | `user`                 |                           | Sets the username for a connection
