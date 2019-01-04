@@ -129,7 +129,9 @@ export class Servers {
             let discovered: { [key: string]: Server } = {};
 
             info.connect_urls.forEach(server => {
-                let u = `nats://${server}`;
+                // protocol in node includes the ':'
+                let protocol = this.currentServer.url.protocol;
+                let u = `${protocol}//${server}`;
                 discovered[u] = new Server(u, true);
             });
 

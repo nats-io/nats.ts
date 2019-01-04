@@ -78,7 +78,7 @@ async function start() {
         let dir = await mktmp(join(tmpdir(), "nats"));
         let conf = join(dir, "nats.conf");
         appendFileSync(conf, "write_deadline: \"1000s\"\n");
-        server = await startServer("", ['-c', conf]);
+        server = await startServer(['-c', conf]);
         pargs.server = server.nats;
     }
     nc = await connect({url: pargs.server, payload: Payload.BINARY});

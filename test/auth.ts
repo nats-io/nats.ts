@@ -45,7 +45,7 @@ test.before(async (t) => {
     //@ts-ignore
     let fp = join(CONF_DIR, next() + ".conf");
     writeFile(fp, jsonToNatsConf(conf));
-    let server = await startServer("localhost:0", ['-c', fp]);
+    let server = await startServer(['-c', fp]);
     t.context = {server: server}
 });
 
