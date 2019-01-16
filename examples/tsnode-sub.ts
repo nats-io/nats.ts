@@ -31,7 +31,7 @@ connect(options.server)
         let max = options.options["max"] || -1;
         max = parseInt(max.toString(), 10);
         let subopts = {} as SubscriptionOptions;
-        if(max) {
+        if(max > 0) {
             subopts.max = max;
         }
 
