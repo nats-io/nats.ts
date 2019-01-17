@@ -69,13 +69,32 @@ test('error if server requires TLS', async (t) => {
     let lock = new Lock();
     let sc = t.context as SC;
     //@ts-ignore
-    let nc = await connect({url: sc.tls.nats});
+    let nc = await connect({url: sc.tls.nats, tls: false});
     nc.on('error', (err) => {
         t.truthy(err);
         t.regex(err.message, /Server requires a secure/);
         nc.close();
         lock.unlock();
     });
+    return lock.latch;
+});
+
+test('no error if server requires TLS - but tls is undefined', async (t) => {
+    t.plan(2);
+    let lock = new Lock();
+    let sc = t.context as SC;
+    //@ts-ignore
+    let nc = await connect({url: sc.tls.nats});
+    nc.on('error', (err) => {
+        // we will get an error because tls is unset, so there
+        // will be a tls upgrade, however the test certificate
+        // is not trusted, so tls handshake will fail to verify
+        // the certificate
+        t.truthy(err);
+        t.regex(err.message, /unable to verify the first certificate/);
+        lock.unlock();
+    });
+
     return lock.latch;
 });
 
