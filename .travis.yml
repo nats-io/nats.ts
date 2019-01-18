@@ -2,9 +2,8 @@ language: node_js
 sudo: false
 
 node_js:
-- "6"
-- "8"
 - "10"
+- "11"
 
 git:
   depth: false
@@ -20,6 +19,5 @@ before_script:
   - mv gnatsd-$NATS_VERSION-linux-amd64 gnatsd
 
 script:
-- if [[ "$TRAVIS_NODE_VERSION" == 6 ]]; then npm test; fi
-- if [[ "$TRAVIS_NODE_VERSION" == 8 ]]; then npm test; fi
-- if [[ "$TRAVIS_NODE_VERSION" == 10 ]]; then npm test; npm run cover:coveralls; fi
+- if [[ "$TRAVIS_NODE_VERSION" == 10 ]]; then npm test; fi
+- if [[ "$TRAVIS_NODE_VERSION" == 11 ]]; then npm test; npm run cover:coveralls; fi

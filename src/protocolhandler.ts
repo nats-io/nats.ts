@@ -40,7 +40,9 @@ import {Subscriptions} from "./subscriptions";
 import {DataBuffer} from "./databuffer";
 import {MsgBuffer} from "./messagebuffer";
 import {settle} from "./util";
+import fs = require('fs');
 import url = require('url');
+import nkeys = require('ts-nkeys');
 import Timer = NodeJS.Timer;
 
 
@@ -56,16 +58,11 @@ const MSG = /^MSG\s+([^\s\r\n]+)\s+([^\s\r\n]+)\s+(([^\s\r\n]+)[^\S\r\n]+)?(\d+)
     PONG = /^PONG\r\n/i,
     INFO = /^INFO\s+([^\r\n]+)\r\n/i,
     SUBRE = /^SUB\s+([^\r\n]+)\r\n/i,
-
+    CREDS = /\s*(?:(?:[-]{3,}[^\n]*[-]{3,}\n)(.+)(?:\n\s*[-]{3,}[^\n]*[-]{3,}\n))/i,
 
     // Protocol
-    //PUB     = 'PUB', // TODO: remove / never used
     SUB = 'SUB',
     CONNECT = 'CONNECT',
-
-    // Responses
-    PING_REQUEST = 'PING' + CR_LF,
-    PONG_RESPONSE = 'PONG' + CR_LF,
 
     FLUSH_THRESHOLD = 65536;
 
@@ -654,6 +651,10 @@ export class ProtocolHandler extends EventEmitter {
                         if(this.checkNoEchoMismatch()) {
                             return;
                         }
+
+                        if (this.checkNonceSigner()) {
+                            return;
+                        }
                         // Always try to read the connect_urls from info
                         let change = this.servers.processServerUpdate(this.info);
                         if (change.deleted.length > 0 || change.added.length > 0) {
@@ -673,7 +674,7 @@ export class ProtocolHandler extends EventEmitter {
                             }
 
                             // Send the connect message and subscriptions immediately
-                            let cs = JSON.stringify(new Connect(this.options));
+                            let cs = JSON.stringify(new Connect(this.options, this.info));
                             this.transport.write(`${CONNECT} ${cs}${CR_LF}`);
                             this.sendSubscriptions();
                             this.pongs.unshift(() => {
@@ -783,6 +784,94 @@ export class ProtocolHandler extends EventEmitter {
             return true;
         }
         return false;
+    }
+
+    private checkNonceSigner(): boolean {
+        if (this.info.nonce === undefined) {
+            return false;
+        }
+        if (this.options.userCreds) {
+            try {
+                // simple test that we got a creds file - exception is thrown
+                // if the file is not a valid creds file
+                this.getUserCreds(true);
+                this.options.nonceSigner = (nonce: string): any => {
+                    return this.signNonce(Buffer.from(nonce));
+                };
+
+                this.options.userJWT = () => {
+                    return this.loadJwt();
+                }
+
+            } catch (err) {
+                this.client.emit('error', err);
+                this.closeStream();
+                return true;
+            }
+        }
+
+        if (this.options.nonceSigner === undefined) {
+            this.client.emit('error', NatsError.errorForCode(ErrorCode.SIGNATURE_REQUIRED));
+            this.closeStream();
+            return true;
+        }
+
+        if (this.options.nkey === undefined && this.options.userJWT === undefined) {
+            this.client.emit('error', NatsError.errorForCode(ErrorCode.NKEY_OR_JWT_REQ));
+            this.closeStream();
+            return true;
+        }
+        return false;
+    }
+
+    // returns a regex array - first match is the jwt, second match is the nkey
+    private getUserCreds(jwt = false): RegExpExecArray {
+        if (this.options.userCreds) {
+            let buf = fs.readFileSync(this.options.userCreds);
+            if (buf) {
+                let re = jwt ? CREDS : new RegExp(CREDS, 'g');
+                let contents = buf.toString();
+
+                // first match jwt
+                let m = re.exec(contents);
+                if (m === null) {
+                    throw NatsError.errorForCode(ErrorCode.BAD_CREDS);
+                }
+                if (jwt) {
+                    return m;
+                }
+                // second match the seed
+                m = re.exec(contents);
+                if (m === null) {
+                    throw NatsError.errorForCode(ErrorCode.BAD_CREDS);
+                }
+                return m;
+            }
+        }
+        throw NatsError.errorForCode(ErrorCode.BAD_CREDS);
+    }
+
+    // built-in handler for signing nonces based on user creds file
+    private signNonce(nonce: Buffer): any {
+        try {
+            let m = this.getUserCreds();
+            let sk = nkeys.fromSeed(Buffer.from(m[1]));
+            return sk.sign(nonce)
+        } catch (ex) {
+            this.closeStream();
+            this.client.emit('error', ex)
+        }
+    }
+
+    // built-in handler for loading user jwt based on user creds file
+    private loadJwt(): any {
+        try {
+            let m = this.getUserCreds(true);
+            return m[1];
+        } catch (ex) {
+            this.closeStream();
+            this.client.emit('error', ex)
+        }
     }
 
     /**
@@ -1072,8 +1161,11 @@ export class Connect {
     auth_token?: string;
     name?: string;
     echo?: boolean;
+    sig?: string;
+    jwt?: string;
+    nkey?: string;
 
-    constructor(opts?: NatsConnectionOptions) {
+    constructor(opts: NatsConnectionOptions, info: ServerInfo) {
         opts = opts || {} as NatsConnectionOptions;
         if (opts.user) {
             this.user = opts.user;
@@ -1094,6 +1186,20 @@ export class Connect {
         }
         if (opts.noEcho) {
             this.echo = false;
+        }
+        if (info.nonce && opts.nonceSigner) {
+            let sig = opts.nonceSigner(info.nonce);
+            this.sig = sig.toString('base64');
+        }
+        if (opts.userJWT) {
+            if (typeof opts.userJWT === 'function') {
+                this.jwt = opts.userJWT();
+            } else {
+                this.jwt = opts.userJWT;
+            }
+        }
+        if (opts.nkey) {
+            this.nkey = opts.nkey;
         }
     }
 }
