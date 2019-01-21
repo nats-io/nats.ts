@@ -177,7 +177,7 @@ export interface NonceSigner {
 }
 
 /** Returns an user JWT - can be specified in `userJWT` connect option as a way of dynamically providing a JWT when required. */
-export interface JwtProvider {
+export interface JWTProvider {
     (): string;
 }
 
@@ -244,7 +244,7 @@ export interface NatsConnectionOptions {
     /** Public NKey Identifying the user. */
     nkey?: string
     /** A JWT identifying the user. Can be a static JWT string, or a function that returns a JWT when called. */
-    userJWT?: string | JwtProvider;
+    userJWT?: string | JWTProvider;
     /** Credentials file path - will automatically setup an `nkey` and `nonceSigner` that references the specified credentials file.*/
     userCreds?: string;
 }

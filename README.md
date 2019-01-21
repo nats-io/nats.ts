@@ -240,15 +240,17 @@ let nc9 = await connect({url: 'nats://127.0.0.1:4222', token: 'token'});
 
 ### NKey Authentication
 
-NKey authentication returns a public nkey from the client, and signs a challenge. 
-Server authenticates already stores the public key for the client. Client is 
-verified by the signed challenge.
+NKey authentication sends to the server a public nkey from the user, 
+and signs a challenge. Server matches the public key with those allowed
+to connect and cryptographically verifies that the challenge was signed
+the user owning having the presented public key.
+
 
 ```typescript
 // Seed Keys should be treated as secrets
 const uSeed = "SUAEL6GG2L2HIF7DUGZJGMRUFKXELGGYFMHF76UO2AYBG3K4YLWR3FKC2Q";
 const uPub = "UD6OU4D3CIOGIDZVL4ANXU3NWXOW5DCDE2YPZDBHPBXCVKHSODUA4FKI";
-let nc11 = await connect({url: 'nats://connect.ngs.global', nkey: uPub, 
+let nc11 = await connect({url: 'tls://connect.ngs.global', nkey: uPub, 
     nonceSigner: function(nonce:string): Buffer {
         // fromSeed is from ts-nkeys
         let sk = fromSeed(Buffer.from(uSeed));
@@ -260,13 +262,14 @@ let nc11 = await connect({url: 'nats://connect.ngs.global', nkey: uPub,
 ### JWT Authentication
 
 JWT Authentication returns a JWT to the server and signs a challenge. The JWT
-includes the client's public key and permissions. The server trusts the issuer 
-of the JWT which is an operator. The server itself doesn't have a direct knowledge
-of the user.
+includes the user's public key and permissions. The server resolves the issuer
+of the JWT (an account). If the server trusts account issuer, the user is
+authenticated. The server itself doesn't have a direct knowledge of the user 
+or the account.
 
 ```typescript
 // Simples way to connect to a server using JWT and NKeys
-let nc11 = await connect({url: 'nats://connect.ngs.global', userCreds: "/path/to/file.creds"});
+let nc11 = await connect({url: 'tls://connect.ngs.global', userCreds: "/path/to/file.creds"});
 
 // Setting nkeys and nonceSigner callbacks directly
 // Seed Keys should be treated as secrets
@@ -274,7 +277,7 @@ const uSeed = "SUAIBDPBAUTWCWBKIO6XHQNINK5FWJW4OHLXC3HQ2KFE4PEJUA44CNHTC4";
 const uJWT = "eyJ0eXAiOiJqd3QiLCJhbGciOiJlZDI1NTE5In0.eyJqdGkiOiJFU1VQS1NSNFhGR0pLN0FHUk5ZRjc0STVQNTZHMkFGWERYQ01CUUdHSklKUEVNUVhMSDJBIiwiaWF0IjoxNTQ0MjE3NzU3LCJpc3MiOiJBQ1pTV0JKNFNZSUxLN1FWREVMTzY0VlgzRUZXQjZDWENQTUVCVUtBMzZNSkpRUlBYR0VFUTJXSiIsInN1YiI6IlVBSDQyVUc2UFY1NTJQNVNXTFdUQlAzSDNTNUJIQVZDTzJJRUtFWFVBTkpYUjc1SjYzUlE1V002IiwidHlwZSI6InVzZXIiLCJuYXRzIjp7InB1YiI6e30sInN1YiI6e319fQ.kCR9Erm9zzux4G6M-V2bp7wKMKgnSNqMBACX05nwePRWQa37aO_yObbhcJWFGYjo1Ix-oepOkoyVLxOJeuD8Bw";
 
 // the nonceSigner function takes a seed key and returns the signed nonce
-let nc12 = await connect({url: 'nats://connect.ngs.global',
+let nc12 = await connect({url: 'tls://connect.ngs.global',
     userJWT: uJWT, 
     nonceSigner: function(nonce:string): Buffer {
        // fromSeed is from ts-nkeys
@@ -284,7 +287,7 @@ let nc12 = await connect({url: 'nats://connect.ngs.global',
 });
 
 // the user JWT can also be provided dynamically
-let nc13 = await connect({url: 'nats://connect.ngs.global', 
+let nc13 = await connect({url: 'tls://connect.ngs.global', 
     userJWT: function():string {
         return uJWT;
     }, 
@@ -470,7 +473,7 @@ The following is the list of connection options and default values.
 | `url`                  | `"nats://localhost:4222"` | Connection url
 | `user`                 |                           | Sets the username for a connection
 | `userCreds`            |                           | Path to a properly formatted user credentials file containing the client's JWT and seed key for the client. This property sets a `nonceSigner` automatically.
-| `userJWT`              |                           | A string or a `JwtProvider` function which provides a JWT specifying the client's permissions
+| `userJWT`              |                           | A string or a `JWTProvider` function which provides a JWT specifying the client's permissions
 | `verbose`              | `false`                   | Turns on `+OK` protocol acknowledgements
 | `waitOnFirstConnect`   | `false`                   | If `true` the server will fall back to a reconnect mode if it fails its first connection attempt.
 | `yieldTime`            |                           | If set and processing exceeds yieldTime, client will yield to IO callbacks before processing additional inbound messages 
