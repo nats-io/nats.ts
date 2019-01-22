@@ -225,7 +225,7 @@ let ncs5 = await connect({url: 'tls://someserver:4443', tls: {
 ```
 ## Authentication
 
-User credentials can be specified in the URL or as NatsConnectionOptions.
+User credentials can be specified in the URL or as NatsConnectionOptions:
 
 ```typescript
 // Connect with username and password in the url
@@ -237,6 +237,69 @@ let nc8 = await connect({url: 'nats://token@127.0.0.1:4222'});
 // or token inside the options:
 let nc9 = await connect({url: 'nats://127.0.0.1:4222', token: 'token'});
 ```
+
+### NKey Authentication
+
+NKey authentication sends to the server a public nkey from the user, 
+and signs a challenge. Server matches the public key with those allowed
+to connect and cryptographically verifies that the challenge was signed
+the user owning having the presented public key.
+
+
+```typescript
+// Seed Keys should be treated as secrets
+const uSeed = "SUAEL6GG2L2HIF7DUGZJGMRUFKXELGGYFMHF76UO2AYBG3K4YLWR3FKC2Q";
+const uPub = "UD6OU4D3CIOGIDZVL4ANXU3NWXOW5DCDE2YPZDBHPBXCVKHSODUA4FKI";
+let nc11 = await connect({url: 'tls://connect.ngs.global', nkey: uPub, 
+    nonceSigner: function(nonce:string): Buffer {
+        // fromSeed is from ts-nkeys
+        let sk = fromSeed(Buffer.from(uSeed));
+        return sk.sign(Buffer.from(nonce));
+    }
+ });
+```
+
+### JWT Authentication
+
+JWT Authentication returns a JWT to the server and signs a challenge. The JWT
+includes the user's public key and permissions. The server resolves the issuer
+of the JWT (an account). If the server trusts account issuer, the user is
+authenticated. The server itself doesn't have a direct knowledge of the user 
+or the account.
+
+```typescript
+// Simples way to connect to a server using JWT and NKeys
+let nc11 = await connect({url: 'tls://connect.ngs.global', userCreds: "/path/to/file.creds"});
+
+// Setting nkeys and nonceSigner callbacks directly
+// Seed Keys should be treated as secrets
+const uSeed = "SUAIBDPBAUTWCWBKIO6XHQNINK5FWJW4OHLXC3HQ2KFE4PEJUA44CNHTC4";
+const uJWT = "eyJ0eXAiOiJqd3QiLCJhbGciOiJlZDI1NTE5In0.eyJqdGkiOiJFU1VQS1NSNFhGR0pLN0FHUk5ZRjc0STVQNTZHMkFGWERYQ01CUUdHSklKUEVNUVhMSDJBIiwiaWF0IjoxNTQ0MjE3NzU3LCJpc3MiOiJBQ1pTV0JKNFNZSUxLN1FWREVMTzY0VlgzRUZXQjZDWENQTUVCVUtBMzZNSkpRUlBYR0VFUTJXSiIsInN1YiI6IlVBSDQyVUc2UFY1NTJQNVNXTFdUQlAzSDNTNUJIQVZDTzJJRUtFWFVBTkpYUjc1SjYzUlE1V002IiwidHlwZSI6InVzZXIiLCJuYXRzIjp7InB1YiI6e30sInN1YiI6e319fQ.kCR9Erm9zzux4G6M-V2bp7wKMKgnSNqMBACX05nwePRWQa37aO_yObbhcJWFGYjo1Ix-oepOkoyVLxOJeuD8Bw";
+
+// the nonceSigner function takes a seed key and returns the signed nonce
+let nc12 = await connect({url: 'tls://connect.ngs.global',
+    userJWT: uJWT, 
+    nonceSigner: function(nonce:string): Buffer {
+       // fromSeed is from ts-nkeys
+       let sk = fromSeed(Buffer.from(uSeed));
+       return sk.sign(Buffer.from(nonce));
+    }
+});
+
+// the user JWT can also be provided dynamically
+let nc13 = await connect({url: 'tls://connect.ngs.global', 
+    userJWT: function():string {
+        return uJWT;
+    }, 
+    nonceSigner: function(nonce:string): Buffer {
+       // fromSeed is from ts-nkeys
+       let sk = fromSeed(Buffer.from(uSeed));
+       return sk.sign(Buffer.from(nonce));
+    }
+});
+
+```
+
 ## Advanced Usage
 
 NATS typically buffers messages sent to the server to reduce the number of kernel calls.
@@ -394,7 +457,9 @@ The following is the list of connection options and default values.
 | `maxPingOut`           | `2`                       | Max number of pings the client will allow unanswered before rasing a stale connection error
 | `maxReconnectAttempts` | `10`                      | Sets the maximun number of reconnect attempts. The value of `-1` specifies no limit
 | `name`                 |                           | Optional client name (useful for debugging a client on the server output `-DV`)
+| `nkey`                 |                           | The public NKey identifying the client
 | `noEcho`               | `false`                   | If set, the client's matching subscriptions won't receive messages published by the client. Requires server support 1.2.0+.
+| `nonceSigner`          |                           | A `NonceSigner` function that signs the server challenge. 
 | `noRandomize`          | `false`                   | If set, the order of user-specified servers is randomized.
 | `pass`                 |                           | Sets the password for a connection
 | `payload`              | `Payload.STRING`          | Sets the payload type [`Payload.STRING`, `Payload.BINARY`, or `Payload.JSON`].
@@ -407,6 +472,8 @@ The following is the list of connection options and default values.
 | `token`                |                           | Sets a authorization token for a connection
 | `url`                  | `"nats://localhost:4222"` | Connection url
 | `user`                 |                           | Sets the username for a connection
+| `userCreds`            |                           | Path to a properly formatted user credentials file containing the client's JWT and seed key for the client. This property sets a `nonceSigner` automatically.
+| `userJWT`              |                           | A string or a `JWTProvider` function which provides a JWT specifying the client's permissions
 | `verbose`              | `false`                   | Turns on `+OK` protocol acknowledgements
 | `waitOnFirstConnect`   | `false`                   | If `true` the server will fall back to a reconnect mode if it fails its first connection attempt.
 | `yieldTime`            |                           | If set and processing exceeds yieldTime, client will yield to IO callbacks before processing additional inbound messages 

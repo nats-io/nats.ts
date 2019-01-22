@@ -32,7 +32,7 @@ import {ConnectionOptions} from "tls";
 import {next} from 'nuid';
 
 /** Version of the ts-nats library */
-export const VERSION = "1.0.4";
+export const VERSION = "1.1.0";
 
 /**
  * @hidden
@@ -64,6 +64,8 @@ export interface ServerInfo {
     server_id: string;
     version: string;
     echo?: boolean;
+    nonce?: string;
+    nkey?: string;
 }
 
 /** Argument provided to `subscribe` and `unsubscribe` event handlers. */
@@ -169,6 +171,16 @@ export interface MsgCallback {
     (err: NatsError | null, msg: Msg): void;
 }
 
+/** Signs a challenge from the server with an NKEY, a function matching this interface must be provided when manually signing nonces via the `nonceSigner` connect option. */
+export interface NonceSigner {
+    (nonce: string): Buffer;
+}
+
+/** Returns an user JWT - can be specified in `userJWT` connect option as a way of dynamically providing a JWT when required. */
+export interface JWTProvider {
+    (): string;
+}
+
 /** Additional options that can be provided to [[Client.subscribe]]. */
 export interface SubscriptionOptions {
     /** Name of the queue group for the subscription */
@@ -227,6 +239,14 @@ export interface NatsConnectionOptions {
     waitOnFirstConnect?: boolean;
     /** Specifies the max amount of time the client is allowed to process inbound messages before yielding for other IO tasks. When exceeded the client will yield. */
     yieldTime?: number;
+    /** Nonce signer - a function that signs the nonce challenge sent by the server. */
+    nonceSigner?: NonceSigner;
+    /** Public NKey Identifying the user. */
+    nkey?: string
+    /** A JWT identifying the user. Can be a static JWT string, or a function that returns a JWT when called. */
+    userJWT?: string | JWTProvider;
+    /** Credentials file path - will automatically setup an `nkey` and `nonceSigner` that references the specified credentials file.*/
+    userCreds?: string;
 }
 
 /** @hidden */
@@ -282,15 +302,19 @@ export class Client extends events.EventEmitter {
     /** @hidden */
     static connect(opts?: NatsConnectionOptions | string | number): Promise<Client> {
         return new Promise((resolve, reject) => {
-            let options = Client.parseOptions(opts);
-            let client = new Client();
-            ProtocolHandler.connect(client, options)
-                .then((ph) => {
-                    client.protocolHandler = ph;
-                    resolve(client);
-                }).catch((ex) => {
+            try {
+                let options = Client.parseOptions(opts);
+                let client = new Client();
+                ProtocolHandler.connect(client, options)
+                    .then((ph) => {
+                        client.protocolHandler = ph;
+                        resolve(client);
+                    }).catch((ex) => {
                     reject(ex);
                 });
+            } catch(ex) {
+                reject(ex);
+            }
         });
     }
 
@@ -338,7 +362,12 @@ export class Client extends events.EventEmitter {
 
         // Authentication - make sure authentication is valid.
         if (options.user && options.token) {
-            throw (NatsError.errorForCode(ErrorCode.BAD_AUTHENTICATION));
+            throw NatsError.errorForCode(ErrorCode.BAD_AUTHENTICATION);
+        }
+
+        // if specified nonceSigner must be a function
+        if (options.nonceSigner && typeof options.nonceSigner !== 'function') {
+            throw NatsError.errorForCode(ErrorCode.NONCE_SIGNER_NOTFUNC);
         }
 
         // Encoding - make sure its valid.

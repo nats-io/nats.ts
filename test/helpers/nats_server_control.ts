@@ -14,7 +14,7 @@
  *
  */
 
-import {ChildProcess, spawn} from 'child_process';
+import {ChildProcess, spawn, execSync} from 'child_process';
 import * as net from 'net';
 import {Socket} from 'net';
 import path from 'path'
@@ -24,6 +24,8 @@ import Timer = NodeJS.Timer;
 
 let SERVER = (process.env.TRAVIS) ? 'gnatsd/gnatsd' : 'gnatsd';
 let PID_DIR = (process.env.TRAVIS) ? process.env.TRAVIS_BUILD_DIR : process.env.TMPDIR;
+
+export const SERVER_MAJOR_VERSION = serverVersion()[0];
 
 // context for tests
 export interface SC {
@@ -249,4 +251,33 @@ export function stopServer(server: Server | null, done?: Function): void {
     } else if (done) {
         done();
     }
+}
+
+function serverVersion(): any[] {
+    let v = execSync(SERVER + ' -v', {
+        timeout: 1000
+    }).toString();
+    return normalizeVersion(v);
+}
+
+function normalizeVersion(s: string): any[] {
+    s = s.replace("version ", "v");
+    s = s.replace(":", "");
+    // 1.x formats differently
+    s = s.replace("nats-server ", "");
+    s = s.replace("nats-server", "");
+    s = s.replace("v", "");
+    let i = s.indexOf("-");
+    if (i !== -1) {
+        s = s.substring(0, i);
+    }
+    let a = s.split(".");
+    a.forEach((v, i) => {
+        let vv = parseInt(v, 10);
+        if (!isNaN(vv)) {
+            //@ts-ignore
+            a[i] = vv;
+        }
+    });
+    return a;
 }

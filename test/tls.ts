@@ -31,8 +31,6 @@ let clientCert = join(__dirname, "../../test/helpers/certs/client-cert.pem");
 let clientKey = join(__dirname, "../../test/helpers/certs/client-key.pem");
 
 test.before(async (t) => {
-    t.log(__dirname);
-
     let server = await startServer();
     let tls = await startServer(["--tlscert", serverCert, "--tlskey", serverKey]);
     let tlsverify = await startServer(["--tlsverify", "--tlscert", serverCert, "--tlskey", serverKey, "--tlscacert", caCert]);

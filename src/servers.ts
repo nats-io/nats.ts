@@ -14,7 +14,7 @@
  *
  */
 import url = require('url');
-import {DEFAULT_URI} from "./const";
+import {DEFAULT_PORT, DEFAULT_URI} from "./const";
 import {shuffle} from "./util";
 import {ServerInfo, ServersChangedEvent} from "./nats";
 
@@ -28,7 +28,15 @@ export class Server {
     implicit: boolean;
 
     constructor(u: string, implicit = false) {
+        // add scheme if not specified
+        if (!/^.*:\/\/.*/.test(u)) {
+            u = `nats://${u}`
+        }
+
         this.url = url.parse(u);
+        if (!this.url.port) {
+            this.url.port = `${DEFAULT_PORT}`;
+        }
         this.didConnect = false;
         this.reconnects = 0;
         this.implicit = implicit;

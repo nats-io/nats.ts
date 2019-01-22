@@ -14,12 +14,16 @@
  *
  */
 
-import {Client, connect, SubscriptionOptions} from '../src/nats'
+import {Client, connect, NatsConnectionOptions, SubscriptionOptions} from '../src/nats'
 import {parseFlags} from "../test/helpers/argparser";
 
-let options = parseFlags(process.argv.slice(2), usage, ["max"]);
-
-connect(options.server)
+let flags = parseFlags(process.argv.slice(2), usage, ["max", "creds"]);
+let opts = {} as NatsConnectionOptions;
+opts.url = flags.server;
+if (flags.options.creds) {
+    opts.userCreds = flags.options.creds;
+}
+connect(opts)
     .then((nc: Client) => {
         // this client only has a single subscription
         // if the subscription finishes, close() so the client exits.
@@ -28,7 +32,7 @@ connect(options.server)
         });
 
         // if user specifies a max, auto-unsubscribe when the count is reached
-        let max = options.options["max"] || -1;
+        let max = flags.options["max"] || -1;
         max = parseInt(max.toString(), 10);
         let subopts = {} as SubscriptionOptions;
         if(max > 0) {
@@ -37,26 +41,30 @@ connect(options.server)
 
         // create the subscription
         let count = 0;
-        nc.subscribe(options.subject, (err, msg) => {
+        nc.subscribe(flags.subject, (err, msg) => {
             count++;
-            console.log(`[#${count}]`, 'Received on', `[${msg.subject}]`, msg.data);
+            if (msg.reply) {
+                console.log(`[#${count}] received request on [${msg.subject}]: ${msg.data} respond to ${msg.reply}`);
+            } else {
+                console.log(`[#${count}] received on [${msg.subject}]: ${msg.data}`);
+            }
         }, subopts)
-            .then((sub) => {
+            .then(() => {
                 // print a message when the subscription is processed by the server
                 nc.flush(() => {
-                    console.log('Listening to', `[${options.subject}]`);
+                    console.log(`listening to [${flags.subject}]`);
                 });
             })
             .catch((err) => {
-                console.log('Error subscribing to', `[${options.subject}]`, err);
+                console.log(`error subscribing to [${flags.subject}]: ${err}`);
             });
     })
     .catch((ex) => {
-        console.log("error connecting to", options.server || "nats://localhost:4222", ": ", ex);
+        console.log(`error connecting to ${flags.server || "nats://localhost:4222"}: ${ex}`);
     });
 
 
 function usage() {
-    console.log('tsnode-sub [-s <server>] [-max count] subject');
+    console.log('tsnode-sub [-s <server>] [-creds file] [-max count] <subject>');
     process.exit(-1);
 }
