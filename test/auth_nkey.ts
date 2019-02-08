@@ -16,7 +16,7 @@
 
 import test from "ava";
 import {Lock} from "./helpers/latch";
-import {SC, startServer, stopServer, SERVER_MAJOR_VERSION} from "./helpers/nats_server_control";
+import {SC, startServer, stopServer, serverVersion} from "./helpers/nats_server_control";
 import {connect, NatsConnectionOptions} from "../src/nats";
 import path from 'path'
 import {next} from 'nuid';
@@ -27,7 +27,7 @@ const uSeed = "SUAEL6GG2L2HIF7DUGZJGMRUFKXELGGYFMHF76UO2AYBG3K4YLWR3FKC2Q";
 const uPub = "UD6OU4D3CIOGIDZVL4ANXU3NWXOW5DCDE2YPZDBHPBXCVKHSODUA4FKI";
 
 test.before(async (t) => {
-    if (SERVER_MAJOR_VERSION < 2) {
+    if (serverVersion()[0] < 2) {
         return;
     }
     let conf = {
@@ -48,7 +48,7 @@ test.before(async (t) => {
 });
 
 test.after.always((t) => {
-    if (SERVER_MAJOR_VERSION < 2) {
+    if (serverVersion()[0] < 2) {
         return;
     }
     stopServer((t.context as SC).server);
@@ -56,8 +56,8 @@ test.after.always((t) => {
 
 
 test('basic nkey authentication', async (t) => {
-    if (SERVER_MAJOR_VERSION < 2) {
-        t.pass("skipping server version " + SERVER_MAJOR_VERSION);
+    if (serverVersion()[0] < 2) {
+        t.pass("skipping server version " + serverVersion());
         return;
     }
     let lock = new Lock();

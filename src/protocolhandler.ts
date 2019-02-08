@@ -98,7 +98,6 @@ export class ProtocolHandler extends EventEmitter {
     private infoReceived: boolean = false;
     private msgBuffer?: MsgBuffer | null;
     private outbound = new DataBuffer();
-    private pass?: string;
     private payload: Payload;
     private pingTimer?: Timer;
     private pongs: any[] = [];
@@ -108,10 +107,8 @@ export class ProtocolHandler extends EventEmitter {
     private servers: Servers;
     private ssid: number = 1;
     private state: ParserState = ParserState.AWAITING_CONTROL;
-    private token?: string;
     private transport: Transport;
     private url!: url.UrlObject;
-    private user?: string;
     private wasConnected: boolean = false;
     private draining: boolean = false;
     private noMorePublishing: boolean = false;
@@ -125,10 +122,6 @@ export class ProtocolHandler extends EventEmitter {
         this.encoding = options.encoding || "utf8";
         this.payload = options.payload || Payload.STRING;
 
-        // Set user/pass/token as needed if in options.
-        this.user = options.user;
-        this.pass = options.pass;
-        this.token = options.token;
         this.subscriptions = new Subscriptions();
         this.subscriptions.on('subscribe', (sub) => {
             this.client.emit('subscribe', sub);
@@ -674,7 +667,7 @@ export class ProtocolHandler extends EventEmitter {
                             }
 
                             // Send the connect message and subscriptions immediately
-                            let cs = JSON.stringify(new Connect(this.options, this.info));
+                            let cs = JSON.stringify(new Connect(this.currentServer, this.options, this.info));
                             this.transport.write(`${CONNECT} ${cs}${CR_LF}`);
                             this.sendSubscriptions();
                             this.pongs.unshift(() => {
@@ -1059,19 +1052,6 @@ export class ProtocolHandler extends EventEmitter {
         // Place in client context.
         this.currentServer = server;
         this.url = server.url;
-        let auth = server.getCredentials();
-        if (auth) {
-            if (auth.length !== 1) {
-                if (this.options.user === undefined) {
-                    this.user = auth[0];
-                }
-                if (this.options.pass === undefined) {
-                    this.pass = auth[1];
-                }
-            } else if (this.options.token === undefined) {
-                this.token = auth[0];
-            }
-        }
     }
 
     private toBuffer(data: any = undefined): Buffer {
@@ -1165,7 +1145,7 @@ export class Connect {
     jwt?: string;
     nkey?: string;
 
-    constructor(opts: NatsConnectionOptions, info: ServerInfo) {
+    constructor(server: Server, opts: NatsConnectionOptions, info: ServerInfo) {
         opts = opts || {} as NatsConnectionOptions;
         if (opts.user) {
             this.user = opts.user;
@@ -1174,6 +1154,21 @@ export class Connect {
         if (opts.token) {
             this.auth_token = opts.token;
         }
+
+        let auth = server.getCredentials();
+        if (auth) {
+            if (auth.length !== 1) {
+                if (this.user === undefined) {
+                    this.user = auth[0];
+                }
+                if (this.pass === undefined) {
+                    this.pass = auth[1];
+                }
+            } else if (this.auth_token === undefined) {
+                this.auth_token = auth[0];
+            }
+        }
+
         if (opts.name) {
             this.name = opts.name;
         }
