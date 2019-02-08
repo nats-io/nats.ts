@@ -1,6 +1,6 @@
 {
   "name": "ts-nats",
-  "version": "1.1.0",
+  "version": "1.1.2",
   "description": "Typescript Node.js client for NATS, a lightweight, high-performance cloud native messaging system",
   "keywords": [
     "nats",
@@ -51,16 +51,16 @@
     "ts-nkeys": "^1.0.10"
   },
   "devDependencies": {
-    "@types/node": "^10.12.18",
-    "ava": "^1.1.0",
+    "@types/node": "^10.12.24",
+    "ava": "^1.2.1",
     "coveralls": "^3.0.2",
     "dependency-check": "3.3.0",
     "if-node-version": "^1.1.1",
-    "nyc": "^13.1.0",
+    "nyc": "^13.2.0",
     "ts-node": "^7.0.1",
     "typedoc": "^0.14.2",
-    "typedoc-plugin-markdown": "^1.1.21",
-    "typescript": "^3.2.2",
+    "typedoc-plugin-markdown": "^1.1.26",
+    "typescript": "^3.3.3",
     "why-is-node-running": "^2.0.3"
   },
   "typings": "./lib/nats.d.ts",
