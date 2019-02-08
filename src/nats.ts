@@ -302,19 +302,15 @@ export class Client extends events.EventEmitter {
     /** @hidden */
     static connect(opts?: NatsConnectionOptions | string | number): Promise<Client> {
         return new Promise((resolve, reject) => {
-            try {
-                let options = Client.parseOptions(opts);
-                let client = new Client();
-                ProtocolHandler.connect(client, options)
-                    .then((ph) => {
-                        client.protocolHandler = ph;
-                        resolve(client);
-                    }).catch((ex) => {
-                    reject(ex);
-                });
-            } catch(ex) {
+            let options = Client.parseOptions(opts);
+            let client = new Client();
+            ProtocolHandler.connect(client, options)
+                .then((ph) => {
+                    client.protocolHandler = ph;
+                    resolve(client);
+                }).catch((ex) => {
                 reject(ex);
-            }
+            });
         });
     }
 

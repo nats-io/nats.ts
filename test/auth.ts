@@ -29,16 +29,14 @@ let CONF_DIR = (process.env.TRAVIS) ? process.env.TRAVIS_BUILD_DIR : process.env
 test.before(async (t) => {
     let conf = {
         authorization: {
-            PERM: {
-                subscribe: "bar",
-                publish: "foo"
-            },
             users: [{
                 user: 'derek',
                 password: 'foobar',
-                permission: '$PERM'
-            }
-            ]
+                permission: {
+                    subscribe: "bar",
+                    publish: "foo"
+                }
+            }]
         }
     };
 
@@ -59,10 +57,13 @@ test('no auth', async (t) => {
     let lock = new Lock();
     let sc = t.context as SC;
     let nc = await connect(sc.server.nats);
-    nc.addListener('error', (err) => {
-        //@ts-ignore
-        let ne = err as NatsError;
-        t.is(ne.code, ErrorCode.AUTHORIZATION_VIOLATION);
+    nc.on('error', (err: NatsError) => {
+        t.is(err.code, ErrorCode.AUTHORIZATION_VIOLATION);
+        lock.unlock();
+    });
+    nc.on('connect', () => {
+        t.fail('should have not connected');
+        nc.close();
         lock.unlock();
     });
     return lock.latch;
@@ -73,10 +74,13 @@ test('bad auth', async (t) => {
     let lock = new Lock();
     let sc = t.context as SC;
     let nc = await connect({url: sc.server.nats, user: 'me', pass: 'hello'} as NatsConnectionOptions);
-    nc.addListener('error', (err) => {
-        //@ts-ignore
-        let ne = err as NatsError;
-        t.is(ne.code, ErrorCode.AUTHORIZATION_VIOLATION);
+    nc.on('error', (err: NatsError) => {
+        t.is(err.code, ErrorCode.AUTHORIZATION_VIOLATION);
+        lock.unlock();
+    });
+    nc.on('connect', () => {
+        t.fail('should have not connected');
+        nc.close();
         lock.unlock();
     });
     return lock.latch;
@@ -84,22 +88,39 @@ test('bad auth', async (t) => {
 
 test('auth', async (t) => {
     t.plan(1);
+    let lock = new Lock();
     let sc = t.context as SC;
     let nc = await connect({url: sc.server.nats, user: 'derek', pass: 'foobar'} as NatsConnectionOptions);
-    nc.flush();
-    nc.close();
-    t.pass();
+    nc.on('connect', () => {
+        t.pass();
+        nc.close();
+        lock.unlock();
+    });
+    nc.on('error', (err) => {
+        t.fail(err);
+        nc.close();
+        lock.unlock();
+    });
+    return lock.latch;
 });
 
 test('urlauth', async (t) => {
+    let lock = new Lock();
     t.plan(1);
     let sc = t.context as SC;
     let v = sc.server.nats;
     v = v.replace("nats://", "nats://derek:foobar@");
     let nc = await connect({url: v} as NatsConnectionOptions);
-    nc.flush();
+    nc.on('connect', () => {
+        t.pass();
+        lock.unlock();
+    });
+    nc.on('error', (err) => {
+        t.fail(err);
+        lock.unlock();
+    });
+    await lock.latch;
     nc.close();
-    t.pass();
 });
 
 
@@ -108,10 +129,8 @@ test('cannot sub to foo', async (t) => {
     let lock = new Lock();
     let sc = t.context as SC;
     let nc = await connect({url: sc.server.nats, user: 'derek', pass: 'foobar'} as NatsConnectionOptions);
-    nc.addListener('permissionError', (err) => {
-        //@ts-ignore
-        let ne = err as NatsError;
-        t.is(ne.code, ErrorCode.PERMISSIONS_VIOLATION);
+    nc.on('permissionError', (err: NatsError) => {
+        t.is(err.code, ErrorCode.PERMISSIONS_VIOLATION);
         lock.unlock();
     });
 
@@ -130,10 +149,8 @@ test('cannot pub bar', async (t) => {
     let lock = new Lock();
     let sc = t.context as SC;
     let nc = await connect({url: sc.server.nats, user: 'derek', pass: 'foobar'} as NatsConnectionOptions);
-    nc.addListener('permissionError', (err) => {
-        //@ts-ignore
-        let ne = err as NatsError;
-        t.is(ne.code, ErrorCode.PERMISSIONS_VIOLATION);
+    nc.addListener('permissionError', (err: NatsError) => {
+        t.is(err.code, ErrorCode.PERMISSIONS_VIOLATION);
         lock.unlock();
     });
 
@@ -148,13 +165,14 @@ test('cannot pub bar', async (t) => {
 });
 
 test('no user and token', async (t) => {
-    t.plan(1);
+    t.plan(2);
     let sc = t.context as SC;
     try {
         let nc = await connect({url: sc.server.nats, user: 'derek', token: 'foobar'} as NatsConnectionOptions);
         t.fail();
         nc.close();
     } catch (ex) {
+        t.is(ex.code, ErrorCode.BAD_AUTHENTICATION);
         t.pass();
     }
 });

@@ -25,7 +25,7 @@ import Timer = NodeJS.Timer;
 let SERVER = (process.env.TRAVIS) ? 'gnatsd/gnatsd' : 'gnatsd';
 let PID_DIR = (process.env.TRAVIS) ? process.env.TRAVIS_BUILD_DIR : process.env.TMPDIR;
 
-export const SERVER_MAJOR_VERSION = serverVersion()[0];
+let SERVER_VERSION: any[];
 
 // context for tests
 export interface SC {
@@ -253,7 +253,14 @@ export function stopServer(server: Server | null, done?: Function): void {
     }
 }
 
-function serverVersion(): any[] {
+export function serverVersion(): any[] {
+    if(SERVER_VERSION === undefined) {
+        SERVER_VERSION = initServerVersion();
+    }
+    return SERVER_VERSION;
+}
+
+function initServerVersion(): any[] {
     let v = execSync(SERVER + ' -v', {
         timeout: 1000
     }).toString();
