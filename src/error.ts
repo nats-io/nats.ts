@@ -20,6 +20,7 @@ export enum ErrorCode {
     API_ERROR = 'API_ERROR',
     BAD_AUTHENTICATION = 'BAD_AUTHENTICATION',
     BAD_CREDS = 'BAD_CREDENTIALS',
+    BAD_NKEY_SEED = 'BAD_NKEY_CREDENTIALS',
     BAD_JSON = 'BAD_JSON',
     BAD_MSG = 'BAD_MSG',
     BAD_REPLY = 'BAD_REPLY',
@@ -61,6 +62,7 @@ export class Messages {
     private constructor() {
         this.messages[ErrorCode.BAD_AUTHENTICATION] = 'User and Token can not both be provided';
         this.messages[ErrorCode.BAD_CREDS] = 'Bad user credentials';
+        this.messages[ErrorCode.BAD_NKEY_SEED] = 'Bad nkey credentials';
         this.messages[ErrorCode.BAD_JSON] = 'Message should be a non-circular JSON-serializable value';
         this.messages[ErrorCode.BAD_MSG] = 'Message cannot be a function';
         this.messages[ErrorCode.BAD_REPLY] = 'Reply cannot be a function';

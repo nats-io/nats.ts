@@ -247,6 +247,8 @@ export interface NatsConnectionOptions {
     userJWT?: string | JWTProvider;
     /** Credentials file path - will automatically setup an `nkey` and `nonceSigner` that references the specified credentials file.*/
     userCreds?: string;
+    /** nkey file path - will automatically setup an `nkey` and `nonceSigner` that references the specified nkey seed file.*/
+    nkeyCreds?: string;
 }
 
 /** @hidden */

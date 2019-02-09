@@ -14,41 +14,52 @@
  *
  */
 
-import {Client, connect, NatsConnectionOptions} from '../src/nats'
+import {connect, NatsConnectionOptions} from '../src/nats'
 import {parseFlags} from "../test/helpers/argparser";
 
-let flags = parseFlags(process.argv.slice(2), usage, ["timeout", "creds"]);
+let flags = parseFlags(process.argv.slice(2), usage, ["timeout", "creds", "nkey"]);
 let opts = {} as NatsConnectionOptions;
 opts.url = flags.server;
+if (flags.options.creds && flags.options.nkey) {
+    console.error("specify one of -creds or -nkey");
+    process.exit(-1);
+}
 if (flags.options.creds) {
     opts.userCreds = flags.options.creds;
 }
-connect(opts)
-    .then((nc: Client) => {
-        // honor the timeout
-        let max = flags.options["timeout"] || -1;
-        max = parseInt(max.toString(), 10);
-        if (max < 1) {
-            max = 1000;
-        }
-        // make the request
-        nc.request(flags.subject, max, flags.payload)
-            .then((msg) => {
-                console.log(`received response ${msg.data}`);
-                nc.close();
-            })
-            .catch((err) => {
-                console.log(`error sending request to [${flags.subject}]: ${err}`);
-                nc.close();
-            });
-        console.log(`waiting for response to [${flags.subject}]`);
-    })
-    .catch((ex) => {
-        console.log(`error connecting to ${flags.server || "nats://localhost:4222"}: ${ex}`);
-    });
-
+if (flags.options.nkey) {
+    opts.nkeyCreds = flags.options.nkey;
+}
 
 function usage() {
-    console.log('tsnode-req [-s <server>] [-creds file] [-timeout millis] <subject> [data]');
+    console.log('tsnode-req [-s <server>] [-creds file] [-nkey file] [-timeout millis] <subject> [data]');
     process.exit(-1);
 }
+
+async function main() {
+    let nc = await connect(opts);
+
+    nc.on('permissionError', (err) => {
+        console.log(`${err}`);
+    });
+
+    // honor the timeout
+    let max = flags.options["timeout"] || -1;
+    max = parseInt(max.toString(), 10);
+    if (max < 1) {
+        max = 1000;
+    }
+    // make the request
+    nc.request(flags.subject, max, flags.payload)
+        .then((msg) => {
+            console.log(`received response ${msg.data}`);
+            nc.close();
+        })
+        .catch((err) => {
+            console.log(`error sending request to [${flags.subject}]: ${err}`);
+            nc.close();
+        });
+    console.log(`waiting for response to [${flags.subject}]`);
+}
+
+main();
