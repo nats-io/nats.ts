@@ -636,7 +636,7 @@ export class Subscription {
      */
     getMax(): number {
         let sub = this.protocol.subscriptions.get(this.sid);
-        if(! sub) {
+        if (!sub) {
             return 0;
         }
         if (sub && sub.max) {
