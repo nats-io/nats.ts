@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 The NATS Authors
+ * Copyright 2019 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,7 +14,7 @@
  *
  */
 
-import util = require('util');
+import * as util from 'util';
 
 export enum ErrorCode {
     API_ERROR = 'API_ERROR',
@@ -53,7 +53,6 @@ export const REQ_TIMEOUT_MSG_PREFIX = 'The request timed out for subscription id
 export const INVALID_ENCODING_MSG_PREFIX = 'Invalid Encoding:';
 export const CONN_ERR_PREFIX = 'Could not connect to server: ';
 
-
 export class Messages {
     static messages = new Messages();
     messages: { [key: string]: string } = {};
@@ -85,19 +84,20 @@ export class Messages {
         this.messages[ErrorCode.SUB_TIMEOUT] = 'Subscription timed out.';
     }
 
-    static getMessage(s: string): string {
-        return Messages.messages.getMessage(s);
+    static getMessage(errorCode: string): string {
+        return Messages.messages.getMessage(errorCode);
     }
 
-    getMessage(s: string): string {
-        let v = this.messages[s];
-        if (!v) {
-            v = s;
+    getMessage(errorCode: string): string {
+        let errorMessage = this.messages[errorCode];
+
+        if (!errorMessage) {
+            errorMessage = errorCode;
         }
-        return v;
+        
+        return errorMessage;
     }
 }
-
 
 export class NatsError implements Error {
     name: string;
@@ -115,7 +115,7 @@ export class NatsError implements Error {
      */
     constructor(message: string, code: string, chainedError?: Error) {
         Error.captureStackTrace(this, this.constructor);
-        this.name = "NatsError";
+        this.name = 'NatsError';
         this.message = message;
         this.code = code;
         this.chainedError = chainedError;
@@ -124,7 +124,8 @@ export class NatsError implements Error {
     }
 
     static errorForCode(code: string, chainedError?: Error): NatsError {
-        let m = Messages.getMessage(code);
-        return new NatsError(m, code, chainedError);
+        const errorMessage = Messages.getMessage(code);
+
+        return new NatsError(errorMessage, code, chainedError);
     }
 }

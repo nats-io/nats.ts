@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 The NATS Authors
+ * Copyright 2019 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,8 +14,8 @@
  *
  */
 
-import {Sub} from "./nats";
-import {EventEmitter} from "events";
+import {EventEmitter} from 'events';
+import {Sub} from './nats';
 
 /**
  * @hidden
@@ -28,22 +28,24 @@ export class Subscriptions extends EventEmitter {
 
     constructor() {
         super();
-        EventEmitter.call(this);
     }
 
-    add(s: Sub): Sub {
+    add(subscription: Sub): Sub {
         this.sidCounter++;
         this.length++;
-        s.sid = this.sidCounter;
-        this.subs[s.sid] = s;
-        let se = {sid: s.sid, subject: s.subject, queue: s.queue};
-        this.emit('subscribe', se);
-        return s;
+        subscription.sid = this.sidCounter;
+        this.subs[subscription.sid] = subscription;
+        
+        const subscriptionEvent = {sid: subscription.sid, subject: subscription.subject, queue: subscription.queue};
+        this.emit('subscribe', subscriptionEvent);
+        
+        return subscription;
     }
 
-    setMux(s: Sub): Sub {
-        this.mux = s;
-        return s;
+    setMux(subscription: Sub): Sub {
+        this.mux = subscription;
+        
+        return subscription;
     }
 
     getMux(): Sub | null {
@@ -54,37 +56,44 @@ export class Subscriptions extends EventEmitter {
         if (sid in this.subs) {
             return this.subs[sid];
         }
+
         return null;
     }
 
-    all(): (Sub)[] {
-        let buf = [];
-        for (let sid in this.subs) {
-            let sub = this.subs[sid];
+    all(): Sub[] {
+        const buf = [];
+        
+        for (const sid in this.subs) {
+            const sub = this.subs[sid];
+            
             buf.push(sub);
         }
+        
         return buf;
     }
 
-    cancel(s: Sub): void {
-        if (s && s.timeout) {
-            clearTimeout(s.timeout);
-            delete s.timeout;
+    cancel(subscription: Sub): void {
+        if (subscription && subscription.timeout) {
+            clearTimeout(subscription.timeout);
+            delete subscription.timeout;
         }
-        if (s.sid in this.subs) {
-            let sub = this.subs[s.sid];
-            let se = {sid: sub.sid, subject: sub.subject, queue: sub.queue};
-            delete this.subs[s.sid];
+
+        if (subscription.sid in this.subs) {
+            const sub = this.subs[subscription.sid];
+            const subscriptionEvent = {sid: sub.sid, subject: sub.subject, queue: sub.queue};
+            
+            delete this.subs[subscription.sid];
+            
             this.length--;
-            this.emit('unsubscribe', se);
+            this.emit('unsubscribe', subscriptionEvent);
         }
     }
 
     close(): void {
-        let subs = this.all();
+        const subs = this.all();
+        
         for (let i = 0; i < subs.length; i++) {
             this.cancel(subs[i]);
         }
     }
 }
-

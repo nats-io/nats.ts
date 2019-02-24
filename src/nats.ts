@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2018 The NATS Authors
+ * Copyright 2013-2019 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,12 +13,12 @@
  * limitations under the License.
  */
 
-import events = require('events');
-import tls = require('tls');
+import * as events from 'events';
+import * as tls from 'tls';
 import Timer = NodeJS.Timer;
-import {ErrorCode, INVALID_ENCODING_MSG_PREFIX, NatsError} from "./error";
-import {createInbox, extend} from "./util";
-import {ProtocolHandler} from "./protocolhandler";
+import {ErrorCode, INVALID_ENCODING_MSG_PREFIX, NatsError} from './error';
+import {createInbox, extend} from './util';
+import {ProtocolHandler} from './protocolhandler';
 import {
     DEFAULT_MAX_PING_OUT,
     DEFAULT_MAX_RECONNECT_ATTEMPTS,
@@ -26,13 +26,13 @@ import {
     DEFAULT_PRE,
     DEFAULT_RECONNECT_TIME_WAIT,
     DEFAULT_URI
-} from "./const";
+} from './const';
 
-import {ConnectionOptions} from "tls";
+import {ConnectionOptions} from 'tls';
 import {next} from 'nuid';
 
 /** Version of the ts-nats library */
-export const VERSION = "1.1.2";
+export const VERSION = '1.1.2';
 
 /**
  * @hidden
@@ -50,7 +50,7 @@ export interface Base {
  * @hidden
  */
 export function defaultSub(): Sub {
-    return {sid: 0, subject: "", received: 0} as Sub;
+    return { sid: 0, subject: '', received: 0 } as Sub;
 }
 
 /** ServerInfo received from the server */
@@ -124,11 +124,11 @@ export interface Msg {
  */
 export enum Payload {
     /** Specifies a string payload. This is default [[NatsConnectionOptions.payload]] setting */
-    STRING = "string",
+    STRING = 'string',
     /** Specifies payloads are JSON. */
-    JSON = "json",
+    JSON = 'json',
     /** Specifies payloads are binary (Buffer) */
-    BINARY = "binary"
+    BINARY = 'binary'
 }
 
 /** Optional callback interface for 'connect' and 'reconnect' events */
@@ -143,17 +143,17 @@ export interface ReconnectingDisconnectCallback {
 
 /** Optional callback interface for 'permissionError' events */
 export interface PermissionsErrorCallback {
-    (err: NatsError): void
+    (error: NatsError): void
 }
 
 /** Optional callback for 'serversChanged' events */
 export interface ServersChangedCallback {
-    (e: ServersChangedEvent): void;
+    (event: ServersChangedEvent): void;
 }
 
 /** Optional callback for 'subscribe' and 'unsubscribe' events */
 export interface SubscribeUnsubscribeCallback {
-    (e: SubEvent): void
+    (event: SubEvent): void
 }
 
 /** Optional callback for 'yield'events */
@@ -163,12 +163,12 @@ export interface YieldCallback {
 
 /** Optional callback argument for [[Client.flush]] */
 export interface FlushCallback {
-    (err?: NatsError): void;
+    (error?: NatsError): void;
 }
 
 /** [[Client.subscribe]] callbacks. First argument will be an error if an error occurred (such as a timeout) or null. Message argument is the received message. */
 export interface MsgCallback {
-    (err: NatsError | null, msg: Msg): void;
+    (error: NatsError | null, message: Msg): void;
 }
 
 /** Signs a challenge from the server with an NKEY, a function matching this interface must be provided when manually signing nonces via the `nonceSigner` connect option. */
@@ -198,7 +198,7 @@ export interface RequestOptions {
 export interface NatsConnectionOptions {
     /** Requires server support 1.2.0+. When set to `true`, the server will not forward messages published by the client
      * to the client's subscriptions. By default value is ignored unless it is set to `true` explicitly */
-    noEcho?: boolean
+    noEcho?: boolean;
     /** Sets the encoding type used when dealing with [[Payload.STRING]] messages. Only node-supported encoding allowed. */
     encoding?: BufferEncoding;
     /** Maximum number of client PINGs that can be outstanding before the connection is considered stale. */
@@ -251,7 +251,7 @@ export interface NatsConnectionOptions {
 
 /** @hidden */
 function defaultReq(): Req {
-    return {token: "", subject: "", received: 0, max: 1} as Req;
+    return { token: '', subject: '', received: 0, max: 1 } as Req;
 }
 
 /**
@@ -265,13 +265,11 @@ export class Client extends events.EventEmitter {
     /** @hidden */
     constructor() {
         super();
-        events.EventEmitter.call(this);
         // this.addDebugHandlers()
     }
 
-
     // private addDebugHandlers() {
-    //     let events = [
+    //     const events = [
     //         'close',
     //         'connect',
     //         'connecting',
@@ -294,23 +292,25 @@ export class Client extends events.EventEmitter {
     //         }
     //     }
     //
-    //     events.forEach((e) => {
-    //         this.on(e, handler(e));
+    //     events.forEach((eventName) => {
+    //         this.on(eventName, handler(eventName));
     //     });
     // }
 
     /** @hidden */
     static connect(opts?: NatsConnectionOptions | string | number): Promise<Client> {
         return new Promise((resolve, reject) => {
-            let options = Client.parseOptions(opts);
-            let client = new Client();
+            const options = Client.parseOptions(opts);
+            const client = new Client();
+
             ProtocolHandler.connect(client, options)
                 .then((ph) => {
                     client.protocolHandler = ph;
                     resolve(client);
-                }).catch((ex) => {
-                reject(ex);
-            });
+                })
+                .catch((error) => {
+                    reject(error);
+                });
         });
     }
 
@@ -319,7 +319,7 @@ export class Client extends events.EventEmitter {
      */
     private static defaultOptions(): ConnectionOptions {
         return {
-            encoding: "utf8",
+            encoding: 'utf8',
             maxPingOut: DEFAULT_MAX_PING_OUT,
             maxReconnectAttempts: DEFAULT_MAX_RECONNECT_ATTEMPTS,
             noRandomize: false,
@@ -329,7 +329,7 @@ export class Client extends events.EventEmitter {
             reconnectTimeWait: DEFAULT_RECONNECT_TIME_WAIT,
             tls: undefined,
             verbose: false,
-            waitOnFirstConnect: false,
+            waitOnFirstConnect: false
         } as ConnectionOptions
     }
 
@@ -338,7 +338,7 @@ export class Client extends events.EventEmitter {
      */
     private static parseOptions(args?: string | number | NatsConnectionOptions): NatsConnectionOptions {
         if (args === undefined || args === null) {
-            args = {url: DEFAULT_URI} as NatsConnectionOptions;
+            args = { url: DEFAULT_URI } as NatsConnectionOptions;
         }
 
         if (typeof args === 'number') {
@@ -354,7 +354,7 @@ export class Client extends events.EventEmitter {
         // non-standard aliases are not handled
         // FIXME: may need to add uri and pass
         // uri, password, urls, NoRandomize, dontRandomize, secure, client
-        let options = extend(Client.defaultOptions(), args);
+        const options = extend(Client.defaultOptions(), args);
 
         // Authentication - make sure authentication is valid.
         if (options.user && options.token) {
@@ -367,7 +367,7 @@ export class Client extends events.EventEmitter {
         }
 
         // Encoding - make sure its valid.
-        let bufEncoding = options.encoding as BufferEncoding;
+        const bufEncoding = options.encoding as BufferEncoding;
         if (!Buffer.isEncoding(bufEncoding)) {
             throw new NatsError(INVALID_ENCODING_MSG_PREFIX + options.encoding, ErrorCode.INVALID_ENCODING);
         }
@@ -383,11 +383,11 @@ export class Client extends events.EventEmitter {
     flush(cb?: FlushCallback): Promise<void> | void {
         if (cb === undefined) {
             return new Promise((resolve, reject) => {
-                this.protocolHandler.flush((err) => {
-                    if (!err) {
+                this.protocolHandler.flush((error) => {
+                    if (!error) {
                         resolve();
                     } else {
-                        reject(err);
+                        reject(error);
                     }
                 });
             });
@@ -406,6 +406,7 @@ export class Client extends events.EventEmitter {
         if (!subject) {
             throw NatsError.errorForCode(ErrorCode.BAD_SUBJECT);
         }
+
         this.protocolHandler.publish(subject, data, reply);
     }
 
@@ -421,15 +422,17 @@ export class Client extends events.EventEmitter {
             if (!subject) {
                 reject(NatsError.errorForCode(ErrorCode.BAD_SUBJECT));
             }
+
             if (!cb) {
                 reject(new NatsError("subscribe requires a callback", ErrorCode.API_ERROR));
             }
 
-            let s = defaultSub();
-            extend(s, opts);
-            s.subject = subject;
-            s.callback = cb;
-            resolve(this.protocolHandler.subscribe(s));
+            const sub = defaultSub();
+            extend(sub, opts);
+            sub.subject = subject;
+            sub.callback = cb;
+
+            resolve(this.protocolHandler.subscribe(sub));
         });
     }
 
@@ -444,7 +447,6 @@ export class Client extends events.EventEmitter {
     drain(): Promise<any> {
         return this.protocolHandler.drain();
     }
-
 
     /**
      * Publish a request message with an implicit inbox listener as the reply. Message is optional.
@@ -463,15 +465,17 @@ export class Client extends events.EventEmitter {
             if (this.isClosed()) {
                 reject(NatsError.errorForCode(ErrorCode.CONN_CLOSED));
             }
+
             if (!subject) {
                 reject(NatsError.errorForCode(ErrorCode.BAD_SUBJECT));
             }
 
-            let r = defaultReq();
-            let opts = {max: 1} as RequestOptions;
+            const r = defaultReq();
+            const opts = {max: 1} as RequestOptions;
             extend(r, opts);
             r.token = next();
-            let request = this.protocolHandler.request(r);
+
+            const request = this.protocolHandler.request(r);
             r.timeout = setTimeout(() => {
                 request.cancel();
                 reject(NatsError.errorForCode(ErrorCode.REQ_TIMEOUT));
@@ -486,9 +490,9 @@ export class Client extends events.EventEmitter {
 
             try {
                 this.publish(subject, data, `${this.protocolHandler.muxSubscriptions.baseInbox}${r.token}`);
-            } catch(err) {
-                reject(err);
+            } catch (error) {
                 request.cancel();
+                reject(error);
             }
         });
     };
@@ -517,7 +521,6 @@ export class Client extends events.EventEmitter {
     }
 }
 
-
 /**
  * Creates a NATS [[Client]] by connecting to the specified server, port or using the specified [[NatsConnectionOptions]].
  * @param opts
@@ -545,10 +548,10 @@ export class Subscription {
     /**
      * @hidden
      */
-    static cancelTimeout(s: Sub | null): void {
-        if (s && s.timeout) {
-            clearTimeout(s.timeout);
-            delete s.timeout;
+    static cancelTimeout(subscription: Sub | null): void {
+        if (subscription && subscription.timeout) {
+            clearTimeout(subscription.timeout);
+            delete subscription.timeout;
         }
     }
 
@@ -578,7 +581,8 @@ export class Subscription {
      * Returns true if the subscription has an associated timeout.
      */
     hasTimeout(): boolean {
-        let sub = this.protocol.subscriptions.get(this.sid);
+        const sub = this.protocol.subscriptions.get(this.sid);
+
         return sub !== null && sub.hasOwnProperty('timeout');
     }
 
@@ -586,9 +590,9 @@ export class Subscription {
      * Cancels a timeout associated with the subscription
      */
     cancelTimeout(): void {
-        let sub = this.protocol.subscriptions.get(this.sid);
+        const sub = this.protocol.subscriptions.get(this.sid);
+        
         Subscription.cancelTimeout(sub);
-
     }
 
     /**
@@ -604,17 +608,21 @@ export class Subscription {
      * @param millis
      */
     setTimeout(millis: number): boolean {
-        let sub = this.protocol.subscriptions.get(this.sid);
+        const sub = this.protocol.subscriptions.get(this.sid);
         Subscription.cancelTimeout(sub);
+
         if (sub) {
             sub.timeout = setTimeout(() => {
-                if(sub && sub.callback) {
+                if (sub && sub.callback) {
                     sub.callback(NatsError.errorForCode(ErrorCode.SUB_TIMEOUT), {} as Msg);
                 }
+
                 this.unsubscribe();
             }, millis);
+
             return true;
         }
+
         return false;
     }
 
@@ -622,10 +630,12 @@ export class Subscription {
      * Returns the number of messages received by the subscription.
      */
     getReceived(): number {
-        let sub = this.protocol.subscriptions.get(this.sid);
+        const sub = this.protocol.subscriptions.get(this.sid);
+
         if (sub) {
             return sub.received;
         }
+        
         return 0;
     }
 
@@ -635,13 +645,16 @@ export class Subscription {
      * If `-1`, the subscription didn't specify a count for expected messages.
      */
     getMax(): number {
-        let sub = this.protocol.subscriptions.get(this.sid);
-        if(! sub) {
+        const sub = this.protocol.subscriptions.get(this.sid);
+
+        if (!sub) {
             return 0;
         }
+
         if (sub && sub.max) {
             return sub.max;
         }
+
         return -1;
     }
 
@@ -657,10 +670,12 @@ export class Subscription {
      * @see [[drain]]
      */
     isDraining(): boolean {
-        let sub = this.protocol.subscriptions.get(this.sid);
+        const sub = this.protocol.subscriptions.get(this.sid);
+
         if (sub) {
             return sub.draining === true;
         }
+
         return false;
     }
 }

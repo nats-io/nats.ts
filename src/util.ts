@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 The NATS Authors
+ * Copyright 2019 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,55 +14,60 @@
  *
  */
 
-import nuid = require('nuid');
+import * as nuid from 'nuid';
 
 /**
  * Create a properly formatted inbox subject.
  */
-export function createInbox() {
-    return (`_INBOX.${nuid.next()}`);
+export function createInbox(): string {
+    return `_INBOX.${nuid.next()}`;
 }
 
 /**
+ * Extends given target with all sources. This mutates the target-object
  * @hidden
  */
-export function extend(a: any, ...b: any[]): any {
-    for (let i = 0; i < b.length; i++) {
-        let o = b[i];
-        Object.keys(o).forEach(function (k) {
-            a[k] = o[k];
+export function extend(target: any, ...sources: any[]): any {
+    for (let i = 0; i < sources.length; i++) {
+        const source = sources[i];
+
+        Object.keys(source).forEach((key) => {
+            target[key] = source[key];
         });
     }
-    return a;
+
+    return target;
 }
 
 /**
+ * Shuffles the entries of given array. This mutates given array
  * @hidden
  */
-export function shuffle(a: any[]) {
-    for (let i = a.length - 1; i > 0; i--) {
+export function shuffle(target: any[]) {
+    for (let i = target.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
-        [a[i], a[j]] = [a[j], a[i]];
+
+        [target[i], target[j]] = [target[j], target[i]];
     }
-    return a;
+
+    return target;
 }
 
-
-export function settle(a: any[]): Promise<any[]> {
-    if (Array.isArray(a)) {
-        return Promise.resolve(a).then(_settle);
+/**
+ * Settles all promises in given array to a single promise. Given promise will resolve
+ * with the list of results of all sub-promises, regardless of their success of failure
+ */
+export function settle(values: any[]): Promise<any[]> {
+    if (Array.isArray(values)) {
+        return Promise.all(values.map((value) => Promise.resolve(value).then(_resolve, _resolve)));
     } else {
-        return Promise.reject(new TypeError("argument requires an array of promises"));
+        return Promise.reject(new TypeError('argument requires an array of promises'));
     }
 }
 
-function _settle(a: any[]): Promise<any> {
-    return Promise.all(a.map((p) => {
-        return Promise.resolve(p).then(_resolve, _resolve);
-    }));
+/**
+ * An identity function, that helps with promise handling
+ */
+function _resolve(value: any): any {
+    return value;
 }
-
-function _resolve(r: any): any {
-    return (r);
-}
-

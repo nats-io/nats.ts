@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 The NATS Authors
+ * Copyright 2019 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -30,11 +30,11 @@ export class DataBuffer {
     buffers: Buffer[] = [];
     byteLength: number = 0;
 
-
     pack(): void {
         if (this.buffers.length > 1) {
-            let v = Buffer.concat(this.buffers, this.byteLength);
-            this.buffers = [v];
+            const compactedBuffer = Buffer.concat(this.buffers, this.byteLength);
+            
+            this.buffers = [compactedBuffer];
         }
     }
 
@@ -45,16 +45,20 @@ export class DataBuffer {
 
         if (this.byteLength >= n) {
             this.pack();
-            let v = this.buffers.pop();
-            if (v) {
-                let d = v.slice(0, n);
+            const dataBuffer = this.buffers.pop();
+            
+            if (dataBuffer) {
+                const drainedBuffer = dataBuffer.slice(0, n);
+                
                 if (this.byteLength > n) {
-                    this.buffers.push(v.slice(n));
+                    this.buffers.push(dataBuffer.slice(n));
                 }
                 this.byteLength -= n;
-                return d;
+                
+                return drainedBuffer;
             }
         }
+
         return EMPTY_BUF;
     }
 
@@ -68,10 +72,13 @@ export class DataBuffer {
     protoLen(): number {
         let ps = ParserState.START;
         let offset = 0;
-        for(let j=0; j < this.buffers.length; j++) {
-            let cb = this.buffers[j];
+        
+        for(let j = 0; j < this.buffers.length; j++) {
+            const cb = this.buffers[j];
+            
             for (let i = 0; i < cb.byteLength; i++) {
-                let v = cb.readUInt8(i);
+                const v = cb.readUInt8(i);
+                
                 switch(ps) {
                     case ParserState.START:
                         switch(v) {
@@ -79,29 +86,35 @@ export class DataBuffer {
                                 ps = ParserState.CR;
                                 break;
                             default:
+                                // do nothing
+                                break;
                         }
                         break;
                     case ParserState.CR:
                         switch(v) {
                             case LF:
                                 // we want a length not an index
-                                return offset+i+1;
+                                return offset + i + 1;
                             default:
                                 ps = ParserState.START;
                         }
                         break;
                 }
             }
+
             offset += cb.byteLength;
         }
+
         return -1;
     }
 
     peek(): Buffer {
-        if (this.buffers.length) {
+        if (this.buffers.length > 0) {
             this.pack();
+
             return this.buffers[0];
         }
+
         return EMPTY_BUF;
     }
 
@@ -114,9 +127,11 @@ export class DataBuffer {
     }
 
     reset(): Buffer[] {
-        let a = this.buffers;
+        const bufferList = this.buffers;
+
         this.buffers = [];
         this.byteLength = 0;
-        return a;
+        
+        return bufferList;
     }
 }

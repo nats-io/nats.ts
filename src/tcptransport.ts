@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 The NATS Authors
+ * Copyright 2019 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,12 +14,11 @@
  *
  */
 
-
-import * as net from "net";
-import * as tls from "tls";
-import {ConnectionOptions, TLSSocket} from "tls";
-import {Transport, TransportHandlers} from "./transport";
-import {UrlObject} from "url";
+import * as net from 'net';
+import * as tls from 'tls';
+import {ConnectionOptions, TLSSocket} from 'tls';
+import {UrlObject} from 'url';
+import {Transport, TransportHandlers} from './transport';
 
 /**
  * @hidden

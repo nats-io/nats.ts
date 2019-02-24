@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 The NATS Authors
+ * Copyright 2019 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -27,30 +27,28 @@ import {
     SubEvent,
     Subscription,
     VERSION
-} from "./nats";
-import {MuxSubscriptions} from "./muxsubscriptions";
-import {Callback, Transport, TransportHandlers} from "./transport";
-import {CONN_ERR_PREFIX, ErrorCode, NatsError} from "./error";
+} from './nats';
+import { MuxSubscriptions } from './muxsubscriptions';
+import { Callback, Transport, TransportHandlers } from './transport';
+import { CONN_ERR_PREFIX, ErrorCode, NatsError } from './error';
 
-import {EventEmitter} from "events";
-import {CR_LF, DEFAULT_PING_INTERVAL, EMPTY} from "./const";
-import {Server, Servers} from "./servers";
-import {TCPTransport} from "./tcptransport";
-import {Subscriptions} from "./subscriptions";
-import {DataBuffer} from "./databuffer";
-import {MsgBuffer} from "./messagebuffer";
-import {settle} from "./util";
-import fs = require('fs');
-import url = require('url');
-import nkeys = require('ts-nkeys');
+import { EventEmitter } from 'events';
+import { CR_LF, DEFAULT_PING_INTERVAL, EMPTY } from './const';
+import { Server, Servers } from './servers';
+import { TCPTransport } from './tcptransport';
+import { Subscriptions } from './subscriptions';
+import { DataBuffer } from './databuffer';
+import { MsgBuffer } from './messagebuffer';
+import { settle } from './util';
+import * as fs from 'fs';
+import * as url from 'url';
+import * as nkeys from 'ts-nkeys';
 import Timer = NodeJS.Timer;
 
+const PERMISSIONS_ERR = 'permissions violation';
+const STALE_CONNECTION_ERR = 'stale connection';
 
-const PERMISSIONS_ERR = "permissions violation";
-const STALE_CONNECTION_ERR = "stale connection";
-
-
-    // Protocol
+// Protocol
 const MSG = /^MSG\s+([^\s\r\n]+)\s+([^\s\r\n]+)\s+(([^\s\r\n]+)[^\S\r\n]+)?(\d+)\r\n/i,
     OK = /^\+OK\s*\r\n/i,
     ERR = /^-ERR\s+('.+')?\r\n/i,
@@ -115,51 +113,46 @@ export class ProtocolHandler extends EventEmitter {
 
     constructor(client: Client, options: NatsConnectionOptions) {
         super();
-        EventEmitter.call(this);
 
         this.client = client;
         this.options = options;
-        this.encoding = options.encoding || "utf8";
+        this.encoding = options.encoding || 'utf8';
         this.payload = options.payload || Payload.STRING;
 
         this.subscriptions = new Subscriptions();
-        this.subscriptions.on('subscribe', (sub) => {
-            this.client.emit('subscribe', sub);
-        });
-        this.subscriptions.on('unsubscribe', (unsub) => {
-           this.client.emit('unsubscribe', unsub);
-        });
+        this.subscriptions.on('subscribe', (sub) => this.client.emit('subscribe', sub));
+        this.subscriptions.on('unsubscribe', (unsub) => this.client.emit('unsubscribe', unsub));
         this.servers = new Servers(!this.options.noRandomize, this.options.servers || [], this.options.url);
         this.transport = new TCPTransport(this.getTransportHandlers());
     }
 
     static connect(client: Client, opts: NatsConnectionOptions): Promise<ProtocolHandler> {
         return new Promise<ProtocolHandler>(async (resolve, reject) => {
-            let ph = new ProtocolHandler(client, opts);
+            const ph = new ProtocolHandler(client, opts);
             // the initial connection handles the reconnect logic
             // for all the servers. This way we can return at least
             // one error to the user. Once connected (wasConnected is set),
             // the event handlers will take over
             let lastError: Error | null = null;
-            let fn = function(n: number) {
-                if(n <= 0) {
-                    if(!ph.options.waitOnFirstConnect) {
+            const fn = (n: number) => {
+                if (n <= 0) {
+                    if (!ph.options.waitOnFirstConnect) {
                         reject(lastError);
                         return;
                     }
                 }
+
                 ph.connect()
                     .then(() => {
                         resolve(ph);
                     })
-                    .catch((ex) => {
+                    .catch((error) => {
                         // FIXME: cannot honor a delay
-                        lastError = ex;
-                        setTimeout(() => {
-                            fn(n-1);
-                        }, ph.options.reconnectTimeWait || 0)
+                        lastError = error;
+                        setTimeout(fn, ph.options.reconnectTimeWait || 0, n - 1);
                     });
             };
+
             fn(ph.servers.length());
         });
     }
@@ -173,6 +166,7 @@ export class ProtocolHandler extends EventEmitter {
                 throw (NatsError.errorForCode(ErrorCode.CONN_CLOSED));
             }
         }
+
         this.pongs.push(cb);
         this.sendCommand(this.buildProtocolMessage('PING'));
     }
@@ -182,6 +176,7 @@ export class ProtocolHandler extends EventEmitter {
             clearTimeout(this.pingTimer);
             delete this.pingTimer;
         }
+
         this.closed = true;
         this.removeAllListeners();
         this.closeStream();
@@ -196,21 +191,20 @@ export class ProtocolHandler extends EventEmitter {
         if (this.closed) {
             return Promise.reject(NatsError.errorForCode(ErrorCode.CONN_CLOSED));
         }
+
         if (this.draining) {
             return Promise.reject(NatsError.errorForCode(ErrorCode.CONN_DRAINING));
         }
         this.draining = true;
 
-        let subs = this.subscriptions.all();
-        let promises: Promise<SubEvent>[] = [];
-        subs.forEach((sub) => {
-            let p = this.drainSubscription(sub.sid);
-            promises.push(p);
-        });
+        const subs = this.subscriptions.all();
+        let promises: Promise<SubEvent>[] = subs.map((sub) => this.drainSubscription(sub.sid));
+
         return new Promise((resolve) => {
             settle(promises)
                 .then((a) => {
                     this.noMorePublishing = true;
+
                     process.nextTick(() => {
                         // send pending buffer
                         this.flush(() => {
@@ -225,40 +219,49 @@ export class ProtocolHandler extends EventEmitter {
         });
     }
 
-    publish(subject: string, data: any, reply: string = ""): void {
+    publish(subject: string, data: any, reply: string = ''): void {
         if (this.closed) {
             throw (NatsError.errorForCode(ErrorCode.CONN_CLOSED));
         }
+
         if (this.noMorePublishing) {
             throw NatsError.errorForCode(ErrorCode.CONN_DRAINING);
         }
+
         data = this.toBuffer(data);
-        let len = data.length;
+
+        const len = data.length;
         let proto: string;
         if (reply) {
             proto = `PUB ${subject} ${reply} ${len}`;
         } else {
             proto = `PUB ${subject} ${len}`;
         }
+
         this.sendCommand(this.buildProtocolMessage(proto, data))
     }
 
-    subscribe(s: Sub): Subscription {
+    subscribe(subscription: Sub): Subscription {
         if (this.isClosed()) {
-            throw(NatsError.errorForCode(ErrorCode.CONN_CLOSED));
+            throw (NatsError.errorForCode(ErrorCode.CONN_CLOSED));
         }
+
         if (this.draining) {
-            throw(NatsError.errorForCode(ErrorCode.CONN_DRAINING));
+            throw (NatsError.errorForCode(ErrorCode.CONN_DRAINING));
         }
-        let sub = this.subscriptions.add(s) as Sub;
+
+        const sub = this.subscriptions.add(subscription) as Sub;
+
         if (sub.queue) {
             this.sendCommand(this.buildProtocolMessage(`SUB ${sub.subject} ${sub.queue} ${sub.sid}`));
         } else {
             this.sendCommand(this.buildProtocolMessage(`SUB ${sub.subject} ${sub.sid}`));
         }
-        if (s.max) {
-            this.unsubscribe(this.ssid, s.max);
+
+        if (subscription.max) {
+            this.unsubscribe(this.ssid, subscription.max);
         }
+
         return new Subscription(sub, this);
     }
 
@@ -270,53 +273,60 @@ export class ProtocolHandler extends EventEmitter {
         if (!sid) {
             return Promise.reject(NatsError.errorForCode(ErrorCode.SUB_CLOSED));
         }
-        let s = this.subscriptions.get(sid);
-        if (!s) {
+
+        const sub = this.subscriptions.get(sid);
+
+        if (!sub) {
             return Promise.reject(NatsError.errorForCode(ErrorCode.SUB_CLOSED));
         }
-        if (s.draining) {
+        if (sub.draining) {
             return Promise.reject(NatsError.errorForCode(ErrorCode.SUB_DRAINING));
         }
 
-        let sub = s;
         return new Promise((resolve) => {
             sub.draining = true;
+
             this.sendCommand(this.buildProtocolMessage(`UNSUB ${sid}`));
             this.flush(() => {
                 this.subscriptions.cancel(sub);
-                resolve({sid: sub.sid, subject: sub.subject, queue: sub.queue} as SubEvent);
+                resolve({ sid: sub.sid, subject: sub.subject, queue: sub.queue } as SubEvent);
             });
-        })
+        });
     }
 
     unsubscribe(sid: number, max?: number) {
         if (!sid || this.closed) {
             return;
         }
-        let s = this.subscriptions.get(sid);
-        if (s) {
+
+        const sub = this.subscriptions.get(sid);
+        if (sub) {
             if (max) {
                 this.sendCommand(this.buildProtocolMessage(`UNSUB ${sid} ${max}`));
             } else {
                 this.sendCommand(this.buildProtocolMessage(`UNSUB ${sid}`));
             }
-            s.max = max;
-            if (s.max === undefined || s.received >= s.max) {
-                this.subscriptions.cancel(s);
+
+            sub.max = max;
+            if (max === undefined || sub.received >= max) {
+                this.subscriptions.cancel(sub);
             }
         }
     }
 
-    request(r: Req): Request {
+    request(request: Req): Request {
         if (this.closed) {
             throw (NatsError.errorForCode(ErrorCode.CONN_CLOSED));
         }
+
         if (this.draining) {
             throw (NatsError.errorForCode(ErrorCode.CONN_DRAINING));
         }
+
         this.initMux();
-        this.muxSubscriptions.add(r);
-        return new Request(r, this);
+        this.muxSubscriptions.add(request);
+
+        return new Request(request, this);
     }
 
     numSubscriptions(): number {
@@ -331,11 +341,12 @@ export class ProtocolHandler extends EventEmitter {
         if (!token || this.isClosed()) {
             return;
         }
-        let r = this.muxSubscriptions.get(token);
-        if (r) {
-            r.max = max;
-            if (r.max === undefined || r.received >= r.max) {
-                this.muxSubscriptions.cancel(r);
+
+        const request = this.muxSubscriptions.get(token);
+        if (request) {
+            request.max = max;
+            if (max === undefined || request.received >= max) {
+                this.muxSubscriptions.cancel(request);
             }
         }
     }
@@ -345,6 +356,7 @@ export class ProtocolHandler extends EventEmitter {
         if (this.currentServer.didConnect) {
             this.client.emit('reconnecting', this.url.href);
         }
+
         return this.transport.connect(this.url);
     }
 
@@ -354,25 +366,30 @@ export class ProtocolHandler extends EventEmitter {
         }
 
         if (this.outbound.size()) {
-            let d = this.outbound.drain();
-            this.transport.write(d);
+            const data = this.outbound.drain();
+
+            this.transport.write(data);
         }
     }
 
     private buildProtocolMessage(protocol: string, payload?: Buffer): Buffer {
-        let protoLen = Buffer.byteLength(protocol);
-        let cmd = protoLen + 2;
+        const protoLen = Buffer.byteLength(protocol);
+        const cmd = protoLen + 2;
         let len = cmd;
+
         if (payload) {
             len += payload.byteLength + 2;
         }
-        let buf = Buffer.allocUnsafe(len);
+
+        const buf = Buffer.allocUnsafe(len);
         buf.write(protocol);
         CRLF_BUF.copy(buf, protoLen);
+
         if (payload) {
             payload.copy(buf, cmd);
             CRLF_BUF.copy(buf, buf.byteLength - 2);
         }
+
         return buf;
     }
 
@@ -386,7 +403,7 @@ export class ProtocolHandler extends EventEmitter {
 
         let buf: Buffer;
         if (typeof cmd === 'string') {
-            let len = Buffer.byteLength(cmd);
+            const len = Buffer.byteLength(cmd);
             buf = Buffer.allocUnsafe(len);
             buf.write(cmd, 0, len, "utf8");
         } else {
@@ -399,41 +416,43 @@ export class ProtocolHandler extends EventEmitter {
 
         this.outbound.fill(buf);
         if (this.outbound.length() === 1) {
-            setImmediate(() => {
-                this.flushPending();
-            });
+            setImmediate(() => this.flushPending());
         } else if (this.outbound.size() > FLUSH_THRESHOLD) {
             this.flushPending();
         }
     }
 
     private getTransportHandlers(): TransportHandlers {
-        let handlers = {} as TransportHandlers;
-        handlers.connect = () => {
+        const handlers = {} as TransportHandlers;
+
+        handlers.connect = (): void => {
             if (this.pingTimer) {
                 clearTimeout(this.pingTimer);
                 delete this.pingTimer;
             }
+
             this.connected = true;
             this.scheduleHeartbeat();
         };
 
-        handlers.close = () => {
-            let wasConnected = this.connected;
+        handlers.close = (): void => {
+            const wasConnected = this.connected;
             this.closeStream();
 
             //@ts-ignore - guaranteed to be set
-            let mra = parseInt(this.options.maxReconnectAttempts, 10);
-            if(wasConnected) {
+            const mra = parseInt(this.options.maxReconnectAttempts, 10);
+
+            if (wasConnected) {
                 this.client.emit('disconnect', this.currentServer.url.href);
             }
-            if(this.closed) {
+
+            if (this.closed) {
                 this.client.close();
                 this.client.emit('close');
-            } else if(this.options.reconnect === false) {
+            } else if (this.options.reconnect === false) {
                 this.client.close();
                 this.client.emit('close');
-            } else if(mra > -1 && this.reconnects >= mra) {
+            } else if (mra > -1 && this.reconnects >= mra) {
                 this.client.close();
                 this.client.emit('close');
             } else {
@@ -441,7 +460,7 @@ export class ProtocolHandler extends EventEmitter {
             }
         };
 
-        handlers.error = (exception: Error) => {
+        handlers.error = (exception: Error): void => {
             // If we were connected just return, close event will process
             if (this.wasConnected && this.currentServer.didConnect) {
                 return;
@@ -466,10 +485,11 @@ export class ProtocolHandler extends EventEmitter {
             if (!this.wasConnected && this.servers.length() === 0) {
                 this.client.emit('error', new NatsError(CONN_ERR_PREFIX + exception, ErrorCode.CONN_ERR, exception));
             }
+
             this.closeStream();
         };
 
-        handlers.data = (data: Buffer) => {
+        handlers.data = (data: Buffer): void => {
             // If inbound exists, concat them together. We try to avoid this for split
             // messages, so this should only really happen for a split control line.
             // Long term answer is hand rolled parser and not regexp.
@@ -495,13 +515,15 @@ export class ProtocolHandler extends EventEmitter {
         // wanted to ensure their messages reach the server.
 
         // copy outbound and reset it
-        let buffers = this.outbound.reset();
-        let pongs = [] as Callback[];
+        const buffers = this.outbound.reset();
+        const pongs = [] as Callback[];
+
         if (buffers.length) {
             let pongIndex = 0;
             // find all the pings with associated callback, and pubs
             buffers.forEach((buf) => {
-                let cmd = buf.toString('binary');
+                const cmd = buf.toString('binary');
+
                 if (PING.test(cmd) && this.pongs !== null && pongIndex < this.pongs.length) {
                     let f = this.pongs[pongIndex++];
                     if (f) {
@@ -513,6 +535,7 @@ export class ProtocolHandler extends EventEmitter {
                 }
             });
         }
+
         this.pongs = pongs;
         this.state = ParserState.AWAITING_CONTROL;
 
@@ -528,6 +551,7 @@ export class ProtocolHandler extends EventEmitter {
         if (this.infoReceived) {
             return this.info;
         }
+
         return null;
     }
 
@@ -537,15 +561,16 @@ export class ProtocolHandler extends EventEmitter {
      *
      * @api private
      */
-    private stripPendingSubs() {
+    private stripPendingSubs(): void {
         if (this.outbound.size() === 0) {
             return;
         }
 
         // FIXME: outbound doesn't peek so there's no packing
-        let buffers = this.outbound.reset();
+        const buffers = this.outbound.reset();
         for (let i = 0; i < buffers.length; i++) {
-            let s = buffers[i].toString("binary");
+            const s = buffers[i].toString('binary');
+
             if (!SUBRE.test(s)) {
                 // requeue the command
                 this.sendCommand(buffers[i]);
@@ -562,14 +587,16 @@ export class ProtocolHandler extends EventEmitter {
         if (this.subscriptions.length === 0 || !this.transport.isConnected()) {
             return;
         }
-        let cmds: string[] = [];
-        this.subscriptions.all().forEach((s) => {
-            if (s.queue) {
-                cmds.push(`${SUB} ${s.subject} ${s.queue} ${s.sid} ${CR_LF}`);
-            } else {
-                cmds.push(`${SUB} ${s.subject} ${s.sid} ${CR_LF}`);
-            }
-        });
+
+        const cmds: string[] = this.subscriptions.all()
+            .map((subscription) => {
+                if (subscription.queue) {
+                    return `${SUB} ${subscription.subject} ${subscription.queue} ${subscription.sid} ${CR_LF}`;
+                } else {
+                    return `${SUB} ${subscription.subject} ${subscription.sid} ${CR_LF}`;
+                }
+            });
+
         if (cmds.length) {
             this.transport.write(cmds.join(''));
         }
@@ -604,16 +631,17 @@ export class ProtocolHandler extends EventEmitter {
                 case ParserState.AWAITING_CONTROL:
                     // Regex only works on strings, so convert once to be more efficient.
                     // Long term answer is a hand rolled parser, not regex.
-                    let len = this.inbound.protoLen();
-                    if(len === -1)  {
+                    const len = this.inbound.protoLen();
+                    if (len === -1) {
                         return;
                     }
-                    let bb = this.inbound.drain(len);
-                    if(bb.byteLength === 0) {
+
+                    const bb = this.inbound.drain(len);
+                    if (bb.byteLength === 0) {
                         return;
                     }
                     // specifying an encoding here like 'ascii' slows it down
-                    let buf = bb.toString();
+                    const buf = bb.toString();
 
                     if ((m = MSG.exec(buf)) !== null) {
                         this.msgBuffer = new MsgBuffer(m, this.payload, this.encoding);
@@ -625,7 +653,8 @@ export class ProtocolHandler extends EventEmitter {
                         return;
                     } else if ((m = PONG.exec(buf)) !== null) {
                         this.pout = 0;
-                        let cb = this.pongs && this.pongs.shift();
+                        const cb = this.pongs && this.pongs.shift();
+
                         if (cb) {
                             try {
                                 cb();
@@ -641,15 +670,16 @@ export class ProtocolHandler extends EventEmitter {
                         if (this.checkTLSMismatch()) {
                             return;
                         }
-                        if(this.checkNoEchoMismatch()) {
+                        if (this.checkNoEchoMismatch()) {
                             return;
                         }
 
                         if (this.checkNonceSigner()) {
                             return;
                         }
+
                         // Always try to read the connect_urls from info
-                        let change = this.servers.processServerUpdate(this.info);
+                        const change = this.servers.processServerUpdate(this.info);
                         if (change.deleted.length > 0 || change.added.length > 0) {
                             this.client.emit('serversChanged', change);
                         }
@@ -659,20 +689,16 @@ export class ProtocolHandler extends EventEmitter {
                             // Switch over to TLS as needed.
 
                             // are we a tls socket?
-                            let encrypted = this.transport.isEncrypted();
+                            const encrypted = this.transport.isEncrypted();
                             if (this.info.tls_required === true && !encrypted) {
-                                this.transport.upgrade(this.options.tls, () => {
-                                    this.flushPending();
-                                });
+                                this.transport.upgrade(this.options.tls, () => this.flushPending());
                             }
 
                             // Send the connect message and subscriptions immediately
-                            let cs = JSON.stringify(new Connect(this.currentServer, this.options, this.info));
+                            const cs = JSON.stringify(new Connect(this.currentServer, this.options, this.info));
                             this.transport.write(`${CONNECT} ${cs}${CR_LF}`);
                             this.sendSubscriptions();
-                            this.pongs.unshift(() => {
-                                this.connectCB();
-                            });
+                            this.pongs.unshift(() => this.connectCB());
                             this.transport.write(this.buildProtocolMessage('PING'));
 
                             // Mark as received
@@ -691,13 +717,15 @@ export class ProtocolHandler extends EventEmitter {
                     if (!this.msgBuffer) {
                         break;
                     }
+
                     // wait for more data to arrive
                     if (this.inbound.size() < this.msgBuffer.length) {
                         return;
                     }
+
                     // drain the number of bytes we need
-                    let dd = this.inbound.drain(this.msgBuffer.length);
-                    this.msgBuffer.fill(dd);
+                    const data = this.inbound.drain(this.msgBuffer.length);
+                    this.msgBuffer.fill(data);
                     this.processMsg();
                     this.state = ParserState.AWAITING_CONTROL;
                     this.msgBuffer = null;
@@ -707,9 +735,9 @@ export class ProtocolHandler extends EventEmitter {
                         if ((Date.now() - start) > this.options.yieldTime) {
                             this.transport.pause();
                             this.client.emit('yield');
-                            setImmediate(() => {
-                                this.processInbound();
-                            });
+
+                            setImmediate(() => this.processInbound());
+
                             return;
                         }
                     }
@@ -722,12 +750,13 @@ export class ProtocolHandler extends EventEmitter {
         if (this.options.tls === undefined) {
             return TlsRequirement.ANY;
         }
-        if (this.options.tls === false) {
+        else if (this.options.tls === false) {
             return TlsRequirement.OFF;
         }
+
         return TlsRequirement.ON;
     }
-    
+
     /**
      * Check for TLS configuration mismatch.
      *
@@ -739,6 +768,7 @@ export class ProtocolHandler extends EventEmitter {
                 if (this.info.tls_required) {
                     this.client.emit('error', NatsError.errorForCode(ErrorCode.SECURE_CONN_REQ));
                     this.closeStream();
+
                     return true;
                 }
                 break;
@@ -746,6 +776,7 @@ export class ProtocolHandler extends EventEmitter {
                 if (!this.info.tls_required) {
                     this.client.emit('error', NatsError.errorForCode(ErrorCode.NON_SECURE_CONN_REQ));
                     this.closeStream();
+
                     return true;
                 }
                 break;
@@ -758,11 +789,14 @@ export class ProtocolHandler extends EventEmitter {
         if (this.options.tls && typeof this.options.tls === 'object') {
             cert = this.options.tls.cert != null;
         }
-        if (this.info.tls_verify && !cert) {
+
+        if (this.info.tls_verify && cert === false) {
             this.client.emit('error', NatsError.errorForCode(ErrorCode.CLIENT_CERT_REQ));
             this.closeStream();
+
             return true;
         }
+
         return false;
     }
 
@@ -774,8 +808,10 @@ export class ProtocolHandler extends EventEmitter {
         if ((this.info.proto === undefined || this.info.proto < 1) && this.options.noEcho) {
             this.client.emit('error', NatsError.errorForCode(ErrorCode.NO_ECHO_NOT_SUPPORTED));
             this.closeStream();
+
             return true;
         }
+
         return false;
     }
 
@@ -783,22 +819,19 @@ export class ProtocolHandler extends EventEmitter {
         if (this.info.nonce === undefined) {
             return false;
         }
+
         if (this.options.userCreds) {
             try {
                 // simple test that we got a creds file - exception is thrown
                 // if the file is not a valid creds file
                 this.getUserCreds(true);
-                this.options.nonceSigner = (nonce: string): any => {
-                    return this.signNonce(Buffer.from(nonce));
-                };
+                this.options.nonceSigner = (nonce: string): any => this.signNonce(Buffer.from(nonce));
+                this.options.userJWT = (): any => this.loadJwt();
 
-                this.options.userJWT = () => {
-                    return this.loadJwt();
-                }
-
-            } catch (err) {
-                this.client.emit('error', err);
+            } catch (error) {
+                this.client.emit('error', error);
                 this.closeStream();
+
                 return true;
             }
         }
@@ -806,39 +839,46 @@ export class ProtocolHandler extends EventEmitter {
         if (this.options.nonceSigner === undefined) {
             this.client.emit('error', NatsError.errorForCode(ErrorCode.SIGNATURE_REQUIRED));
             this.closeStream();
+
             return true;
         }
 
         if (this.options.nkey === undefined && this.options.userJWT === undefined) {
             this.client.emit('error', NatsError.errorForCode(ErrorCode.NKEY_OR_JWT_REQ));
             this.closeStream();
+
             return true;
         }
+
         return false;
     }
 
     // returns a regex array - first match is the jwt, second match is the nkey
     private getUserCreds(jwt = false): RegExpExecArray {
         if (this.options.userCreds) {
-            let buf = fs.readFileSync(this.options.userCreds);
+            const buf = fs.readFileSync(this.options.userCreds);
+
             if (buf) {
-                let re = jwt ? CREDS : new RegExp(CREDS, 'g');
-                let contents = buf.toString();
+                const re = jwt ? CREDS : new RegExp(CREDS, 'g');
+                const contents = buf.toString();
 
                 // first match jwt
-                let m = re.exec(contents);
-                if (m === null) {
+                let matches = re.exec(contents);
+                if (matches === null) {
                     throw NatsError.errorForCode(ErrorCode.BAD_CREDS);
                 }
+
                 if (jwt) {
-                    return m;
+                    return matches;
                 }
+
                 // second match the seed
-                m = re.exec(contents);
-                if (m === null) {
+                matches = re.exec(contents);
+                if (matches === null) {
                     throw NatsError.errorForCode(ErrorCode.BAD_CREDS);
                 }
-                return m;
+
+                return matches;
             }
         }
         throw NatsError.errorForCode(ErrorCode.BAD_CREDS);
@@ -847,23 +887,25 @@ export class ProtocolHandler extends EventEmitter {
     // built-in handler for signing nonces based on user creds file
     private signNonce(nonce: Buffer): any {
         try {
-            let m = this.getUserCreds();
-            let sk = nkeys.fromSeed(Buffer.from(m[1]));
+            const credMatches = this.getUserCreds();
+            const sk = nkeys.fromSeed(Buffer.from(credMatches[1]));
+
             return sk.sign(nonce)
-        } catch (ex) {
+        } catch (error) {
             this.closeStream();
-            this.client.emit('error', ex)
+            this.client.emit('error', error)
         }
     }
 
     // built-in handler for loading user jwt based on user creds file
     private loadJwt(): any {
         try {
-            let m = this.getUserCreds(true);
-            return m[1];
-        } catch (ex) {
+            let credMatches = this.getUserCreds(true);
+
+            return credMatches[1];
+        } catch (error) {
             this.closeStream();
-            this.client.emit('error', ex)
+            this.client.emit('error', error)
         }
     }
 
@@ -876,7 +918,9 @@ export class ProtocolHandler extends EventEmitter {
         if (this.subscriptions.length === 0 || !this.msgBuffer) {
             return;
         }
-        let sub = this.subscriptions.get(this.msgBuffer.msg.sid);
+
+        const sub = this.subscriptions.get(this.msgBuffer.msg.sid);
+
         if (!sub) {
             return;
         }
@@ -895,7 +939,8 @@ export class ProtocolHandler extends EventEmitter {
         if (sub.callback) {
             try {
                 if (this.msgBuffer.error) {
-                    let empty = {sid: sub.sid, size: 0, reply: "", subject: sub.subject} as Msg;
+                    const empty = { sid: sub.sid, size: 0, reply: "", subject: sub.subject } as Msg;
+
                     sub.callback(this.msgBuffer.error, empty);
                 } else {
                     sub.callback(null, this.msgBuffer.msg);
@@ -908,14 +953,15 @@ export class ProtocolHandler extends EventEmitter {
         }
     };
 
-    static toError(s: string) {
-        let t = s ? s.toLowerCase() : "";
-        if (t.indexOf('permissions violation') !== -1) {
-            return new NatsError(s, ErrorCode.PERMISSIONS_VIOLATION);
-        } else if (t.indexOf('authorization violation') !== -1) {
-            return new NatsError(s, ErrorCode.AUTHORIZATION_VIOLATION);
+    static toError(errorString: string) {
+        const errorMessage = errorString ? errorString.toLowerCase() : '';
+
+        if (errorMessage.indexOf('permissions violation') !== -1) {
+            return new NatsError(errorString, ErrorCode.PERMISSIONS_VIOLATION);
+        } else if (errorMessage.indexOf('authorization violation') !== -1) {
+            return new NatsError(errorString, ErrorCode.AUTHORIZATION_VIOLATION);
         } else {
-            return new NatsError(s, ErrorCode.NATS_PROTOCOL_ERR);
+            return new NatsError(errorString, ErrorCode.NATS_PROTOCOL_ERR);
         }
     }
 
@@ -924,22 +970,25 @@ export class ProtocolHandler extends EventEmitter {
      *
      * @api private
      */
-    private processErr(s: string): void {
+    private processErr(errorString: string): void {
         // current NATS clients, will raise an error and close on any errors
         // except stale connection and permission errors
-        let err = ProtocolHandler.toError(s);
-        switch(err.code) {
+        const error = ProtocolHandler.toError(errorString);
+
+        switch (error.code) {
             case ErrorCode.AUTHORIZATION_VIOLATION:
-                this.client.emit('error', err);
+                this.client.emit('error', error);
                 // closeStream() triggers a reconnect if allowed
                 this.closeStream();
+
                 break;
             case ErrorCode.PERMISSIONS_VIOLATION:
                 // just emit
-                this.client.emit('permissionError', err);
+                this.client.emit('permissionError', error);
+
                 break;
             default:
-                this.client.emit('error', err);
+                this.client.emit('error', error);
                 // closeStream() triggers a reconnect if allowed
                 this.closeStream();
         }
@@ -952,6 +1001,7 @@ export class ProtocolHandler extends EventEmitter {
      */
     private closeStream(): void {
         this.transport.destroy();
+
         if (this.connected || this.closed) {
             this.pongs = [];
             this.pout = 0;
@@ -966,25 +1016,25 @@ export class ProtocolHandler extends EventEmitter {
      * @api private
      */
     private scheduleReconnect(): void {
-        let ph = this;
         // Just return if no more servers
-        if (ph.servers.length() === 0) {
+        if (this.servers.length() === 0) {
             return;
         }
+
         // Don't set reconnecting state if we are just trying
         // for the first time.
-        if (ph.wasConnected) {
-            ph.reconnecting = true;
+        if (this.wasConnected) {
+            this.reconnecting = true;
         }
+
         // Only stall if we have connected before.
         let wait = 0;
-        let s = ph.servers.next();
-        if (s && s.didConnect && this.options.reconnectTimeWait !== undefined) {
+        const nextServer = this.servers.next();
+        if (nextServer && nextServer.didConnect && this.options.reconnectTimeWait !== undefined) {
             wait = this.options.reconnectTimeWait;
         }
-        setTimeout(() => {
-            ph.reconnect();
-        }, wait);
+
+        setTimeout(() => this.reconnect(), wait);
     }
 
     private scheduleHeartbeat(): void {
@@ -993,19 +1043,23 @@ export class ProtocolHandler extends EventEmitter {
             if (this.closed) {
                 return;
             }
+
             // we could be waiting on the socket to connect
             if (this.transport.isConnected()) {
                 this.client.emit('pingcount', this.pout);
                 this.pout++;
+
                 // @ts-ignore
                 if (this.pout > this.options.maxPingOut) {
                     // processErr will scheduleReconnect
                     this.processErr(STALE_CONNECTION_ERR);
+
                     // don't reschedule, new connection initiated
                     return;
                 } else {
                     // send the ping
                     this.sendCommand(this.buildProtocolMessage('PING'));
+
                     if (this.pongs) {
                         // no callback
                         this.pongs.push(undefined);
@@ -1013,9 +1067,10 @@ export class ProtocolHandler extends EventEmitter {
 
                 }
             }
+
             // reschedule
             this.scheduleHeartbeat();
-        }, this.options.pingInterval || DEFAULT_PING_INTERVAL, this);
+        }, this.options.pingInterval || DEFAULT_PING_INTERVAL);
     }
 
     /**
@@ -1027,12 +1082,15 @@ export class ProtocolHandler extends EventEmitter {
         if (this.closed) {
             return;
         }
+
         this.reconnects += 1;
-        this.connect().then(() => {
-            // all good the pong handler deals with it
-        }).catch(() => {
-            // the stream handler deals with it
-        });
+        this.connect()
+            .then(() => {
+                // all good the pong handler deals with it
+            })
+            .catch(() => {
+                // the stream handler deals with it
+            });
     }
 
     /**
@@ -1044,7 +1102,7 @@ export class ProtocolHandler extends EventEmitter {
      * @api private
      */
     private selectServer(): void {
-        let server = this.servers.selectServer();
+        const server = this.servers.selectServer();
         if (server === undefined) {
             return;
         }
@@ -1056,11 +1114,11 @@ export class ProtocolHandler extends EventEmitter {
 
     private toBuffer(data: any = undefined): Buffer {
         if (this.options.payload === Payload.JSON) {
-            // undefined is not a valid JSON-serializable value, but null is
-            data = data === undefined ? null : data;
             try {
+                // undefined is not a valid JSON-serializable value, but null is
+                data = data === undefined ? null : data;
                 data = JSON.stringify(data);
-            } catch (e) {
+            } catch (error) {
                 throw (NatsError.errorForCode(ErrorCode.BAD_JSON));
             }
         } else {
@@ -1072,17 +1130,21 @@ export class ProtocolHandler extends EventEmitter {
             // must be utf8 - omitting encoding to prevent clever change
             data = Buffer.from(data);
         }
+
         return data;
     }
 
     private initMux(): void {
-        let mux = this.subscriptions.getMux();
+        const mux = this.subscriptions.getMux();
+
         if (!mux) {
-            let inbox = this.muxSubscriptions.init();
-            let sub = defaultSub();
+            const inbox = this.muxSubscriptions.init();
+            const sub = defaultSub();
+            
             // dot is already part of mux
             sub.subject = `${inbox}*`;
             sub.callback = this.muxSubscriptions.dispatcher();
+            
             this.subscriptions.setMux(sub);
             this.subscribe(sub);
         }
@@ -1094,10 +1156,12 @@ export class ProtocolHandler extends EventEmitter {
      * @api private
      */
     private connectCB(): void {
-        let event = this.reconnecting ? 'reconnect' : 'connect';
+        const event = this.reconnecting ? 'reconnect' : 'connect';
+        
         this.reconnecting = false;
         this.reconnects = 0;
         this.wasConnected = true;
+        
         if (this.currentServer) {
             this.currentServer.didConnect = true;
         }
@@ -1106,7 +1170,7 @@ export class ProtocolHandler extends EventEmitter {
         let info: ServerInfo = {} as ServerInfo;
         try {
             info = JSON.parse(JSON.stringify(this.info));
-        } catch (err) {
+        } catch (error) {
             // ignore
         }
 
@@ -1114,7 +1178,6 @@ export class ProtocolHandler extends EventEmitter {
         this.flushPending();
     }
 }
-
 
 export class Request {
     token: string;
@@ -1131,7 +1194,7 @@ export class Request {
 }
 
 export class Connect {
-    lang: string = "typescript";
+    lang: string = 'typescript';
     version: string = VERSION;
     verbose: boolean = false;
     pedantic: boolean = false;
@@ -1147,15 +1210,17 @@ export class Connect {
 
     constructor(server: Server, opts: NatsConnectionOptions, info: ServerInfo) {
         opts = opts || {} as NatsConnectionOptions;
+
         if (opts.user) {
             this.user = opts.user;
             this.pass = opts.pass;
         }
+
         if (opts.token) {
             this.auth_token = opts.token;
         }
 
-        let auth = server.getCredentials();
+        const auth = server.getCredentials();
         if (auth) {
             if (auth.length !== 1) {
                 if (this.user === undefined) {
@@ -1172,6 +1237,7 @@ export class Connect {
         if (opts.name) {
             this.name = opts.name;
         }
+
         if (opts.verbose !== undefined) {
             this.verbose = opts.verbose;
         }
@@ -1179,13 +1245,17 @@ export class Connect {
         if (opts.pedantic !== undefined) {
             this.pedantic = opts.pedantic;
         }
+        
         if (opts.noEcho) {
             this.echo = false;
         }
+        
         if (info.nonce && opts.nonceSigner) {
-            let sig = opts.nonceSigner(info.nonce);
+            const sig = opts.nonceSigner(info.nonce);
+            
             this.sig = sig.toString('base64');
         }
+        
         if (opts.userJWT) {
             if (typeof opts.userJWT === 'function') {
                 this.jwt = opts.userJWT();
@@ -1193,6 +1263,7 @@ export class Connect {
                 this.jwt = opts.userJWT;
             }
         }
+
         if (opts.nkey) {
             this.nkey = opts.nkey;
         }

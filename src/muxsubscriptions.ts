@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 The NATS Authors
+ * Copyright 2019 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,10 +14,9 @@
  *
  */
 
-
-import {Msg, Req} from "./nats";
-import {createInbox} from "./util";
-import {NatsError} from "./error";
+import {Msg, Req} from './nats';
+import {createInbox} from './util';
+import {NatsError} from './error';
 
 /**
  * @hidden
@@ -29,60 +28,69 @@ export class MuxSubscriptions {
 
     init(): string {
         this.baseInbox = `${createInbox()}.`;
+
         return this.baseInbox;
     }
 
-    add(r: Req) {
-        if (!isNaN(r.received)) {
-            r.received = 0;
+    add(request: Req): void {
+        if (!isNaN(request.received)) {
+            request.received = 0;
         }
+
         this.length++;
-        this.reqs[r.token] = r;
+        this.reqs[request.token] = request;
     }
 
     get(token: string): Req | null {
         if (token in this.reqs) {
             return this.reqs[token];
         }
+
         return null;
     }
 
-    cancel(r: Req): void {
-        if (r && r.timeout) {
-            clearTimeout(r.timeout);
-            delete r.timeout;
+    cancel(request: Req): void {
+        if (request && request.timeout) {
+            clearTimeout(request.timeout);
+            delete request.timeout;
         }
-        if (r.token in this.reqs) {
-            delete this.reqs[r.token];
+
+        if (request.token in this.reqs) {
+            delete this.reqs[request.token];
             this.length--;
         }
     }
 
-    getToken(m?: Msg): string | null {
-        let s = "";
-        if (m) {
-            s = m.subject || "";
+    getToken(message?: Msg): string | null {
+        let subject = '';
+
+        if (message) {
+            subject = message.subject || "";
         }
-        if (s.indexOf(this.baseInbox) === 0) {
-            return s.substring(this.baseInbox.length);
+
+        if (subject.indexOf(this.baseInbox) === 0) {
+            return subject.substring(this.baseInbox.length);
         }
+        
         return null;
     }
 
-    dispatcher() {
-        let mux = this;
-        return (error: NatsError | null, m: Msg): void => {
-            let token = mux.getToken(m);
+    dispatcher(): (error: NatsError | null, message: Msg) => void {
+        return (error: NatsError | null, message: Msg): void => {
+            let token = this.getToken(message);
+            
             if (token) {
-                let r = mux.get(token);
-                if (r) {
-                    r.received++;
-                    r.callback(error, m);
-                    if (r.max && r.received >= r.max) {
-                        mux.cancel(r);
+                let request = this.get(token);
+                
+                if (request) {
+                    request.received++;
+                    request.callback(error, message);
+                    
+                    if (request.max && request.received >= request.max) {
+                        this.cancel(request);
                     }
                 }
             }
         }
-    };
+    }
 }

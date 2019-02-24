@@ -13,10 +13,10 @@
  * limitations under the License.
  *
  */
-import url = require('url');
-import {DEFAULT_PORT, DEFAULT_URI} from "./const";
-import {shuffle} from "./util";
-import {ServerInfo, ServersChangedEvent} from "./nats";
+import * as url from 'url';
+import { DEFAULT_PORT, DEFAULT_URI } from './const';
+import { shuffle } from './util';
+import { ServerInfo, ServersChangedEvent } from './nats';
 
 /**
  * @hidden
@@ -27,13 +27,13 @@ export class Server {
     reconnects: number;
     implicit: boolean;
 
-    constructor(u: string, implicit = false) {
+    constructor(serverUrl: string, implicit = false) {
         // add scheme if not specified
-        if (!/^.*:\/\/.*/.test(u)) {
-            u = `nats://${u}`
+        if (!/^.*:\/\/.*/.test(serverUrl)) {
+            serverUrl = `nats://${serverUrl}`
         }
 
-        this.url = url.parse(u);
+        this.url = url.parse(serverUrl);
         if (!this.url.port) {
             this.url.port = `${DEFAULT_PORT}`;
         }
@@ -43,13 +43,14 @@ export class Server {
     }
 
     toString(): string {
-        return this.url.href || "";
+        return this.url.href || '';
     }
 
     getCredentials(): string[] | undefined {
         if ('auth' in this.url && !!this.url.auth) {
             return this.url.auth.split(':');
         }
+
         return undefined;
     }
 }
@@ -63,47 +64,50 @@ export class Servers {
 
     constructor(randomize: boolean, urls: string[], firstServer?: string) {
         this.servers = [] as Server[];
+
         if (urls) {
-            urls.forEach(element => {
-                this.servers.push(new Server(element));
-            });
+            this.servers = urls.map((element) => new Server(element));
+
             if (randomize) {
                 this.servers = shuffle(this.servers);
             }
         }
 
         if (firstServer) {
-            let index = urls.indexOf(firstServer);
+            const index = urls.indexOf(firstServer);
+
             if (index === -1) {
                 this.addServer(firstServer, false);
             } else {
-                let fs = this.servers[index];
+                const first = this.servers[index];
+
                 this.servers.splice(index, 1);
-                this.servers.unshift(fs);
+                this.servers.unshift(first);
             }
-        } else {
-            if (this.servers.length === 0) {
-                this.addServer(DEFAULT_URI, false);
-            }
+        } else if (this.servers.length === 0) {
+            this.addServer(DEFAULT_URI, false);
         }
+
         this.currentServer = this.servers[0];
     }
 
-    getCurrentServer() : Server {
+    getCurrentServer(): Server {
         return this.currentServer;
     }
 
-    addServer(u: string, implicit = false) {
-        this.servers.push(new Server(u, implicit));
+    addServer(serverUrl: string, implicit = false) {
+        this.servers.push(new Server(serverUrl, implicit));
     }
 
     selectServer(): Server | undefined {
-        let t = this.servers.shift();
-        if (t) {
-            this.servers.push(t);
-            this.currentServer = t;
+        let nextServer = this.servers.shift();
+
+        if (nextServer) {
+            this.servers.push(nextServer);
+            this.currentServer = nextServer;
         }
-        return t;
+
+        return nextServer;
     }
 
     removeCurrentServer() {
@@ -112,8 +116,11 @@ export class Servers {
 
     removeServer(server: Server | undefined) {
         if (server) {
-            let index = this.servers.indexOf(server);
-            this.servers.splice(index, 1);
+            const index = this.servers.indexOf(server);
+
+            if (index > -1) {
+                this.servers.splice(index, 1);
+            }
         }
     }
 
@@ -130,43 +137,47 @@ export class Servers {
     }
 
     processServerUpdate(info: ServerInfo): ServersChangedEvent {
-        let added = [];
-        let deleted : string[] = [];
+        const added = [];
+        let deleted: string[] = [];
 
         if (info.connect_urls && info.connect_urls.length > 0) {
-            let discovered: { [key: string]: Server } = {};
+            const discovered: { [key: string]: Server } = {};
 
             info.connect_urls.forEach(server => {
                 // protocol in node includes the ':'
-                let protocol = this.currentServer.url.protocol;
-                let u = `${protocol}//${server}`;
-                discovered[u] = new Server(u, true);
+                const protocol = this.currentServer.url.protocol;
+                const serverUrl = `${protocol}//${server}`;
+
+                discovered[serverUrl] = new Server(serverUrl, true);
             });
 
             // remove implicit servers that are no longer reported
-            let toDelete: number[] = [];
-            this.servers.forEach((s, index) => {
-                let u = s.toString();
-                if (s.implicit && this.currentServer.url.href !== u && discovered[u] === undefined) {
+            const toDelete: number[] = [];
+            this.servers.forEach((server, index) => {
+                let serverUrl = server.toString();
+
+                if (server.implicit && this.currentServer.url.href !== serverUrl && discovered[serverUrl] === undefined) {
                     // server was removed
                     toDelete.push(index);
                 }
+
                 // remove this entry from reported
-                delete discovered[u];
+                delete discovered[serverUrl];
             });
 
             // perform the deletion
-            toDelete.reverse();
-            toDelete.forEach(index => {
-                let removed = this.servers.splice(index, 1);
-                deleted = deleted.concat(removed[0].url.toString());
-            });
+            deleted = toDelete.reverse()
+                .map((index) => {
+                    const removed = this.servers.splice(index, 1);
+
+                    return removed[0].url.toString();
+                })
 
             // remaining servers are new
-            for (let k in discovered) {
-                if (discovered.hasOwnProperty(k)) {
-                    this.servers.push(discovered[k]);
-                    added.push(k);
+            for (let key in discovered) {
+                if (discovered.hasOwnProperty(key)) {
+                    this.servers.push(discovered[key]);
+                    added.push(key);
                 }
             }
         }
