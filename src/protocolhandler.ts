@@ -649,8 +649,9 @@ export class ProtocolHandler extends EventEmitter {
                     } else if ((m = OK.exec(buf)) !== null) {
                         // Ignore for now..
                     } else if ((m = ERR.exec(buf)) !== null) {
-                        this.processErr(m[1]);
-                        return;
+                        if (this.processErr(m[1])) {
+                            return;
+                        }
                     } else if ((m = PONG.exec(buf)) !== null) {
                         this.pout = 0;
                         const cb = this.pongs && this.pongs.shift();
@@ -820,13 +821,27 @@ export class ProtocolHandler extends EventEmitter {
             return false;
         }
 
+        if (this.options.nkeyCreds) {
+            try {
+                let seed = nkeys.fromSeed(this.getNkeyCreds());
+                this.options.nkey = seed.getPublicKey().toString();
+                this.options.nonceSigner = (nonce: string): any => {
+                    return this.nkeyNonceSigner(Buffer.from(nonce));
+                }
+            } catch (err) {
+                this.client.emit('error', err);
+                this.closeStream();
+                return true;
+            }
+        }
+
         if (this.options.userCreds) {
             try {
                 // simple test that we got a creds file - exception is thrown
                 // if the file is not a valid creds file
                 this.getUserCreds(true);
-                this.options.nonceSigner = (nonce: string): any => this.signNonce(Buffer.from(nonce));
-                this.options.userJWT = (): any => this.loadJwt();
+                this.options.nonceSigner = (nonce: string): any => this.credsNonceSigner(Buffer.from(nonce));
+                this.options.userJWT = () => this.loadJwt();
 
             } catch (error) {
                 this.client.emit('error', error);
@@ -851,6 +866,13 @@ export class ProtocolHandler extends EventEmitter {
         }
 
         return false;
+    }
+
+    private getNkeyCreds(): Buffer {
+        if (this.options.nkeyCreds) {
+            return fs.readFileSync(this.options.nkeyCreds);
+        }
+        throw NatsError.errorForCode(ErrorCode.BAD_NKEY_SEED);
     }
 
     // returns a regex array - first match is the jwt, second match is the nkey
@@ -884,8 +906,20 @@ export class ProtocolHandler extends EventEmitter {
         throw NatsError.errorForCode(ErrorCode.BAD_CREDS);
     }
 
+    // built-in handler for signing nonces based on a nkey seed file
+    private nkeyNonceSigner(nonce: Buffer): any {
+        try {
+            let m = this.getNkeyCreds();
+            let sk = nkeys.fromSeed(m);
+            return sk.sign(nonce)
+        } catch (ex) {
+            this.closeStream();
+            this.client.emit('error', ex)
+        }
+    }
+
     // built-in handler for signing nonces based on user creds file
-    private signNonce(nonce: Buffer): any {
+    private credsNonceSigner(nonce: Buffer): any {
         try {
             const credMatches = this.getUserCreds();
             const sk = nkeys.fromSeed(Buffer.from(credMatches[1]));
@@ -967,10 +1001,10 @@ export class ProtocolHandler extends EventEmitter {
 
     /**
      * ProcessErr processes any error messages from the server
-     *
+     * Return true if the error closed the connection
      * @api private
      */
-    private processErr(errorString: string): void {
+    private processErr(errorString: string): boolean {
         // current NATS clients, will raise an error and close on any errors
         // except stale connection and permission errors
         const error = ProtocolHandler.toError(errorString);
@@ -980,17 +1014,16 @@ export class ProtocolHandler extends EventEmitter {
                 this.client.emit('error', error);
                 // closeStream() triggers a reconnect if allowed
                 this.closeStream();
-
-                break;
+                return true;
             case ErrorCode.PERMISSIONS_VIOLATION:
                 // just emit
                 this.client.emit('permissionError', error);
-
-                break;
+                return false;
             default:
                 this.client.emit('error', error);
                 // closeStream() triggers a reconnect if allowed
                 this.closeStream();
+                return true;
         }
     };
 

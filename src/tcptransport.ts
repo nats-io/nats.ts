@@ -52,7 +52,7 @@ export class TCPTransport implements Transport {
             this.stream.setNoDelay(true);
 
             this.stream.on('error', (error) => {
-                if(! this.connectedOnce) {
+                if (!this.connectedOnce) {
                     reject(error);
                     this.destroy();
                 } else {

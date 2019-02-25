@@ -250,13 +250,17 @@ the user owning having the presented public key.
 // Seed Keys should be treated as secrets
 const uSeed = "SUAEL6GG2L2HIF7DUGZJGMRUFKXELGGYFMHF76UO2AYBG3K4YLWR3FKC2Q";
 const uPub = "UD6OU4D3CIOGIDZVL4ANXU3NWXOW5DCDE2YPZDBHPBXCVKHSODUA4FKI";
-let nc11 = await connect({url: 'tls://connect.ngs.global', nkey: uPub, 
+let nc11 = await connect({url: 'tls://localhost:4222', 
+    nkey: uPub, 
     nonceSigner: function(nonce:string): Buffer {
         // fromSeed is from ts-nkeys
         let sk = fromSeed(Buffer.from(uSeed));
         return sk.sign(Buffer.from(nonce));
     }
  });
+
+// Or much simpler if the seed nkey is in a file
+let nc12 = await connect({url: 'tls://localhost:4222', nkeyCreds: "/tmp/seed.txt" });
 ```
 
 ### JWT Authentication
@@ -269,7 +273,7 @@ or the account.
 
 ```typescript
 // Simples way to connect to a server using JWT and NKeys
-let nc11 = await connect({url: 'tls://connect.ngs.global', userCreds: "/path/to/file.creds"});
+let nc13 = await connect({url: 'tls://connect.ngs.global', userCreds: "/path/to/file.creds"});
 
 // Setting nkeys and nonceSigner callbacks directly
 // Seed Keys should be treated as secrets
@@ -277,7 +281,7 @@ const uSeed = "SUAIBDPBAUTWCWBKIO6XHQNINK5FWJW4OHLXC3HQ2KFE4PEJUA44CNHTC4";
 const uJWT = "eyJ0eXAiOiJqd3QiLCJhbGciOiJlZDI1NTE5In0.eyJqdGkiOiJFU1VQS1NSNFhGR0pLN0FHUk5ZRjc0STVQNTZHMkFGWERYQ01CUUdHSklKUEVNUVhMSDJBIiwiaWF0IjoxNTQ0MjE3NzU3LCJpc3MiOiJBQ1pTV0JKNFNZSUxLN1FWREVMTzY0VlgzRUZXQjZDWENQTUVCVUtBMzZNSkpRUlBYR0VFUTJXSiIsInN1YiI6IlVBSDQyVUc2UFY1NTJQNVNXTFdUQlAzSDNTNUJIQVZDTzJJRUtFWFVBTkpYUjc1SjYzUlE1V002IiwidHlwZSI6InVzZXIiLCJuYXRzIjp7InB1YiI6e30sInN1YiI6e319fQ.kCR9Erm9zzux4G6M-V2bp7wKMKgnSNqMBACX05nwePRWQa37aO_yObbhcJWFGYjo1Ix-oepOkoyVLxOJeuD8Bw";
 
 // the nonceSigner function takes a seed key and returns the signed nonce
-let nc12 = await connect({url: 'tls://connect.ngs.global',
+let nc14 = await connect({url: 'tls://connect.ngs.global',
     userJWT: uJWT, 
     nonceSigner: function(nonce:string): Buffer {
        // fromSeed is from ts-nkeys
@@ -287,7 +291,7 @@ let nc12 = await connect({url: 'tls://connect.ngs.global',
 });
 
 // the user JWT can also be provided dynamically
-let nc13 = await connect({url: 'tls://connect.ngs.global', 
+let nc15 = await connect({url: 'tls://connect.ngs.global', 
     userJWT: function():string {
         return uJWT;
     }, 
@@ -327,7 +331,7 @@ In the example below, when processing takes longer than 10ms, the client
 will yield.
 
 ```typescript
-let nc10 = await connect({port: PORT, yieldTime: 10});
+let nc16 = await connect({port: PORT, yieldTime: 10});
 ```
 
 Subscriptions can auto cancel after it has received a specified
@@ -384,7 +388,7 @@ let p = await sub3.drain();
 Similarly to subscription `drain()`, an entire connection can be drained.
 
 ```typescript
-let nc10 = await connect();
+let nc17 = await connect();
 
 // create subscriptions etc
 ...
@@ -395,7 +399,7 @@ let nc10 = await connect();
 // When all drain requests resolve:
 // - a flush is sent to the server to drain outbound messages
 // - client closes
-await nc10.drain();
+await nc17.drain();
 ```
 
 Message payloads can be strings, binary, or JSON.
@@ -403,16 +407,16 @@ Payloads determine the type of `msg.data` on subscriptions
 `string`, `Buffer`, or `javascript object`.
 
 ```typescript
-let nc12 = await connect({payload: Payload.STRING});
-let nc13 = await connect({payload: Payload.JSON});
-let nc14 = await connect({payload: Payload.BINARY});
+let nc18 = await connect({payload: Payload.STRING});
+let nc19 = await connect({payload: Payload.JSON});
+let nc20 = await connect({payload: Payload.BINARY});
 ```
 
 String encodings can be set to node supported string encodings.
 The default encoding is `utf-8`, it only affects string payloads.
 
 ```typescript
-let nc14 = await connect({payload: Payload.STRING, encoding: "ascii"});
+let nc21 = await connect({payload: Payload.STRING, encoding: "ascii"});
 ```
 
 Connect and reconnect behaviours can be configured. You can specify the number
@@ -421,7 +425,7 @@ If the maximum number of retries is reached, the client will `close()` the conne
 
 ```typescript
 // Keep trying to reconnect forever, and attempt to reconnect every 250ms
-let nc15 = await connect({maxReconnectAttempts: -1, reconnectTimeWait: 250});
+let nc22 = await connect({maxReconnectAttempts: -1, reconnectTimeWait: 250});
 
 ```
 
@@ -473,6 +477,7 @@ The following is the list of connection options and default values.
 | `url`                  | `"nats://localhost:4222"` | Connection url
 | `user`                 |                           | Sets the username for a connection
 | `userCreds`            |                           | Path to a properly formatted user credentials file containing the client's JWT and seed key for the client. This property sets a `nonceSigner` automatically.
+| `nkeyCreds`            |                           | Path to a file containing seed nkey for the client. This property sets a `nonceSigner` and `nkey` automatically.
 | `userJWT`              |                           | A string or a `JWTProvider` function which provides a JWT specifying the client's permissions
 | `verbose`              | `false`                   | Turns on `+OK` protocol acknowledgements
 | `waitOnFirstConnect`   | `false`                   | If `true` the server will fall back to a reconnect mode if it fails its first connection attempt.
