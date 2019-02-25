@@ -14,34 +14,44 @@
  *
  */
 
-import {Client, connect, NatsConnectionOptions} from '../src/nats'
+import {connect, NatsConnectionOptions} from '../src/nats'
 import {parseFlags} from "../test/helpers/argparser";
 
-let flags = parseFlags(process.argv.slice(2), usage, ["count", "creds"]);
+let flags = parseFlags(process.argv.slice(2), usage, ["count", "creds", "nkey"]);
 let opts = {} as NatsConnectionOptions;
 opts.url = flags.server;
+if (flags.options.creds && flags.options.nkey) {
+    console.error("specify one of -creds or -nkey");
+    process.exit(-1);
+}
 if (flags.options.creds) {
     opts.userCreds = flags.options.creds;
 }
-
-connect(opts)
-    .then((nc: Client) => {
-        let max = flags.options["count"] || 1;
-        for(let i=0; i < max; i++) {
-            nc.publish(flags.subject, flags.payload);
-            console.log(`[#${i + 1}] published ${flags.subject} ${flags.payload || ""}`);
-        }
-        nc.flush(() => {
-            nc.close();
-        });
-    })
-    .catch((ex) => {
-        console.log(`error connecting to ${flags.server || "nats://localhost:4222"}: ${ex}`);
-    });
-
+if (flags.options.nkey) {
+    opts.nkeyCreds = flags.options.nkey;
+}
 
 function usage() {
-    console.log('tsnode-pub [-s <server>] [-count <count>] [-creds file] <subject> [data]');
+    console.log('tsnode-pub [-s <server>] [-count <count>] [-creds file] [-nkey file] <subject> [data]');
     process.exit(-1);
 }
+
+async function main() {
+    let nc = await connect(opts);
+
+    nc.on('permissionError', (err) => {
+        console.log(`${err}`);
+    });
+
+    let max = flags.options["count"] || 1;
+    for (let i = 0; i < max; i++) {
+        nc.publish(flags.subject, flags.payload);
+        console.log(`[#${i + 1}] published ${flags.subject} ${flags.payload || ""}`);
+    }
+    nc.flush(() => {
+        nc.close();
+    });
+}
+
+main();
 
