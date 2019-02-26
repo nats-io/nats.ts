@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 The NATS Authors
+ * Copyright 2018-2019 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,8 +14,8 @@
  *
  */
 
-import {Sub} from "./nats";
-import {EventEmitter} from "events";
+import {Sub} from './nats';
+import {EventEmitter} from 'events';
 
 /**
  * @hidden
@@ -50,14 +50,14 @@ export class Subscriptions extends EventEmitter {
         return this.mux;
     }
 
-    get(sid: number): (Sub | null) {
+    get(sid: number): Sub | null {
         if (sid in this.subs) {
             return this.subs[sid];
         }
         return null;
     }
 
-    all(): (Sub)[] {
+    all(): Sub[] {
         let buf = [];
         for (let sid in this.subs) {
             let sub = this.subs[sid];

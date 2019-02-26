@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 The NATS Authors
+ * Copyright 2018-2019 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,6 +14,7 @@
  *
  */
 
+ // Connection defaults
 export const DEFAULT_PORT = 4222;
 export const DEFAULT_PRE = 'nats://localhost:';
 export const DEFAULT_URI = DEFAULT_PRE + DEFAULT_PORT;
@@ -26,7 +27,7 @@ export const DEFAULT_MAX_RECONNECT_ATTEMPTS = 10;
 export const DEFAULT_PING_INTERVAL = 2 * 60 * 1000; // 2 minutes
 export const DEFAULT_MAX_PING_OUT = 2;
 
-
+// Line handling
 export const CR_LF = '\r\n';
 export const CR_LF_LEN = CR_LF.length;
 export const EMPTY = '';

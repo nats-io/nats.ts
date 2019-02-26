@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 The NATS Authors
+ * Copyright 2018-2019 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -19,8 +19,8 @@ import nuid = require('nuid');
 /**
  * Create a properly formatted inbox subject.
  */
-export function createInbox() {
-    return (`_INBOX.${nuid.next()}`);
+export function createInbox(): string {
+    return `_INBOX.${nuid.next()}`;
 }
 
 /**
@@ -39,7 +39,7 @@ export function extend(a: any, ...b: any[]): any {
 /**
  * @hidden
  */
-export function shuffle(a: any[]) {
+export function shuffle(a: any[]): any[] {
     for (let i = a.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [a[i], a[j]] = [a[j], a[i]];
@@ -47,12 +47,11 @@ export function shuffle(a: any[]) {
     return a;
 }
 
-
 export function settle(a: any[]): Promise<any[]> {
     if (Array.isArray(a)) {
         return Promise.resolve(a).then(_settle);
     } else {
-        return Promise.reject(new TypeError("argument requires an array of promises"));
+        return Promise.reject(new TypeError('argument requires an array of promises'));
     }
 }
 
@@ -63,6 +62,6 @@ function _settle(a: any[]): Promise<any> {
 }
 
 function _resolve(r: any): any {
-    return (r);
+    return r;
 }
 

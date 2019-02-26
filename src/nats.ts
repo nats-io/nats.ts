@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2018 The NATS Authors
+ * Copyright 2013-2019 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,12 +13,12 @@
  * limitations under the License.
  */
 
-import events = require('events');
-import tls = require('tls');
+import * as events from 'events';
+import * as tls from 'tls';
 import Timer = NodeJS.Timer;
-import {ErrorCode, INVALID_ENCODING_MSG_PREFIX, NatsError} from "./error";
-import {createInbox, extend} from "./util";
-import {ProtocolHandler} from "./protocolhandler";
+import {ErrorCode, INVALID_ENCODING_MSG_PREFIX, NatsError} from './error';
+import {createInbox, extend} from './util';
+import {ProtocolHandler} from './protocolhandler';
 import {
     DEFAULT_MAX_PING_OUT,
     DEFAULT_MAX_RECONNECT_ATTEMPTS,
@@ -26,13 +26,13 @@ import {
     DEFAULT_PRE,
     DEFAULT_RECONNECT_TIME_WAIT,
     DEFAULT_URI
-} from "./const";
+} from './const';
 
-import {ConnectionOptions} from "tls";
+import {ConnectionOptions} from 'tls';
 import {next} from 'nuid';
 
 /** Version of the ts-nats library */
-export const VERSION = "1.1.2";
+export const VERSION = '1.1.2';
 
 /**
  * @hidden
@@ -50,7 +50,7 @@ export interface Base {
  * @hidden
  */
 export function defaultSub(): Sub {
-    return {sid: 0, subject: "", received: 0} as Sub;
+    return {sid: 0, subject: '', received: 0} as Sub;
 }
 
 /** ServerInfo received from the server */
@@ -124,11 +124,11 @@ export interface Msg {
  */
 export enum Payload {
     /** Specifies a string payload. This is default [[NatsConnectionOptions.payload]] setting */
-    STRING = "string",
+    STRING = 'string',
     /** Specifies payloads are JSON. */
-    JSON = "json",
+    JSON = 'json',
     /** Specifies payloads are binary (Buffer) */
-    BINARY = "binary"
+    BINARY = 'binary'
 }
 
 /** Optional callback interface for 'connect' and 'reconnect' events */
@@ -198,7 +198,7 @@ export interface RequestOptions {
 export interface NatsConnectionOptions {
     /** Requires server support 1.2.0+. When set to `true`, the server will not forward messages published by the client
      * to the client's subscriptions. By default value is ignored unless it is set to `true` explicitly */
-    noEcho?: boolean
+    noEcho?: boolean;
     /** Sets the encoding type used when dealing with [[Payload.STRING]] messages. Only node-supported encoding allowed. */
     encoding?: BufferEncoding;
     /** Maximum number of client PINGs that can be outstanding before the connection is considered stale. */
@@ -242,7 +242,7 @@ export interface NatsConnectionOptions {
     /** Nonce signer - a function that signs the nonce challenge sent by the server. */
     nonceSigner?: NonceSigner;
     /** Public NKey Identifying the user. */
-    nkey?: string
+    nkey?: string;
     /** A JWT identifying the user. Can be a static JWT string, or a function that returns a JWT when called. */
     userJWT?: string | JWTProvider;
     /** Credentials file path - will automatically setup an `nkey` and `nonceSigner` that references the specified credentials file.*/
@@ -253,7 +253,7 @@ export interface NatsConnectionOptions {
 
 /** @hidden */
 function defaultReq(): Req {
-    return {token: "", subject: "", received: 0, max: 1} as Req;
+    return {token: '', subject: '', received: 0, max: 1} as Req;
 }
 
 /**
@@ -321,7 +321,7 @@ export class Client extends events.EventEmitter {
      */
     private static defaultOptions(): ConnectionOptions {
         return {
-            encoding: "utf8",
+            encoding: 'utf8',
             maxPingOut: DEFAULT_MAX_PING_OUT,
             maxReconnectAttempts: DEFAULT_MAX_RECONNECT_ATTEMPTS,
             noRandomize: false,
@@ -331,8 +331,8 @@ export class Client extends events.EventEmitter {
             reconnectTimeWait: DEFAULT_RECONNECT_TIME_WAIT,
             tls: undefined,
             verbose: false,
-            waitOnFirstConnect: false,
-        } as ConnectionOptions
+            waitOnFirstConnect: false
+        } as ConnectionOptions;
     }
 
     /**
@@ -404,7 +404,7 @@ export class Client extends events.EventEmitter {
      * @param data optional (can be a string, JSON object, or Buffer. Must match [[NatsConnectionOptions.payload].)
      * @param reply optional
      */
-    publish(subject: string, data: any = undefined, reply: string = ""): void {
+    publish(subject: string, data: any = undefined, reply: string = ''): void {
         if (!subject) {
             throw NatsError.errorForCode(ErrorCode.BAD_SUBJECT);
         }
@@ -424,7 +424,7 @@ export class Client extends events.EventEmitter {
                 reject(NatsError.errorForCode(ErrorCode.BAD_SUBJECT));
             }
             if (!cb) {
-                reject(new NatsError("subscribe requires a callback", ErrorCode.API_ERROR));
+                reject(new NatsError('subscribe requires a callback', ErrorCode.API_ERROR));
             }
 
             let s = defaultSub();
@@ -590,7 +590,6 @@ export class Subscription {
     cancelTimeout(): void {
         let sub = this.protocol.subscriptions.get(this.sid);
         Subscription.cancelTimeout(sub);
-
     }
 
     /**
@@ -610,7 +609,7 @@ export class Subscription {
         Subscription.cancelTimeout(sub);
         if (sub) {
             sub.timeout = setTimeout(() => {
-                if(sub && sub.callback) {
+                if (sub && sub.callback) {
                     sub.callback(NatsError.errorForCode(ErrorCode.SUB_TIMEOUT), {} as Msg);
                 }
                 this.unsubscribe();

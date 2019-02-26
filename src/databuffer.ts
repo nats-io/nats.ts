@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 The NATS Authors
+ * Copyright 2018-2019 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -29,7 +29,6 @@ enum ParserState {
 export class DataBuffer {
     buffers: Buffer[] = [];
     byteLength: number = 0;
-
 
     pack(): void {
         if (this.buffers.length > 1) {
@@ -68,7 +67,7 @@ export class DataBuffer {
     protoLen(): number {
         let ps = ParserState.START;
         let offset = 0;
-        for(let j=0; j < this.buffers.length; j++) {
+        for(let j = 0; j < this.buffers.length; j++) {
             let cb = this.buffers[j];
             for (let i = 0; i < cb.byteLength; i++) {
                 let v = cb.readUInt8(i);
@@ -85,7 +84,7 @@ export class DataBuffer {
                         switch(v) {
                             case LF:
                                 // we want a length not an index
-                                return offset+i+1;
+                                return offset + i + 1;
                             default:
                                 ps = ParserState.START;
                         }

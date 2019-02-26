@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 The NATS Authors
+ * Copyright 2018-2019 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,7 +14,7 @@
  *
  */
 
-import util = require('util');
+import * as util from 'util';
 
 export enum ErrorCode {
     API_ERROR = 'API_ERROR',
@@ -31,7 +31,7 @@ export enum ErrorCode {
     CONN_ERR = 'CONN_ERR',
     INVALID_ENCODING = 'INVALID_ENCODING',
     NKEY_OR_JWT_REQ = 'NKEY_OR_JWT_REQ',
-    NO_ECHO_NOT_SUPPORTED = "NO_ECHO_NOT_SUPPORTED",
+    NO_ECHO_NOT_SUPPORTED = 'NO_ECHO_NOT_SUPPORTED',
     NO_SEED_IN_CREDS = 'NO_SEED_IN_CREDS',
     NO_USER_JWT_IN_CREDS = 'NO_USER_JWT_IN_CREDS',
     NON_SECURE_CONN_REQ = 'NON_SECURE_CONN_REQ',
@@ -44,9 +44,9 @@ export enum ErrorCode {
     SUB_TIMEOUT = 'SUB_TIMEOUT',
 
     // emitted by the server
-    AUTHORIZATION_VIOLATION = "AUTHORIZATION_VIOLATION",
+    AUTHORIZATION_VIOLATION = 'AUTHORIZATION_VIOLATION',
     NATS_PROTOCOL_ERR = 'NATS_PROTOCOL_ERR',
-    PERMISSIONS_VIOLATION = "PERMISSIONS_VIOLATION"
+    PERMISSIONS_VIOLATION = 'PERMISSIONS_VIOLATION'
 }
 
 // Error templates
@@ -117,7 +117,7 @@ export class NatsError implements Error {
      */
     constructor(message: string, code: string, chainedError?: Error) {
         Error.captureStackTrace(this, this.constructor);
-        this.name = "NatsError";
+        this.name = 'NatsError';
         this.message = message;
         this.code = code;
         this.chainedError = chainedError;
