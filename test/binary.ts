@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 The NATS Authors
+ * Copyright 2018-2019 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,11 +14,11 @@
  *
  */
 
-import test from "ava";
-import {connect, Payload} from "../src/nats";
-import {next} from 'nuid'
-import {Lock} from "./helpers/latch";
-import {SC, startServer, stopServer} from "./helpers/nats_server_control";
+import test from 'ava';
+import {connect, Payload} from '../src/nats';
+import {next} from 'nuid';
+import {Lock} from './helpers/latch';
+import {SC, startServer, stopServer} from './helpers/nats_server_control';
 import {randomBytes} from 'crypto';
 
 
@@ -31,16 +31,15 @@ test.after.always((t) => {
     stopServer((t.context as SC).server);
 });
 
-
 async function macro(t: any, input: any): Promise<any> {
     t.plan(2);
     let lock = new Lock();
     let sc = t.context as SC;
     let subj = next();
     let nc = await connect({url: sc.server.nats, payload: Payload.BINARY});
-    //
+
     nc.subscribe(subj, (err, msg) => {
-        if(err) {
+        if (err) {
             t.fail(err);
         }
         t.true(Buffer.isBuffer(msg.data));

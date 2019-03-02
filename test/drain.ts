@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 The NATS Authors
+ * Copyright 2018-2019 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,12 +14,12 @@
  *
  */
 
-import test from "ava";
-import {SC, startServer, stopServer} from "./helpers/nats_server_control";
-import {connect, SubEvent} from "../src/nats";
-import {Lock} from "./helpers/latch";
-import {createInbox} from "../src/util";
-import {ErrorCode} from "../src/error";
+import test from 'ava';
+import {SC, startServer, stopServer} from './helpers/nats_server_control';
+import {connect, SubEvent} from '../src/nats';
+import {Lock} from './helpers/latch';
+import {createInbox} from '../src/util';
+import {ErrorCode} from '../src/error';
 
 test.before(async (t) => {
     let server = await startServer();
@@ -58,7 +58,7 @@ test('connection drain', async (t) => {
                 if (subs[0].sid) {
                     t.is(subs[0].sid, s1.sid);
                 } else {
-                    t.fail("unexpected resolve");
+                    t.fail('unexpected resolve');
                 }
                 lock.unlock();
             })
@@ -66,13 +66,13 @@ test('connection drain', async (t) => {
                     t.fail(ex);
                 });
         }
-    }, {queue: "q1"});
+    }, {queue: 'q1'});
 
     let nc2 = await connect({url: sc.server.nats});
     let c2 = 0;
     let s2 = await nc2.subscribe(subj, () => {
         c2++;
-    }, {queue: "q1"});
+    }, {queue: 'q1'});
 
     await nc1.flush();
     await nc2.flush();
@@ -109,12 +109,12 @@ test('subscription drain', async (t) => {
                     lock.unlock();
                 });
         }
-    }, {queue: "q1"});
+    }, {queue: 'q1'});
 
     let c2 = 0;
     let s2 = await nc.subscribe(subj, () => {
         c2++;
-    }, {queue: "q1"});
+    }, {queue: 'q1'});
 
 
     // first notification is the unsubscribe notification
@@ -140,7 +140,6 @@ test('subscription drain', async (t) => {
     nc.close();
 });
 
-
 test('publisher drain', async (t) => {
     t.plan(5);
     let lock = new Lock();
@@ -161,7 +160,7 @@ test('publisher drain', async (t) => {
                 if (subs[0].sid) {
                     t.is(subs[0].sid, s1.sid);
                 } else {
-                    t.fail("unexpected resolve");
+                    t.fail('unexpected resolve');
                 }
                 lock.unlock();
             })
@@ -169,14 +168,14 @@ test('publisher drain', async (t) => {
                     t.fail(ex);
                 });
         }
-    }, {queue: "q1"});
+    }, {queue: 'q1'});
 
 
     let nc2 = await connect({url: sc.server.nats});
     let c2 = 0;
     let s2 = await nc2.subscribe(subj, () => {
         c2++;
-    }, {queue: "q1"});
+    }, {queue: 'q1'});
 
     await nc1.flush();
 
@@ -192,7 +191,6 @@ test('publisher drain', async (t) => {
     t.true(c2 >= 1, 's2 got more than one message');
     nc2.close();
 });
-
 
 test('publish after drain fails', async (t) => {
     t.plan(1);
@@ -214,11 +212,11 @@ test('reject reqrep during connection drain', async (t) => {
     t.plan(1);
     let lock = new Lock();
     let sc = t.context as SC;
-    let subj = "xxxx";
+    let subj = 'xxxx';
 
     // start a service for replies
     let nc1 = await connect(sc.server.nats);
-    let sub = await nc1.subscribe(subj + "a", (err, msg) => {
+    let sub = await nc1.subscribe(subj + 'a', (err, msg) => {
         if (msg.reply) {
             nc1.publish(msg.reply, 'ok');
         }
@@ -228,7 +226,7 @@ test('reject reqrep during connection drain', async (t) => {
     // start a client, and initialize requests
     let nc2 = await connect(sc.server.nats);
     // start a mux subscription
-    await nc2.request(subj + "a", 1000, "initialize the request");
+    await nc2.request(subj + 'a', 1000, 'initialize the request');
 
     let first = true;
     nc2.subscribe(subj, async (err, msg) => {
@@ -237,8 +235,8 @@ test('reject reqrep during connection drain', async (t) => {
             nc2.drain();
             try {
                 // should fail
-                let rep = await nc2.request(subj + "a", 1000);
-                t.fail("shouldn't have been able to request");
+                let rep = await nc2.request(subj + 'a', 1000);
+                t.fail('shouldn\'t have been able to request');
                 lock.unlock();
             } catch (err) {
                 t.is(err.code, ErrorCode.CONN_DRAINING);
@@ -248,7 +246,7 @@ test('reject reqrep during connection drain', async (t) => {
     });
     // publish a trigger for the drain and requests
     for (let i = 0; i < 2; i++) {
-        nc2.publish(subj, "here");
+        nc2.publish(subj, 'here');
     }
     nc2.flush();
     await lock.latch;
@@ -280,8 +278,7 @@ test('reject subscribe on draining', async (t) => {
     let nc1 = await connect(sc.server.nats);
     nc1.drain();
     await t.throwsAsync(() => {
-        return nc1.subscribe("foo", () => {
-        });
+        return nc1.subscribe('foo', () => {});
     }, {code: ErrorCode.CONN_DRAINING});
 });
 
@@ -289,8 +286,7 @@ test('reject subscription drain on closed sub', async (t) => {
     t.plan(1);
     let sc = t.context as SC;
     let nc1 = await connect(sc.server.nats);
-    let sub = await nc1.subscribe("foo", () => {
-    });
+    let sub = await nc1.subscribe('foo', () => {});
     await sub.drain();
     await t.throwsAsync(() => {
         return sub.drain();
@@ -301,10 +297,9 @@ test('connection is closed after drain', async (t) => {
     t.plan(1);
     let sc = t.context as SC;
     let nc1 = await connect(sc.server.nats);
-    let sub = await nc1.subscribe("foo", () => {
-    });
+    let sub = await nc1.subscribe('foo', () => {});
     await nc1.drain();
-    t.true(nc1.isClosed())
+    t.true(nc1.isClosed());
 });
 
 test('closed is fired after drain', async (t) => {
@@ -324,8 +319,7 @@ test('reject subscription drain on closed', async (t) => {
     t.plan(1);
     let sc = t.context as SC;
     let nc1 = await connect(sc.server.nats);
-    let sub = await nc1.subscribe("foo", () => {
-    });
+    let sub = await nc1.subscribe('foo', () => {});
     nc1.close();
     await t.throwsAsync(() => {
         return sub.drain();

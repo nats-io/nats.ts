@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 The NATS Authors
+ * Copyright 2018-2019 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -17,8 +17,8 @@
 import {ChildProcess, spawn, execSync} from 'child_process';
 import * as net from 'net';
 import {Socket} from 'net';
-import path from 'path'
-import fs from 'fs'
+import path from 'path';
+import fs from 'fs';
 import {URL} from 'url';
 import Timer = NodeJS.Timer;
 
@@ -65,42 +65,42 @@ export function addClusterMember(s: Server, opt_flags?: string[]): Promise<Serve
     return new Promise((resolve, reject) => {
         opt_flags = opt_flags || [];
         if (opt_flags.indexOf('--routes') !== -1) {
-            reject(new Error("addClusterMember doesn't take a --routes flag as an option"));
-            return
+            reject(new Error('addClusterMember doesn\'t take a --routes flag as an option'));
+            return;
         }
 
-        opt_flags = opt_flags.concat(["--routes", `nats://127.0.0.1:${s.clusterPort}`]);
+        opt_flags = opt_flags.concat(['--routes', `nats://127.0.0.1:${s.clusterPort}`]);
         startServer(opt_flags)
             .then((v) => {
-                resolve(v)
+                resolve(v);
             })
             .catch((err) => {
                 reject(err);
-            })
+            });
     });
 }
 
 export function startServer(opt_flags?: string[]): Promise<Server> {
     return new Promise((resolve, reject) => {
         opt_flags = opt_flags || [];
-        let flags : string[] = [];
+        let flags: string[] = [];
 
         // filter host
         if (opt_flags.indexOf('-a') === -1) {
-            flags = flags.concat(["-a", "127.0.0.1"]);
+            flags = flags.concat(['-a', '127.0.0.1']);
         }
 
         // filter port -p or --port
         if (opt_flags.indexOf('-p') === -1 && opt_flags.indexOf('--port') === -1) {
-            flags = flags.concat(["-p", "-1"]);
+            flags = flags.concat(['-p', '-1']);
         }
 
         if (opt_flags.indexOf('--cluster') === -1) {
-            flags = flags.concat(["--cluster", "nats://127.0.0.1:-1"]);
+            flags = flags.concat(['--cluster', 'nats://127.0.0.1:-1']);
         }
 
         if (opt_flags.indexOf('--http_port') === -1 && opt_flags.indexOf('-m') === -1) {
-            flags = flags.concat(["--m", "-1"]);
+            flags = flags.concat(['--m', '-1']);
         }
 
         flags = flags.concat(['--ports_file_dir', PID_DIR] as string[]);
@@ -112,7 +112,7 @@ export function startServer(opt_flags?: string[]): Promise<Server> {
         }
 
         if (process.env.PRINT_LAUNCH_CMD) {
-            console.log(flags.join(" "));
+            console.log(flags.join(' '));
         }
 
         let server = spawn(SERVER, flags) as Server;
@@ -202,7 +202,7 @@ export function startServer(opt_flags?: string[]): Promise<Server> {
 
                 // Wait for next try..
                 socket.on('error', function (error) {
-                    finish(new Error("Problem connecting to server on port: " + port + " (" + error + ")"));
+                    finish(new Error('Problem connecting to server on port: ' + port + ' (' + error + ')'));
                 });
 
             }, delta);
@@ -254,7 +254,7 @@ export function stopServer(server: Server | null, done?: Function): void {
 }
 
 export function serverVersion(): any[] {
-    if(SERVER_VERSION === undefined) {
+    if (SERVER_VERSION === undefined) {
         SERVER_VERSION = initServerVersion();
     }
     return SERVER_VERSION;
@@ -268,17 +268,17 @@ function initServerVersion(): any[] {
 }
 
 function normalizeVersion(s: string): any[] {
-    s = s.replace("version ", "v");
-    s = s.replace(":", "");
+    s = s.replace('version ', 'v');
+    s = s.replace(':', '');
     // 1.x formats differently
-    s = s.replace("nats-server ", "");
-    s = s.replace("nats-server", "");
-    s = s.replace("v", "");
-    let i = s.indexOf("-");
+    s = s.replace('nats-server ', '');
+    s = s.replace('nats-server', '');
+    s = s.replace('v', '');
+    let i = s.indexOf('-');
     if (i !== -1) {
         s = s.substring(0, i);
     }
-    let a = s.split(".");
+    let a = s.split('.');
     a.forEach((v, i) => {
         let vv = parseInt(v, 10);
         if (!isNaN(vv)) {

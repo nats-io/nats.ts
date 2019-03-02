@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 The NATS Authors
+ * Copyright 2018-2019 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -21,52 +21,52 @@ export interface Flags {
     options: { [key: string]: string };
 }
 
-export function parseFlags(args: string[], usage: Function, flags:string[]) : Flags {
+export function parseFlags(args: string[], usage: Function, flags: string[]): Flags {
     let p = new ArgParser(args, usage, flags);
     return p.parseFlags();
 }
 
 class ArgParser {
-    args:   string[];
-    usage:  Function;
+    args: string[];
+    usage: Function;
     flags?: string[];
 
-    constructor(args: string[], usage: Function, flags:string[]) {
+    constructor(args: string[], usage: Function, flags: string[]) {
         this.args = args;
         this.usage = usage;
         this.flags = flags;
     }
 
-    getOpt(flag: string) : (string | undefined) {
+    getOpt(flag: string): string | undefined {
         let si = this.args.indexOf(flag);
-        if(si !== -1) {
-            let v = this.args[si+1];
-            this.args.splice(si,2);
+        if (si !== -1) {
+            let v = this.args[si + 1];
+            this.args.splice(si, 2);
             return v;
         }
         return undefined;
     }
 
-    parseFlags() : Flags {
+    parseFlags(): Flags {
         let opts = {} as Flags;
-        opts.server = this.getOpt("-s");
+        opts.server = this.getOpt('-s');
 
-        if(this.flags) {
+        if (this.flags) {
             opts.options = {} as { [key: string]: string };
             this.flags.forEach((f) => {
-                let v = this.getOpt("-" + f);
-                if(v) {
+                let v = this.getOpt('-' + f);
+                if (v) {
                     opts.options[f] = v;
                 }
             });
         }
 
         // should have one or two elements left
-        if(this.args.length < 1) {
-            this.usage()
+        if (this.args.length < 1) {
+            this.usage();
         }
-        opts.subject = this.args[0] || "";
-        opts.payload = this.args[1] || "";
+        opts.subject = this.args[0] || '';
+        opts.payload = this.args[1] || '';
 
         return opts;
     }

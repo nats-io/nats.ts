@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 The NATS Authors
+ * Copyright 2018-2019 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,7 +14,7 @@
  *
  */
 import * as fs from 'fs';
-import {Client, connect, NatsConnectionOptions} from "../../src/nats";
+import {Client, connect, NatsConnectionOptions} from '../../src/nats';
 
 let count = process.argv.length;
 let port = parseInt(process.argv[count - 1], 10);
@@ -23,7 +23,7 @@ test(port);
 async function test(port: number) {
     let nc: Client;
     try {
-        nc = await connect({port: port, name: "closer test script"} as NatsConnectionOptions);
+        nc = await connect({port: port, name: 'closer test script'} as NatsConnectionOptions);
         nc.on('connect', function () {
             fs.writeFile('/tmp/existing_client.log', 'connected\n', (err) => {
                 if (err) {
@@ -42,7 +42,7 @@ async function test(port: number) {
             process.exit(1);
         });
 
-        let sub = nc.subscribe("close", (err, msg) => {
+        let sub = nc.subscribe('close', (err, msg) => {
             fs.appendFile('/tmp/existing_client.log', 'got close\n', (err) => {
                 if (err) {
                     console.error(err);
@@ -50,7 +50,7 @@ async function test(port: number) {
                 }
             });
             if (msg.reply) {
-                nc.publish(msg.reply, "closing");
+                nc.publish(msg.reply, 'closing');
             }
             nc.flush(function () {
                 nc.close();
@@ -65,11 +65,10 @@ async function test(port: number) {
         });
 
         nc.flush(function () {
-            nc.publish("started");
+            nc.publish('started');
         });
     } catch (ex) {
         console.error(ex);
         process.exit(1);
     }
-
 }

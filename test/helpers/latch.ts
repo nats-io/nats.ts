@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 The NATS Authors
+ * Copyright 2018-2019 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -27,7 +27,7 @@ export class Lock {
                 if (lock.count === 0) {
                     resolve();
                 }
-            }
+            };
         });
     }
 }
@@ -42,7 +42,7 @@ export function wait(millis: number = 100): Promise<any> {
 
 export function sleep(ms: number) {
     let start = new Date().getTime(),
-    expire = start + ms;
+        expire = start + ms;
     while (new Date().getTime() < expire) {
         // spinning...
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 The NATS Authors
+ * Copyright 2018-2019 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,10 +14,10 @@
  *
  */
 
-import {addClusterMember, SC, Server, startServer, stopServer} from "./helpers/nats_server_control";
-import test, {ExecutionContext} from "ava";
-import {Client, connect} from "../src/nats";
-import {Lock} from "./helpers/latch";
+import {addClusterMember, SC, Server, startServer, stopServer} from './helpers/nats_server_control';
+import test, {ExecutionContext} from 'ava';
+import {Client, connect} from '../src/nats';
+import {Lock} from './helpers/latch';
 
 test.before(async (t) => {
     t.context = {servers: []};
@@ -26,10 +26,10 @@ test.before(async (t) => {
 test.after.always((t) => {
     (t.context as SC).servers.forEach((s) => {
         stopServer(s);
-    })
+    });
 });
 
-function registerServer(t: ExecutionContext, s: Server) : Server {
+function registerServer(t: ExecutionContext, s: Server): Server {
     //@ts-ignore
     t.context.servers.push(s);
     return s;
@@ -40,7 +40,7 @@ async function addClusterServer(t: ExecutionContext, server: Server): Promise<Se
     return registerServer(t, s);
 }
 
-function countImplicit(nc: Client) : number {
+function countImplicit(nc: Client): number {
     let count = 0;
     //@ts-ignore
     nc.protocolHandler.servers.getServers().forEach(function (s) {

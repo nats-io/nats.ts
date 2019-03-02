@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 The NATS Authors
+ * Copyright 2018-2019 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,13 +14,12 @@
  *
  */
 
-import test from "ava";
-import {SC, startServer, stopServer} from "./helpers/nats_server_control";
-import {connect} from "../src/nats";
-import {join} from 'path';
+import test from 'ava';
+import {SC, startServer, stopServer} from './helpers/nats_server_control';
+import {connect} from '../src/nats';
 
 test.before(async (t) => {
-    let server = await startServer(["-DV"]);
+    let server = await startServer(['-DV']);
     t.context = {server: server};
 });
 
@@ -39,7 +38,7 @@ test('should not send multiple subscriptions on startup', async (t) => {
         let lines = data.toString().split('\n');
         lines.forEach((s: string) => {
             // t.log(s);
-            if(subRe.test(s)) {
+            if (subRe.test(s)) {
                 subsSeen++;
             }
         });

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 The NATS Authors
+ * Copyright 2018-2019 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,10 +14,10 @@
  *
  */
 
-import {SC, startServer, stopServer} from "./helpers/nats_server_control";
-import test from "ava";
-import {connect} from "../src/nats";
-import {next} from 'nuid'
+import {SC, startServer, stopServer} from './helpers/nats_server_control';
+import test from 'ava';
+import {connect} from '../src/nats';
+import {next} from 'nuid';
 
 
 test.before(async (t) => {
@@ -28,7 +28,6 @@ test.before(async (t) => {
 test.after.always((t) => {
     stopServer((t.context as SC).server);
 });
-
 
 test('deliver to single queue', async (t) => {
     t.plan(1);
@@ -42,7 +41,7 @@ test('deliver to single queue', async (t) => {
     for (let i = 0; i < 5; i++) {
         let s = nc.subscribe(subj, () => {
             count++;
-        }, {queue: "a"});
+        }, {queue: 'a'});
         subs.push(s);
     }
 
@@ -66,7 +65,7 @@ test('deliver to multiple queues', async (t) => {
     for (let i = 0; i < 5; i++) {
         let s = nc.subscribe(subj, () => {
             queue1++;
-        }, {queue: "a"});
+        }, {queue: 'a'});
         subs.push(s);
     }
 
@@ -74,7 +73,7 @@ test('deliver to multiple queues', async (t) => {
     for (let i = 0; i < 5; i++) {
         let s = nc.subscribe(subj, () => {
             queue2++;
-        }, {queue: "b"});
+        }, {queue: 'b'});
         subs.push(s);
     }
 
@@ -99,7 +98,7 @@ test('queues and subs independent', async (t) => {
     for (let i = 0; i < 5; i++) {
         let s = nc.subscribe(subj, () => {
             queueCount++;
-        }, {queue: "a"});
+        }, {queue: 'a'});
         subs.push(s);
     }
 
@@ -124,19 +123,19 @@ test('delivers single queue subscriber regardless of wildcards', async (t) => {
 
     let base = next();
     let count = 0;
-    nc.subscribe(base + ".bar", () => {
+    nc.subscribe(base + '.bar', () => {
         count++;
     }, {queue: 'wcqueue'});
 
-    nc.subscribe(base + ".*", () => {
+    nc.subscribe(base + '.*', () => {
         count++;
     }, {queue: 'wcqueue'});
 
-    nc.subscribe(base + ".>", () => {
+    nc.subscribe(base + '.>', () => {
         count++;
     }, {queue: 'wcqueue'});
 
-    nc.publish(base + ".bar");
+    nc.publish(base + '.bar');
     await nc.flush();
     t.is(count, 1);
     nc.close();

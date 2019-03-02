@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 The NATS Authors
+ * Copyright 2018-2019 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -17,7 +17,7 @@
 import * as mockserver from './mock_server';
 
 let port = 0;
-if(process.argv.length > 2) {
+if (process.argv.length > 2) {
     port = parseInt(process.argv[2], 10);
 }
 

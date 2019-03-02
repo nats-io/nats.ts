@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 The NATS Authors
+ * Copyright 2018-2019 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,12 +14,11 @@
  *
  */
 
-import test from "ava";
-import {Lock, sleep} from "./helpers/latch";
-import {SC, startServer, stopServer} from "./helpers/nats_server_control";
-import {connect, Payload} from "../src/nats";
+import test from 'ava';
+import {Lock, sleep} from './helpers/latch';
+import {SC, startServer, stopServer} from './helpers/nats_server_control';
+import {connect, Payload} from '../src/nats';
 import {next} from 'nuid';
-import {join} from 'path';
 
 test.before(async (t) => {
     let server = await startServer();
@@ -43,7 +42,7 @@ test('should yield to other events', async (t) => {
     });
 
     let interval = setInterval(() => {
-        if(last > 0) {
+        if (last > 0) {
             clearInterval(interval);
             nc.close();
             // yielded before the last message
