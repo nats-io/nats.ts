@@ -488,7 +488,7 @@ export class Client extends events.EventEmitter {
 
             try {
                 this.publish(subject, data, `${this.protocolHandler.muxSubscriptions.baseInbox}${r.token}`);
-            } catch(err) {
+            } catch (err) {
                 reject(err);
                 request.cancel();
             }

@@ -82,6 +82,6 @@ export class MuxSubscriptions {
                     }
                 }
             }
-        }
+        };
     };
 }

@@ -56,8 +56,8 @@ export class TCPTransport implements Transport {
                     reject(error);
                     this.destroy();
                 } else {
-                // if the client didn't resolve, the error handler
-                // is not set, so emitting 'error' will shutdown node
+                    // if the client didn't resolve, the error handler
+                    // is not set, so emitting 'error' will shutdown node
                     this.handlers.error(error);
                 }
             });
@@ -106,7 +106,7 @@ export class TCPTransport implements Transport {
                 this.handlers.error(error);
             });
             this.stream.on('close', () => {
-                this.handlers.close()
+                this.handlers.close();
             });
             this.stream.on('data', (data: Buffer) => {
                 this.handlers.data(data);
@@ -143,7 +143,7 @@ export class TCPTransport implements Transport {
 
     pause(): void {
         if (this.stream) {
-            this.stream.pause()
+            this.stream.pause();
         }
     }
 

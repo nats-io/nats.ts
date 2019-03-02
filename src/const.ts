@@ -14,7 +14,7 @@
  *
  */
 
- // Connection defaults
+// Connection defaults
 export const DEFAULT_PORT = 4222;
 export const DEFAULT_PRE = 'nats://localhost:';
 export const DEFAULT_URI = DEFAULT_PRE + DEFAULT_PORT;

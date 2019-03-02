@@ -30,7 +30,7 @@ export class Server {
     constructor(u: string, implicit = false) {
         // add scheme if not specified
         if (!/^.*:\/\/.*/.test(u)) {
-            u = `nats://${u}`
+            u = `nats://${u}`;
         }
 
         this.url = url.parse(u);

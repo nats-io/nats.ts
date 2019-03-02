@@ -67,13 +67,13 @@ export class DataBuffer {
     protoLen(): number {
         let ps = ParserState.START;
         let offset = 0;
-        for(let j = 0; j < this.buffers.length; j++) {
+        for (let j = 0; j < this.buffers.length; j++) {
             let cb = this.buffers[j];
             for (let i = 0; i < cb.byteLength; i++) {
                 let v = cb.readUInt8(i);
-                switch(ps) {
+                switch (ps) {
                     case ParserState.START:
-                        switch(v) {
+                        switch (v) {
                             case CR:
                                 ps = ParserState.CR;
                                 break;
@@ -81,7 +81,7 @@ export class DataBuffer {
                         }
                         break;
                     case ParserState.CR:
-                        switch(v) {
+                        switch (v) {
                             case LF:
                                 // we want a length not an index
                                 return offset + i + 1;
