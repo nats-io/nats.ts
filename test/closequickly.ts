@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 The NATS Authors
+ * Copyright 2018-2019 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,12 +14,12 @@
  *
  */
 
-import test from "ava";
-import {SC, startServer, stopServer} from "./helpers/nats_server_control";
-import * as child_process from "child_process";
+import test from 'ava';
+import {SC, startServer, stopServer} from './helpers/nats_server_control';
+import * as child_process from 'child_process';
 import url from 'url';
-import {connect} from "../src/nats";
-import {Lock} from "./helpers/latch";
+import {connect} from '../src/nats';
+import {Lock} from './helpers/latch';
 
 test.before(async (t) => {
     let server = await startServer();
@@ -31,7 +31,6 @@ test.after.always((t) => {
     stopServer(t.context.server);
 });
 
-
 test('close quickly', async (t) => {
     t.plan(1);
     let lock = new Lock();
@@ -39,14 +38,14 @@ test('close quickly', async (t) => {
     let u = new url.URL(sc.server.nats);
     let port = u.port;
 
-    let nc = await connect({url: sc.server.nats, name: "closer"});
+    let nc = await connect({url: sc.server.nats, name: 'closer'});
 
-    let sub = nc.subscribe("started", (err, msg) => {
-        nc.publish("close");
+    let sub = nc.subscribe('started', (err, msg) => {
+        nc.publish('close');
     });
 
     let timer = setTimeout(() => {
-        t.fail("process didn't exit quickly");
+        t.fail('process didn\'t exit quickly');
         lock.unlock();
     }, 10000);
 
@@ -77,6 +76,3 @@ test('close quickly', async (t) => {
 
     return lock.latch;
 });
-
-
-

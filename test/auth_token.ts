@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 The NATS Authors
+ * Copyright 2018-2019 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,11 +14,11 @@
  *
  */
 
-import {connect} from "../src/nats";
-import test from "ava";
-import {SC, startServer, stopServer} from "./helpers/nats_server_control";
-import {Lock, wait} from "./helpers/latch";
-import {ErrorCode, NatsError} from "../src/error";
+import {connect} from '../src/nats';
+import test from 'ava';
+import {SC, startServer, stopServer} from './helpers/nats_server_control';
+import {Lock, wait} from './helpers/latch';
+import {ErrorCode, NatsError} from '../src/error';
 
 
 test.before(async (t) => {
@@ -29,7 +29,6 @@ test.before(async (t) => {
 test.after.always((t) => {
     stopServer((t.context as SC).server);
 });
-
 
 test('token no auth', async (t) => {
     t.plan(3);

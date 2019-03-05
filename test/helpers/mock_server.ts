@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2018 The NATS Authors
+ * Copyright 2013-2010 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -30,12 +30,12 @@ function defaultScript(): Script[] {
     script.push({
         re: CONNECT,
         h: sendOk,
-        m: "connect"
+        m: 'connect'
     });
     script.push({
         re: PING,
         h: sendPong,
-        m: "ping"
+        m: 'ping'
     });
     return script;
 }
@@ -87,18 +87,18 @@ export class ScriptedServer extends EventEmitter {
     };
 
     sendInfo(socket: Socket) {
-        socket.write("INFO " + JSON.stringify({
-            server_id: "TEST",
-            version: "0.0.0",
-            node: "node0.0.0",
-            host: "127.0.0.1",
+        socket.write('INFO ' + JSON.stringify({
+            server_id: 'TEST',
+            version: '0.0.0',
+            node: 'node0.0.0',
+            host: '127.0.0.1',
             port: this.port,
             auth_required: false,
             ssl_required: false,
             tls_required: false,
             tls_verify: false,
             max_payload: MAX_CONTROL
-        }) + "\r\n");
+        }) + '\r\n');
     }
 
 
@@ -141,7 +141,7 @@ export class ScriptedServer extends EventEmitter {
         };
     }
 
-    start() : Promise<number> {
+    start(): Promise<number> {
         let connecting = true;
         return new Promise((resolve, reject) => {
             this.stream = net.createServer((socket: Socket) => {
@@ -179,21 +179,20 @@ export class ScriptedServer extends EventEmitter {
             this.stream.listen(this.port, () => {});
         });
     };
-};
-
+}
 
 function colorize(str: string) {
     return str.replace(/(?:\r\n)/g, '\\r\\n\n');
 }
 
 export function sendOk(socket: Socket): void {
-    socket.write("+OK\r\n");
+    socket.write('+OK\r\n');
 }
 
 export function sendPing(socket: Socket): void {
-    socket.write("PING\r\n");
+    socket.write('PING\r\n');
 }
 
 export function sendPong(socket: Socket): void {
-    socket.write("PONG\r\n");
+    socket.write('PONG\r\n');
 }

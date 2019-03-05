@@ -14,17 +14,17 @@
  *
  */
 
-import test from "ava";
-import {Lock} from "./helpers/latch";
-import {SC, startServer, stopServer, serverVersion} from "./helpers/nats_server_control";
-import {connect, NatsConnectionOptions} from "../src/nats";
-import path from 'path'
+import test from 'ava';
+import {Lock} from './helpers/latch';
+import {SC, startServer, stopServer, serverVersion} from './helpers/nats_server_control';
+import {connect, NatsConnectionOptions} from '../src/nats';
+import path from 'path';
 import {next} from 'nuid';
-import {fromSeed} from 'ts-nkeys'
-import {jsonToNatsConf, writeFile} from "./helpers/nats_conf_utils";
+import {fromSeed} from 'ts-nkeys';
+import {jsonToNatsConf, writeFile} from './helpers/nats_conf_utils';
 
-const uSeed = "SUAEL6GG2L2HIF7DUGZJGMRUFKXELGGYFMHF76UO2AYBG3K4YLWR3FKC2Q";
-const uPub = "UD6OU4D3CIOGIDZVL4ANXU3NWXOW5DCDE2YPZDBHPBXCVKHSODUA4FKI";
+const uSeed = 'SUAEL6GG2L2HIF7DUGZJGMRUFKXELGGYFMHF76UO2AYBG3K4YLWR3FKC2Q';
+const uPub = 'UD6OU4D3CIOGIDZVL4ANXU3NWXOW5DCDE2YPZDBHPBXCVKHSODUA4FKI';
 
 test.before(async (t) => {
     if (serverVersion()[0] < 2) {
@@ -40,11 +40,11 @@ test.before(async (t) => {
 
     let confDir = (process.env.TRAVIS) ? process.env.TRAVIS_BUILD_DIR : process.env.TMPDIR;
     //@ts-ignore
-    let fp = path.join(confDir, next() + ".conf");
+    let fp = path.join(confDir, next() + '.conf');
     writeFile(fp, jsonToNatsConf(conf));
 
     let server = await startServer(['-c', fp]);
-    t.context = {server: server}
+    t.context = {server: server};
 });
 
 test.after.always((t) => {
@@ -54,10 +54,9 @@ test.after.always((t) => {
     stopServer((t.context as SC).server);
 });
 
-
 test('basic nkey authentication', async (t) => {
     if (serverVersion()[0] < 2) {
-        t.pass("skipping server version " + serverVersion());
+        t.pass('skipping server version ' + serverVersion());
         return;
     }
     let lock = new Lock();

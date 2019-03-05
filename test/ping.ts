@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 The NATS Authors
+ * Copyright 2018-2019 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,18 +14,18 @@
  *
  */
 
-import test from "ava";
-import {Client, connect, NatsConnectionOptions} from "../src/nats";
-import {Lock} from "./helpers/latch";
+import test from 'ava';
+import {Client, connect, NatsConnectionOptions} from '../src/nats';
+import {Lock} from './helpers/latch';
 import * as mockserver from './helpers/mock_server';
-import {ErrorCode} from "../src/error";
+import {ErrorCode} from '../src/error';
 
 
 test.before(async (t) => {
     let server = new mockserver.ScriptedServer(0);
     try {
         await server.start();
-    } catch(ex) {
+    } catch (ex) {
         t.log(ex);
     }
     t.context = {server: server};
@@ -46,7 +46,7 @@ test('reconnect if no ping', async (t) => {
     nc.on('reconnect', () => {
         nc.close();
         t.pass();
-        if(timer) {
+        if (timer) {
             clearTimeout(timer);
         }
         lock.unlock();
@@ -56,7 +56,7 @@ test('reconnect if no ping', async (t) => {
         t.is(err.code, ErrorCode.NATS_PROTOCOL_ERR);
     });
 
-    let timer = setTimeout(()=> {
+    let timer = setTimeout(() => {
         t.fail('should have reconnected');
         lock.unlock();
     }, 5000);
@@ -81,7 +81,7 @@ test('timer pings are sent', async (t) => {
     let nc: Client;
     try {
         nc = await connect(opts);
-    } catch(ex) {
+    } catch (ex) {
         t.log(ex);
         return;
     }
@@ -97,13 +97,13 @@ test('timer pings are sent', async (t) => {
     nc.on('reconnect', () => {
         t.true(fired);
         nc.close();
-        if(timer) {
+        if (timer) {
             clearTimeout(timer);
         }
         lock.unlock();
     });
 
-    let timer = setTimeout(()=> {
+    let timer = setTimeout(() => {
         t.fail('should have reconnected');
         lock.unlock();
     }, 5000);

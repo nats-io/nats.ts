@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 The NATS Authors
+ * Copyright 2018-2019 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,26 +14,23 @@
  *
  */
 
+import {SC, startServer, stopServer} from './helpers/nats_server_control';
+import test from 'ava';
+import {join} from 'path';
+import {Client, connect} from '../src/nats';
+import {Lock} from './helpers/latch';
+import {readFileSync} from 'fs';
 
-
-
-import {SC, startServer, stopServer} from "./helpers/nats_server_control";
-import test from "ava";
-import {join} from "path";
-import {Client, connect} from "../src/nats";
-import {Lock} from "./helpers/latch";
-import {readFileSync} from "fs";
-
-let serverCert = join(__dirname, "../../test/helpers/certs/server-cert.pem");
-let serverKey = join(__dirname, "../../test/helpers/certs/server-key.pem");
-let caCert = join(__dirname, "../../test/helpers/certs/ca.pem");
-let clientCert = join(__dirname, "../../test/helpers/certs/client-cert.pem");
-let clientKey = join(__dirname, "../../test/helpers/certs/client-key.pem");
+let serverCert = join(__dirname, '../../test/helpers/certs/server-cert.pem');
+let serverKey = join(__dirname, '../../test/helpers/certs/server-key.pem');
+let caCert = join(__dirname, '../../test/helpers/certs/ca.pem');
+let clientCert = join(__dirname, '../../test/helpers/certs/client-cert.pem');
+let clientKey = join(__dirname, '../../test/helpers/certs/client-key.pem');
 
 test.before(async (t) => {
     let server = await startServer();
-    let tls = await startServer(["--tlscert", serverCert, "--tlskey", serverKey]);
-    let tlsverify = await startServer(["--tlsverify", "--tlscert", serverCert, "--tlskey", serverKey, "--tlscacert", caCert]);
+    let tls = await startServer(['--tlscert', serverCert, '--tlskey', serverKey]);
+    let tlsverify = await startServer(['--tlsverify', '--tlscert', serverCert, '--tlskey', serverKey, '--tlscacert', caCert]);
 
     t.context = {server: server, tls: tls, tlsverify: tlsverify, cacert: readFileSync(caCert), clientcert: readFileSync(clientCert), clientkey: readFileSync(clientKey)};
 });
@@ -46,7 +43,6 @@ test.after.always((t) => {
     //@ts-ignore
     stopServer(sc.tlsverify);
 });
-
 
 test('error if server does not support TLS', async (t) => {
     t.plan(2);

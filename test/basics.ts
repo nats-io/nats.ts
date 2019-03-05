@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 The NATS Authors
+ * Copyright 2018-2019 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,13 +14,13 @@
  *
  */
 
-import test from "ava";
-import {SC, startServer, stopServer} from "./helpers/nats_server_control";
-import {connect, NatsConnectionOptions, Payload, SubEvent} from "../src/nats";
-import {Lock} from "./helpers/latch";
-import {createInbox} from "../src/util";
+import test from 'ava';
+import {SC, startServer, stopServer} from './helpers/nats_server_control';
+import {connect, NatsConnectionOptions, Payload, SubEvent} from '../src/nats';
+import {Lock} from './helpers/latch';
+import {createInbox} from '../src/util';
 import url from 'url';
-import {ErrorCode, NatsError} from "../src/error";
+import {ErrorCode, NatsError} from '../src/error';
 
 
 test.before(async (t) => {
@@ -73,7 +73,7 @@ test('sub callback is required', async (t) => {
     let sc = t.context as SC;
     let nc = await connect(sc.server.nats);
     //@ts-ignore
-    await t.throwsAsync(nc.subscribe("foo"),
+    await t.throwsAsync(nc.subscribe('foo'),
         {code: ErrorCode.API_ERROR});
 });
 
@@ -83,7 +83,7 @@ test('subs require connection', async (t) => {
     let nc = await connect(sc.server.nats);
     nc.close();
     //@ts-ignore
-    await t.throwsAsync(nc.subscribe("foo", () => {
+    await t.throwsAsync(nc.subscribe('foo', () => {
         }),
         {code: ErrorCode.CONN_CLOSED});
 });
@@ -130,7 +130,7 @@ test('subscription message in callback', async (t) => {
     let sc = t.context as SC;
     let nc = await connect(sc.server.nats);
     let subj = createInbox();
-    const payload = "Hello World";
+    const payload = 'Hello World';
 
     await nc.subscribe(subj, (err, msg) => {
         t.is(err, null);
@@ -148,7 +148,7 @@ test('subscription message has reply', async (t) => {
     let sc = t.context as SC;
     let nc = await connect(sc.server.nats);
     let subj = createInbox();
-    const payload = "Hello World";
+    const payload = 'Hello World';
     const replyInbox = createInbox();
     await nc.subscribe(subj, (err, msg) => {
         //@ts-ignore
@@ -249,7 +249,7 @@ test('unsubscribe notifications only once', async (t) => {
 
     await nc.subscribe(subj, () => {
     }, {queue: 'A', max: 5});
-    for (let i=0; i < 5; i++) {
+    for (let i = 0; i < 5; i++) {
         nc.publish(subj);
     }
     await nc.flush();
@@ -270,7 +270,7 @@ test('requests require connection', async (t) => {
     let nc = await connect(sc.server.nats);
     nc.close();
     //@ts-ignore
-    await t.throwsAsync(nc.request("foo"), {code: ErrorCode.CONN_CLOSED});
+    await t.throwsAsync(nc.request('foo'), {code: ErrorCode.CONN_CLOSED});
 });
 
 test('request reply', async (t) => {
@@ -278,8 +278,8 @@ test('request reply', async (t) => {
     let sc = t.context as SC;
     let nc = await connect(sc.server.nats);
     let subj = createInbox();
-    const payload = "Hello World";
-    const response = payload.split("").reverse().join("");
+    const payload = 'Hello World';
+    const response = payload.split('').reverse().join('');
     await nc.subscribe(subj, (err, msg) => {
         //@ts-ignore
         t.is(msg.data, payload);
@@ -481,7 +481,7 @@ test('flush reject on close', async (t) => {
     nc.close();
     //@ts-ignore
     await t.throwsAsync(() => {
-        return nc.flush()
+        return nc.flush();
     }, {code: ErrorCode.CONN_CLOSED});
 });
 
@@ -491,7 +491,7 @@ test('error if publish after close', async (t) => {
     let nc = await connect(sc.server.nats);
     nc.close();
     await t.throws(() => {
-        nc.publish("foo")
+        nc.publish('foo');
     }, {code: ErrorCode.CONN_CLOSED});
 });
 

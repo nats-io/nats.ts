@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 The NATS Authors
+ * Copyright 2018-2019 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,26 +14,11 @@
  *
  */
 
-/*
- * Copyright 2018 The NATS Authors
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-import {SC, startServer, stopServer} from "./helpers/nats_server_control";
-import test from "ava";
-import {connect, NatsConnectionOptions} from "../src/nats";
-import {next} from 'nuid'
-import {ErrorCode, NatsError} from "../src/error";
+import {SC, startServer, stopServer} from './helpers/nats_server_control';
+import test from 'ava';
+import {connect, NatsConnectionOptions} from '../src/nats';
+import {next} from 'nuid';
+import {ErrorCode, NatsError} from '../src/error';
 
 
 test.before(async (t) => {
@@ -62,12 +47,11 @@ test('auto unsub from max from options', async (t) => {
 
         await nc.flush();
         t.is(count, 10);
-        nc.close()
+        nc.close();
     } catch (err) {
-        t.fail("got exception " + err);
+        t.fail('got exception ' + err);
     }
 });
-
 
 test('auto unsub from unsubscribe', async (t) => {
     t.plan(1);
@@ -87,9 +71,9 @@ test('auto unsub from unsubscribe', async (t) => {
 
         await nc.flush();
         t.is(count, 11);
-        nc.close()
+        nc.close();
     } catch (err) {
-        t.fail("got exception" + err);
+        t.fail('got exception' + err);
     }
 });
 
@@ -110,9 +94,9 @@ test('can unsub from auto-unsubscribed', async (t) => {
         await nc.flush();
         t.is(count, 1);
         sub.unsubscribe();
-        nc.close()
+        nc.close();
     } catch (err) {
-        t.fail("got exception" + err);
+        t.fail('got exception' + err);
     }
 });
 
@@ -134,9 +118,9 @@ test('can change auto-unsub to a lesser value', async (t) => {
         }
         await nc.flush();
         t.is(count, 1);
-        nc.close()
+        nc.close();
     } catch (err) {
-        t.fail("got exception" + err);
+        t.fail('got exception' + err);
     }
 });
 
@@ -158,9 +142,9 @@ test('can change auto-unsub to a higher value', async (t) => {
         }
         await nc.flush();
         t.is(count, 10);
-        nc.close()
+        nc.close();
     } catch (err) {
-        t.fail("got exception" + err);
+        t.fail('got exception' + err);
     }
 });
 
@@ -175,7 +159,7 @@ test('request receives expected count with multiple helpers', async (t) => {
         let promises = [];
         for (let i = 0; i < 5; i++) {
             let p = nc.subscribe(subj, (err, msg) => {
-                let r = msg ? msg.reply : "";
+                let r = msg ? msg.reply : '';
                 if (r) {
                     nc.publish(r);
                     answers++;
@@ -192,9 +176,9 @@ test('request receives expected count with multiple helpers', async (t) => {
         t.is(answers, 5);
         t.truthy(answer);
 
-        nc.close()
+        nc.close();
     } catch (err) {
-        t.fail("got exception" + err);
+        t.fail('got exception' + err);
     }
 });
 
@@ -219,7 +203,7 @@ test('manual request receives expected count with multiple helpers', async (t) =
             // closure the promise so we can uniquely resolve
             (function (id: number) {
                 let p = nc.subscribe(requestSubject, (err, msg) => {
-                    let r = msg ? msg.reply : "";
+                    let r = msg ? msg.reply : '';
                     if (r) {
                         nc.publish(r);
                         resolvers[id]();
@@ -241,15 +225,15 @@ test('manual request receives expected count with multiple helpers', async (t) =
         await Promise.all(subs);
 
         // publish the request
-        await nc.publish(requestSubject, "", replySubj);
+        await nc.publish(requestSubject, '', replySubj);
         // wait for all responders to resolve
         await Promise.all(answers);
         // finally wait for the pong - by then request response is received
         await nc.flush();
         t.is(count, 1);
-        nc.close()
+        nc.close();
     } catch (err) {
-        t.fail("got exception" + err);
+        t.fail('got exception' + err);
     }
 });
 
@@ -264,9 +248,9 @@ test('check subscription leaks', async (t) => {
         sub.unsubscribe();
         //@ts-ignore
         t.is(nc.protocolHandler.subscriptions.length, 0);
-        nc.close()
+        nc.close();
     } catch (err) {
-        t.fail("got exception" + err);
+        t.fail('got exception' + err);
     }
 });
 
@@ -282,7 +266,7 @@ test('check request leaks', async (t) => {
         t.is(nc.protocolHandler.subscriptions.length, 0);
 
         let sub = await nc.subscribe(subj, (err, msg) => {
-            let r = msg ? msg.reply : "";
+            let r = msg ? msg.reply : '';
             if (r) {
                 nc.publish(r);
             }
@@ -312,9 +296,9 @@ test('check request leaks', async (t) => {
         sub.unsubscribe();
         //@ts-ignore
         t.is(nc.protocolHandler.subscriptions.length, 1);
-        nc.close()
+        nc.close();
     } catch (err) {
-        t.fail("got exception" + err);
+        t.fail('got exception' + err);
     }
 });
 
@@ -355,8 +339,8 @@ test('check cancelled request leaks', async (t) => {
         //@ts-ignore
         t.is(nc.protocolHandler.muxSubscriptions.length, 0);
 
-        nc.close()
+        nc.close();
     } catch (err) {
-        t.fail("got exception" + err);
+        t.fail('got exception' + err);
     }
 });

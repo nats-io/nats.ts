@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 The NATS Authors
+ * Copyright 2018-2019 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,17 +14,16 @@
  *
  */
 
-import test from "ava";
-import {SC, startServer, stopServer, Server} from "./helpers/nats_server_control";
-import {connect} from "../src/nats";
-import {join} from 'path';
+import test from 'ava';
+import {SC, startServer, stopServer, Server} from './helpers/nats_server_control';
+import {connect} from '../src/nats';
 import url from 'url';
-import {Lock} from "./helpers/latch";
-import {createInbox} from "../src/util";
+import {Lock} from './helpers/latch';
+import {createInbox} from '../src/util';
 
 test.before(async (t) => {
     let server = await startServer();
-    t.context = {server: server, servers:[]};
+    t.context = {server: server, servers: []};
 });
 
 test.after.always((t) => {
@@ -89,12 +88,12 @@ test('should receive when some servers are invalid', async (t) => {
     let lock = new Lock();
     let sc = t.context as SC;
 
-    let servers = ["nats://localhost:7", sc.server.nats];
+    let servers = ['nats://localhost:7', sc.server.nats];
 
     let nc = await connect({servers: servers, noRandomize: true});
     let subj = createInbox();
     let sub = await nc.subscribe(subj, (err, msg) => {
-        if(err) {
+        if (err) {
             t.fail(err.message);
         } else {
             t.pass();
@@ -135,7 +134,7 @@ test('reconnect events', async (t) => {
     // and for each of the failed reattempts
     let disconnects = 0;
     nc.on('disconnect', (url) => {
-        if(disconnects === 0) {
+        if (disconnects === 0) {
             t.is(url, server.nats);
         }
         disconnects++;
@@ -155,8 +154,8 @@ test('reconnect events', async (t) => {
         let elapsed = Date.now() - stopTime;
         t.is(reconnecting, 10, 'reconnecting count');
         t.is(disconnects, 1, 'disconnect count');
-        t.true(elapsed >= 10*100);
-        t.true(elapsed <= 15*100);
+        t.true(elapsed >= 10 * 100);
+        t.true(elapsed <= 15 * 100);
         lock.unlock();
     });
 
@@ -285,7 +284,7 @@ test('indefinite reconnects', async (t) => {
             t.is(reconnects, 1);
             t.is(disconnects, 1);
             lock.unlock();
-        })
+        });
     });
 
     return lock.latch;
