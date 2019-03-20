@@ -19,7 +19,7 @@ import {Lock, wait} from './helpers/latch';
 import {SC, startServer, stopServer} from './helpers/nats_server_control';
 import {connect} from '../src/nats';
 import {createInbox} from '../src/util';
-import {ErrorCode} from '../src/error';
+import {ErrorCode, NatsError} from '../src/error';
 
 test.before(async (t) => {
     let server = await startServer();
@@ -242,4 +242,24 @@ test('timeout unsubscribes', async (t) => {
     }, 100);
 
     await lock.latch;
+});
+
+test('connectTimeout is honored', async (t) => {
+    t.plan(3);
+    let start = Date.now();
+    let servers = ['nats://localhost:7'];
+    try {
+        await connect({
+            servers: servers,
+            connectionTimeout: 1000,
+            maxReconnectAttempts: -1,
+            reconnectTimeWait: 100,
+            waitOnFirstConnect: true
+        });
+    } catch(ex) {
+        t.is(ex.code, ErrorCode.CONN_TIMEOUT);
+        let end = Date.now();
+        t.true((end-start) > 900);
+        t.true((end-start) < 1100);
+    }
 });

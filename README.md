@@ -457,11 +457,13 @@ The following is the list of connection options and default values.
 
 | Option                 | Default                   | Description
 |--------                |---------                  |------------
+| `connectionTimeout`    | `0`                       | Number of milliseconds to wait before timing out the initial connection. Must be greater than `0`. Note that `waitOnFirst` must be specified, and `reconnectTimeWait` and `maxReconnectAttempts` must have sensible values supporting the desired timeout.
 | `encoding`             | `"utf8"`                  | Encoding specified by the client to encode/decode data
 | `maxPingOut`           | `2`                       | Max number of pings the client will allow unanswered before rasing a stale connection error
 | `maxReconnectAttempts` | `10`                      | Sets the maximun number of reconnect attempts. The value of `-1` specifies no limit
 | `name`                 |                           | Optional client name (useful for debugging a client on the server output `-DV`)
 | `nkey`                 |                           | The public NKey identifying the client
+| `nkeyCreds`            |                           | Path to a file containing seed nkey for the client. This property sets a `nonceSigner` and `nkey` automatically.
 | `noEcho`               | `false`                   | If set, the client's matching subscriptions won't receive messages published by the client. Requires server support 1.2.0+.
 | `nonceSigner`          |                           | A `NonceSigner` function that signs the server challenge. 
 | `noRandomize`          | `false`                   | If set, the order of user-specified servers is randomized.
@@ -477,7 +479,6 @@ The following is the list of connection options and default values.
 | `url`                  | `"nats://localhost:4222"` | Connection url
 | `user`                 |                           | Sets the username for a connection
 | `userCreds`            |                           | Path to a properly formatted user credentials file containing the client's JWT and seed key for the client. This property sets a `nonceSigner` automatically.
-| `nkeyCreds`            |                           | Path to a file containing seed nkey for the client. This property sets a `nonceSigner` and `nkey` automatically.
 | `userJWT`              |                           | A string or a `JWTProvider` function which provides a JWT specifying the client's permissions
 | `verbose`              | `false`                   | Turns on `+OK` protocol acknowledgements
 | `waitOnFirstConnect`   | `false`                   | If `true` the server will fall back to a reconnect mode if it fails its first connection attempt.

@@ -30,7 +30,7 @@ import {
 } from './nats';
 import {MuxSubscriptions} from './muxsubscriptions';
 import {Callback, Transport, TransportHandlers} from './transport';
-import {CONN_ERR_PREFIX, ErrorCode, NatsError} from './error';
+import {CONN_ERR_PREFIX, ErrorCode, Messages, NatsError} from './error';
 
 import {EventEmitter} from 'events';
 import {CR_LF, DEFAULT_PING_INTERVAL, EMPTY} from './const';
@@ -133,6 +133,19 @@ export class ProtocolHandler extends EventEmitter {
 
     static connect(client: Client, opts: NatsConnectionOptions): Promise<ProtocolHandler> {
         return new Promise<ProtocolHandler>(async (resolve, reject) => {
+            let expired = false;
+            let to: NodeJS.Timeout;
+            let millis: number = 0;
+            if(opts.connectionTimeout && !isNaN(opts.connectionTimeout)) {
+                millis = opts.connectionTimeout;
+            }
+            if(millis > 0) {
+                to = setTimeout(() => {
+                    expired = true;
+                }, millis);
+            }
+
+
             let ph = new ProtocolHandler(client, opts);
             // the initial connection handles the reconnect logic
             // for all the servers. This way we can return at least
@@ -140,6 +153,10 @@ export class ProtocolHandler extends EventEmitter {
             // the event handlers will take over
             let lastError: Error | null = null;
             let fn = function(n: number) {
+                if(expired) {
+                    reject(NatsError.errorForCode(ErrorCode.CONN_TIMEOUT));
+                    return
+                }
                 if (n <= 0) {
                     if (!ph.options.waitOnFirstConnect) {
                         reject(lastError);
@@ -148,6 +165,9 @@ export class ProtocolHandler extends EventEmitter {
                 }
                 ph.connect()
                     .then(() => {
+                        if(to) {
+                            clearTimeout(to);
+                        }
                         resolve(ph);
                     })
                     .catch((ex) => {
@@ -726,7 +746,7 @@ export class ProtocolHandler extends EventEmitter {
         }
         return TlsRequirement.ON;
     }
-    
+
     /**
      * Check for TLS configuration mismatch.
      *
