@@ -75,7 +75,7 @@ export class ScriptedServer extends EventEmitter {
         this.script = script || defaultScript();
     }
 
-    stop(cb?: Function) {
+    stop(cb?: (err?: Error) => void) {
         this.stream.close(cb);
         if (this.sockets) {
             this.sockets.forEach(function (socket) {
