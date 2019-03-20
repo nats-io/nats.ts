@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 The NATS Authors
+ * Copyright 2018-2019 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,12 +14,12 @@
  *
  */
 
-import test from "ava";
-import {connect, Payload} from "../src/nats";
-import {Lock} from "./helpers/latch";
-import {SC, startServer, stopServer} from "./helpers/nats_server_control";
+import test from 'ava';
+import {connect, Payload} from '../src/nats';
+import {Lock} from './helpers/latch';
+import {SC, startServer, stopServer} from './helpers/nats_server_control';
 import {next} from 'nuid';
-import {ErrorCode} from "../src/error";
+import {ErrorCode} from '../src/error';
 
 
 test.before(async (t) => {
@@ -31,7 +31,6 @@ test.after.always((t) => {
     //@ts-ignore
     stopServer(t.context.server);
 });
-
 
 test('connect no json propagates options', async (t) => {
     t.plan(1);
@@ -59,7 +58,7 @@ test('pubsub should fail circular json', async (t) => {
     o.a = o;
     let nc = await connect({url: sc.server.nats, payload: Payload.JSON});
     t.throws(() => {
-        nc.publish(next(), o)
+        nc.publish(next(), o);
     }, {code: ErrorCode.BAD_JSON});
     nc.close();
 });
@@ -83,7 +82,7 @@ async function pubsub(t: any, input: any): Promise<any> {
         let nc = await connect({url: sc.server.nats, payload: Payload.JSON});
         let subj = next();
         nc.subscribe(subj, (err, msg) => {
-            if(err) {
+            if (err) {
                 t.fail(err);
             }
             // in JSON undefined is translated to null
@@ -112,7 +111,7 @@ async function reqrep(t: any, input: any): Promise<any> {
         let nc = await connect({url: sc.server.nats, payload: Payload.JSON});
         let subj = next();
         nc.subscribe(subj, (err, msg) => {
-            if(msg.reply) {
+            if (msg.reply) {
                 nc.publish(msg.reply, msg.data);
             }
         });

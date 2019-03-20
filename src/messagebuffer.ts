@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 The NATS Authors
+ * Copyright 2018-2019 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,14 +14,13 @@
  *
  */
 
-import {ErrorCode, NatsError} from "./error";
-import {Msg, Payload} from "./nats";
-import {CR_LF_LEN} from "./const";
+import {ErrorCode, NatsError} from './error';
+import {Msg, Payload} from './nats';
+import {CR_LF_LEN} from './const';
 
 /**
  * @hidden
  */
-
 export class MsgBuffer {
     msg: Msg;
     length: number;
@@ -41,7 +40,7 @@ export class MsgBuffer {
         this.payload = payload;
     }
 
-    fill(data: Buffer) {
+    fill(data: Buffer): void {
         this.buffers.push(data);
         this.length -= data.byteLength;
         if (this.length === 0) {
@@ -67,8 +66,8 @@ export class MsgBuffer {
         }
     }
 
-    pack() : Buffer {
-        if(this.buffers.length === 1) {
+    pack(): Buffer {
+        if (this.buffers.length === 1) {
             return this.buffers[0];
         } else {
             return Buffer.concat(this.buffers);

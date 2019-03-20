@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 The NATS Authors
+ * Copyright 2018-2019 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,12 +14,12 @@
  *
  */
 
-import test from "ava";
-import {Lock} from "./helpers/latch";
-import {SC, startServer, stopServer} from "./helpers/nats_server_control";
-import {connect, NatsConnectionOptions} from "../src/nats";
-import {ErrorCode, NatsError} from "../src/error";
-import {jsonToNatsConf, writeFile} from "./helpers/nats_conf_utils";
+import test from 'ava';
+import {Lock} from './helpers/latch';
+import {SC, startServer, stopServer} from './helpers/nats_server_control';
+import {connect, NatsConnectionOptions} from '../src/nats';
+import {ErrorCode, NatsError} from '../src/error';
+import {jsonToNatsConf, writeFile} from './helpers/nats_conf_utils';
 import {next} from 'nuid';
 import {join} from 'path';
 
@@ -33,24 +33,23 @@ test.before(async (t) => {
                 user: 'derek',
                 password: 'foobar',
                 permission: {
-                    subscribe: "bar",
-                    publish: "foo"
+                    subscribe: 'bar',
+                    publish: 'foo'
                 }
             }]
         }
     };
 
     //@ts-ignore
-    let fp = join(CONF_DIR, next() + ".conf");
+    let fp = join(CONF_DIR, next() + '.conf');
     writeFile(fp, jsonToNatsConf(conf));
     let server = await startServer(['-c', fp]);
-    t.context = {server: server}
+    t.context = {server: server};
 });
 
 test.after.always((t) => {
     stopServer((t.context as SC).server);
 });
-
 
 test('no auth', async (t) => {
     t.plan(1);
@@ -109,7 +108,7 @@ test('urlauth', async (t) => {
     t.plan(1);
     let sc = t.context as SC;
     let v = sc.server.nats;
-    v = v.replace("nats://", "nats://derek:foobar@");
+    v = v.replace('nats://', 'nats://derek:foobar@');
     let nc = await connect({url: v} as NatsConnectionOptions);
     nc.on('connect', () => {
         t.pass();
@@ -123,7 +122,6 @@ test('urlauth', async (t) => {
     nc.close();
 });
 
-
 test('cannot sub to foo', async (t) => {
     t.plan(1);
     let lock = new Lock();
@@ -134,11 +132,11 @@ test('cannot sub to foo', async (t) => {
         lock.unlock();
     });
 
-    nc.subscribe("foo", () => {
+    nc.subscribe('foo', () => {
         t.fail('should not have been called');
     });
 
-    nc.publish("foo");
+    nc.publish('foo');
     nc.flush();
 
     return lock.latch;
@@ -154,11 +152,11 @@ test('cannot pub bar', async (t) => {
         lock.unlock();
     });
 
-    nc.subscribe("bar", () => {
+    nc.subscribe('bar', () => {
         t.fail('should not have been called');
     });
 
-    nc.publish("bar");
+    nc.publish('bar');
     nc.flush();
 
     return lock.latch;

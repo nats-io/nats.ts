@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 The NATS Authors
+ * Copyright 2018-2019 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,10 +14,9 @@
  *
  */
 
-
-import {Msg, Req} from "./nats";
-import {createInbox} from "./util";
-import {NatsError} from "./error";
+import {Msg, Req} from './nats';
+import {createInbox} from './util';
+import {NatsError} from './error';
 
 /**
  * @hidden
@@ -59,9 +58,9 @@ export class MuxSubscriptions {
     }
 
     getToken(m?: Msg): string | null {
-        let s = "";
+        let s = '';
         if (m) {
-            s = m.subject || "";
+            s = m.subject || '';
         }
         if (s.indexOf(this.baseInbox) === 0) {
             return s.substring(this.baseInbox.length);
@@ -83,6 +82,6 @@ export class MuxSubscriptions {
                     }
                 }
             }
-        }
+        };
     };
 }

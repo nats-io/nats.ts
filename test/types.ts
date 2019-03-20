@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 The NATS Authors
+ * Copyright 2018-2019 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,11 +14,11 @@
  *
  */
 
-import {SC, startServer, stopServer} from "./helpers/nats_server_control";
-import test from "ava";
-import {next} from 'nuid'
-import {connect, Msg, Payload} from "../src/nats";
-import {Lock} from "./helpers/latch";
+import {SC, startServer, stopServer} from './helpers/nats_server_control';
+import test from 'ava';
+import {next} from 'nuid';
+import {connect, Msg, Payload} from '../src/nats';
+import {Lock} from './helpers/latch';
 
 
 test.before(async (t) => {
@@ -38,7 +38,7 @@ test('json types', async (t) => {
     let nc = await connect({url: sc.server.nats, payload: Payload.JSON});
     let subj = next();
     nc.subscribe(subj, (err, msg) => {
-        if(err) {
+        if (err) {
             t.fail(err.message);
         }
         t.is(typeof msg.data, 'number');
@@ -58,8 +58,8 @@ test('string types', async (t) => {
     let nc = await connect({url: sc.server.nats, payload: Payload.STRING});
     let subj = next();
     nc.subscribe(subj, (err, msg: Msg) => {
-        t.is(typeof msg.data, "string");
-        t.is(msg.data, "hello world");
+        t.is(typeof msg.data, 'string');
+        t.is(msg.data, 'hello world');
         lock.unlock();
     }, {max: 1});
 
@@ -76,7 +76,7 @@ test('binary types', async (t) => {
     let subj = next();
     nc.subscribe(subj, (err, msg) => {
         t.truthy(Buffer.isBuffer(msg.data));
-        t.is(msg.data.toString(), "hello world");
+        t.is(msg.data.toString(), 'hello world');
         lock.unlock();
     }, {max: 1});
 
@@ -94,20 +94,20 @@ test('binary encoded per client', async (t) => {
     let nc2 = await connect({url: sc.server.nats, payload: Payload.STRING});
     let subj = next();
     nc1.subscribe(subj, (err, msg) => {
-        if(err) {
+        if (err) {
             t.fail(err.message);
         }
         t.truthy(Buffer.isBuffer(msg.data));
-        t.is(msg.data.toString(), "hello world");
+        t.is(msg.data.toString(), 'hello world');
         lock.unlock();
     }, {max: 1});
 
     nc2.subscribe(subj, (err, msg) => {
-        if(err) {
+        if (err) {
             t.fail(err.message);
         }
-        t.is(typeof msg.data, "string");
-        t.is(msg.data, "hello world");
+        t.is(typeof msg.data, 'string');
+        t.is(msg.data, 'hello world');
         lock.unlock();
     }, {max: 1});
     await nc1.flush();
@@ -126,7 +126,7 @@ test('binary client gets binary', async (t) => {
     let subj = next();
     nc1.subscribe(subj, (err, msg) => {
         t.truthy(Buffer.isBuffer(msg.data));
-        t.is(msg.data.toString(), "hello world");
+        t.is(msg.data.toString(), 'hello world');
         lock.unlock();
     }, {max: 1});
 

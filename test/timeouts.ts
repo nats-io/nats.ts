@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 The NATS Authors
+ * Copyright 2018-2019 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,13 +14,12 @@
  *
  */
 
-import test from "ava";
-import {Lock, wait} from "./helpers/latch";
-import {SC, startServer, stopServer} from "./helpers/nats_server_control";
-import {connect} from "../src/nats";
-import {join} from 'path';
-import {createInbox} from "../src/util";
-import {ErrorCode} from "../src/error";
+import test from 'ava';
+import {Lock, wait} from './helpers/latch';
+import {SC, startServer, stopServer} from './helpers/nats_server_control';
+import {connect} from '../src/nats';
+import {createInbox} from '../src/util';
+import {ErrorCode} from '../src/error';
 
 test.before(async (t) => {
     let server = await startServer();
@@ -30,7 +29,6 @@ test.before(async (t) => {
 test.after.always((t) => {
     stopServer((t.context as SC).server);
 });
-
 
 test('subscription timeouts', async (t) => {
     t.plan(2);
@@ -52,14 +50,13 @@ test('subscription timeouts', async (t) => {
     return lock.latch;
 });
 
-
 test('message cancels timeout', async (t) => {
     t.plan(2);
     let sc = t.context as SC;
     let nc = await connect(sc.server.nats);
     let subj = createInbox();
     let sub = await nc.subscribe(subj, (err) => {
-        if(err) {
+        if (err) {
             t.fail();
         }
     });
@@ -71,14 +68,13 @@ test('message cancels timeout', async (t) => {
     nc.close();
 });
 
-
 test('cancel timeout', async (t) => {
     t.plan(2);
     let sc = t.context as SC;
     let nc = await connect(sc.server.nats);
     let subj = createInbox();
     let sub = await nc.subscribe(subj, (err) => {
-        if(err) {
+        if (err) {
             t.fail();
         }
     });
@@ -97,7 +93,7 @@ test('message cancels subscription timeout', async (t) => {
     let subj = createInbox();
     let count = 0;
     let sub = await nc.subscribe(subj, (err, msg) => {
-        if(err) {
+        if (err) {
             t.fail();
         } else {
             count++;
@@ -119,11 +115,11 @@ test('max message cancels subscription timeout', async (t) => {
     let subj = createInbox();
     let count = 0;
     let sub = await nc.subscribe(subj, (err, msg) => {
-        if(err) {
+        if (err) {
             t.fail();
         } else {
             count++;
-            if(count === 2) {
+            if (count === 2) {
                 t.true(sub.isCancelled());
                 nc.close();
                 lock.unlock();
@@ -139,7 +135,6 @@ test('max message cancels subscription timeout', async (t) => {
     return lock.latch;
 });
 
-
 test('timeout if expected is not received', async (t) => {
     t.plan(3);
     let sc = t.context as SC;
@@ -149,12 +144,12 @@ test('timeout if expected is not received', async (t) => {
     let subj = createInbox();
     let count = 0;
     let sub = await nc.subscribe(subj, (err) => {
-        if(err) {
-           t.is(err.code, ErrorCode.SUB_TIMEOUT);
-           t.is(sub.getReceived(), 1);
-           t.is(sub.getMax(), 2);
-           nc.close();
-           lock.unlock();
+        if (err) {
+            t.is(err.code, ErrorCode.SUB_TIMEOUT);
+            t.is(sub.getReceived(), 1);
+            t.is(sub.getMax(), 2);
+            nc.close();
+            lock.unlock();
         } else {
             count++;
         }
@@ -165,7 +160,6 @@ test('timeout if expected is not received', async (t) => {
 
     return lock.latch;
 });
-
 
 test('no timeout if unsubscribed', async (t) => {
     t.plan(1);
@@ -181,7 +175,7 @@ test('no timeout if unsubscribed', async (t) => {
     sub.setTimeout(50);
     nc.publish(subj);
     await nc.flush();
-    setTimeout(()=> {
+    setTimeout(() => {
         // shouldn't expect anything because it is unsubscribed
         t.is(sub.getMax(), 0);
         lock.unlock();
@@ -231,7 +225,7 @@ test('timeout unsubscribes', async (t) => {
     let subj = createInbox();
     let count = 0;
     let sub = await nc.subscribe(subj, (err) => {
-        if(err) {
+        if (err) {
             process.nextTick(() => {
                 nc.publish(subj);
                 nc.flush();
@@ -242,7 +236,7 @@ test('timeout unsubscribes', async (t) => {
     });
     sub.setTimeout(50);
 
-    setTimeout(()=> {
+    setTimeout(() => {
         t.is(count, 0);
         lock.unlock();
     }, 100);

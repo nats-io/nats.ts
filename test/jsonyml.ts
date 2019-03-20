@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 The NATS Authors
+ * Copyright 2018-2019 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,7 +14,7 @@
  *
  */
 
-import test from "ava";
+import test from 'ava';
 import * as u from './helpers/nats_conf_utils';
 
 
@@ -30,7 +30,7 @@ test('test serializing simple', (t) => {
     });
 
     let z = buf.join(' ');
-    t.is(z,"test: one");
+    t.is(z, 'test: one');
 });
 
 test('test serializing nested', (t) => {
@@ -48,7 +48,7 @@ test('test serializing nested', (t) => {
     });
 
     let z = buf.join(' ');
-    t.is(z,"a: one b { a: two }");
+    t.is(z, 'a: one b { a: two }');
 });
 
 test('test serializing array', (t) => {
@@ -64,7 +64,7 @@ test('test serializing array', (t) => {
     });
 
     let z = buf.join(' ');
-    t.is(z,"a: one b [ a b c ]");
+    t.is(z, 'a: one b [ a b c ]');
 });
 
 test('test serializing array objs', (t) => {
@@ -85,7 +85,7 @@ test('test serializing array objs', (t) => {
     });
 
     let z = buf.join(' ');
-    t.is(z, "a: one b [ { a: a } { b: b } { c: c } ]");
+    t.is(z, 'a: one b [ { a: a } { b: b } { c: c } ]');
 });
 
 test('test serializing array arrays', (t) => {
@@ -107,5 +107,5 @@ test('test serializing array arrays', (t) => {
     });
 
     let z = buf.join(' ');
-    t.is(z, "a: one b [ { a: a b [ b c ] } { b: b } { c: c } ]");
+    t.is(z, 'a: one b [ { a: a b [ b c ] } { b: b } { c: c } ]');
 });

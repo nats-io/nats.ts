@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 The NATS Authors
+ * Copyright 2018-2019 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,10 +13,10 @@
  * limitations under the License.
  *
  */
-import url = require('url');
-import {DEFAULT_PORT, DEFAULT_URI} from "./const";
-import {shuffle} from "./util";
-import {ServerInfo, ServersChangedEvent} from "./nats";
+import * as url from 'url';
+import {DEFAULT_PORT, DEFAULT_URI} from './const';
+import {shuffle} from './util';
+import {ServerInfo, ServersChangedEvent} from './nats';
 
 /**
  * @hidden
@@ -30,7 +30,7 @@ export class Server {
     constructor(u: string, implicit = false) {
         // add scheme if not specified
         if (!/^.*:\/\/.*/.test(u)) {
-            u = `nats://${u}`
+            u = `nats://${u}`;
         }
 
         this.url = url.parse(u);
@@ -43,7 +43,7 @@ export class Server {
     }
 
     toString(): string {
-        return this.url.href || "";
+        return this.url.href || '';
     }
 
     getCredentials(): string[] | undefined {
@@ -89,11 +89,11 @@ export class Servers {
         this.currentServer = this.servers[0];
     }
 
-    getCurrentServer() : Server {
+    getCurrentServer(): Server {
         return this.currentServer;
     }
 
-    addServer(u: string, implicit = false) {
+    addServer(u: string, implicit = false): void {
         this.servers.push(new Server(u, implicit));
     }
 
@@ -106,11 +106,11 @@ export class Servers {
         return t;
     }
 
-    removeCurrentServer() {
+    removeCurrentServer(): void {
         this.removeServer(this.currentServer);
     }
 
-    removeServer(server: Server | undefined) {
+    removeServer(server: Server | undefined): void {
         if (server) {
             let index = this.servers.indexOf(server);
             this.servers.splice(index, 1);
@@ -131,7 +131,7 @@ export class Servers {
 
     processServerUpdate(info: ServerInfo): ServersChangedEvent {
         let added = [];
-        let deleted : string[] = [];
+        let deleted: string[] = [];
 
         if (info.connect_urls && info.connect_urls.length > 0) {
             let discovered: { [key: string]: Server } = {};

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 The NATS Authors
+ * Copyright 2018-2019 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,13 +14,14 @@
  *
  */
 
-import test, {ExecutionContext} from "ava";
-import {connect, NatsConnectionOptions, Payload, VERSION} from "../src/nats";
-import {SC, Server, startServer, stopServer} from "./helpers/nats_server_control";
-import {Lock} from "./helpers/latch";
-import {createInbox} from "../src/util";
-import {ErrorCode} from "../src/error";
-import * as mockserver from "./helpers/mock_server";
+import test, {ExecutionContext} from 'ava';
+import {connect, NatsConnectionOptions, Payload, VERSION} from '../src/nats';
+import {SC, Server, startServer, stopServer} from './helpers/nats_server_control';
+import {Lock} from './helpers/latch';
+import {createInbox} from '../src/util';
+import {ErrorCode} from '../src/error';
+import * as mockserver from './helpers/mock_server';
+
 
 test.before(async (t) => {
     let server = await startServer();
@@ -30,10 +31,10 @@ test.before(async (t) => {
 test.after.always((t) => {
     (t.context as SC).servers.forEach((s) => {
         stopServer(s);
-    })
+    });
 });
 
-function registerServer(t: ExecutionContext, s: Server) : Server {
+function registerServer(t: ExecutionContext, s: Server): Server {
     //@ts-ignore
     t.context.servers.push(s);
     return s;
@@ -72,24 +73,22 @@ test('default connect properties', async (t) => {
 });
 
 test('configured options', async (t) => {
-
-    let s1 = registerServer(t, await startServer(["--user", "me", "--pass", "secret"]));
-
+    let s1 = registerServer(t, await startServer(['--user', 'me', '--pass', 'secret']));
 
     let nco = {} as NatsConnectionOptions;
-    nco.encoding = "ascii";
+    nco.encoding = 'ascii';
     nco.maxPingOut = 42;
     nco.maxReconnectAttempts = 24;
-    nco.name = "test";
+    nco.name = 'test';
     nco.noRandomize = true;
-    nco.pass = "secret";
+    nco.pass = 'secret';
     nco.payload = Payload.STRING;
     nco.pedantic = true;
     nco.pingInterval = 1000;
     nco.reconnect = false;
     nco.reconnectTimeWait = 987;
     nco.url = s1.nats;
-    nco.user = "me";
+    nco.user = 'me';
     nco.verbose = true;
     nco.waitOnFirstConnect = true;
     nco.yieldTime = 10;
@@ -124,9 +123,7 @@ test('configured options', async (t) => {
     return lock.latch;
 });
 
-
-
-test('noEcho', async(t) => {
+test('noEcho', async (t) => {
     t.plan(1);
     let lock = new Lock();
     let sc = t.context as SC;
@@ -134,7 +131,7 @@ test('noEcho', async(t) => {
     let cp = connect({url: sc.server.nats, noEcho: true});
     cp.then(async (nc) => {
         let c2 = 0;
-        let sub2 = nc.subscribe(subj, ()=> {
+        let sub2 = nc.subscribe(subj, () => {
             c2++;
         });
         nc.publish(subj);
@@ -143,7 +140,7 @@ test('noEcho', async(t) => {
         nc.close();
         lock.unlock();
     }).catch((err) => {
-        if(err.code === ErrorCode.NO_ECHO_NOT_SUPPORTED) {
+        if (err.code === ErrorCode.NO_ECHO_NOT_SUPPORTED) {
             t.pass();
         } else {
             t.fail(err);
@@ -153,13 +150,12 @@ test('noEcho', async(t) => {
     await lock.latch;
 });
 
-
-test('noEcho not supported', async(t) => {
+test('noEcho not supported', async (t) => {
     let lock = new Lock();
     let server = new mockserver.ScriptedServer(0);
     try {
         await server.start();
-    } catch(ex) {
+    } catch (ex) {
         t.fail('failed to start the mock server');
         return;
     }

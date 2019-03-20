@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 The NATS Authors
+ * Copyright 2018-2019 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,12 +14,11 @@
  *
  */
 
-
-import * as net from "net";
-import * as tls from "tls";
-import {ConnectionOptions, TLSSocket} from "tls";
-import {Transport, TransportHandlers} from "./transport";
-import {UrlObject} from "url";
+import * as net from 'net';
+import * as tls from 'tls';
+import {ConnectionOptions, TLSSocket} from 'tls';
+import {Transport, TransportHandlers} from './transport';
+import {UrlObject} from 'url';
 
 /**
  * @hidden
@@ -57,18 +56,18 @@ export class TCPTransport implements Transport {
                     reject(error);
                     this.destroy();
                 } else {
-                // if the client didn't resolve, the error handler
-                // is not set, so emitting 'error' will shutdown node
+                    // if the client didn't resolve, the error handler
+                    // is not set, so emitting 'error' will shutdown node
                     this.handlers.error(error);
                 }
             });
             this.stream.on('close', () => {
-                if(this.connectedOnce) {
+                if (this.connectedOnce) {
                     this.handlers.close();
                 }
             });
             this.stream.on('data', (data: Buffer) => {
-                // console.log('data', "< ", data.toString());
+                // console.log('data', '< ', data.toString());
                 this.handlers.data(data);
             });
         });
@@ -107,7 +106,7 @@ export class TCPTransport implements Transport {
                 this.handlers.error(error);
             });
             this.stream.on('close', () => {
-                this.handlers.close()
+                this.handlers.close();
             });
             this.stream.on('data', (data: Buffer) => {
                 this.handlers.data(data);
@@ -116,12 +115,12 @@ export class TCPTransport implements Transport {
     }
 
     write(data: Buffer | string): void {
-        // if(typeof data === 'string') {
+        // if (typeof data === 'string') {
         //     console.log('>', [data]);
         // } else {
         //     console.log('>', [data.toString('binary')]);
         // }
-        if(this.stream) {
+        if (this.stream) {
             this.stream.write(data);
         }
     }
@@ -143,13 +142,13 @@ export class TCPTransport implements Transport {
     }
 
     pause(): void {
-        if(this.stream) {
-            this.stream.pause()
+        if (this.stream) {
+            this.stream.pause();
         }
     }
 
     resume(): void {
-        if(this.stream && this.stream.isPaused()) {
+        if (this.stream && this.stream.isPaused()) {
             this.stream.resume();
         }
     }

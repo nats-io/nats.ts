@@ -14,18 +14,18 @@
  *
  */
 
-import test from "ava";
-import {addClusterMember, SC, startServer, stopServer} from "./helpers/nats_server_control";
-import {connect} from "../src/nats";
+import test from 'ava';
+import {addClusterMember, SC, startServer, stopServer} from './helpers/nats_server_control';
+import {connect} from '../src/nats';
 import {join} from 'path';
-import {Lock} from "./helpers/latch";
-import {readFileSync} from "fs";
+import {Lock} from './helpers/latch';
+import {readFileSync} from 'fs';
 
 
 test.before(async (t) => {
-    let cert = join(__dirname, "../../test/helpers/certs/noip-cert.pem");
-    let key = join(__dirname, "../../test/helpers/certs/noip-key.pem");
-    let ca = join(__dirname, "../../test/helpers/certs/ca.pem");
+    let cert = join(__dirname, '../../test/helpers/certs/noip-cert.pem');
+    let key = join(__dirname, '../../test/helpers/certs/noip-key.pem');
+    let ca = join(__dirname, '../../test/helpers/certs/ca.pem');
 
 
     t.context = {servers: [], ca: readFileSync(ca)};
@@ -42,7 +42,7 @@ test.after.always((t) => {
     //@ts-ignore
     (t.context as SC).servers.forEach((s) => {
         stopServer(s);
-    })
+    });
 });
 
 test('tls connect with ips', async (t) => {
@@ -65,12 +65,12 @@ test('tls connect with ips', async (t) => {
         nc.on('connect', () => {
             //@ts-ignore
             if (nc.protocolHandler.servers.length() > 1) {
-                stopServer(s1)
+                stopServer(s1);
             } else {
                 nc.on('serversChanged', (sc) => {
                     //@ts-ignore
                     if (nc.protocolHandler.servers.length() > 1) {
-                        stopServer(s1)
+                        stopServer(s1);
                     }
                 });
             }
@@ -85,7 +85,7 @@ test('tls connect with ips', async (t) => {
     } catch (err) {
         console.log(err);
         t.fail(err);
-        lock.unlock()
+        lock.unlock();
     }
 
     return lock.latch;

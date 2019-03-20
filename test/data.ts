@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 The NATS Authors
+ * Copyright 2018-2019 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,8 +14,8 @@
  *
  */
 
-import test from "ava";
-import {DataBuffer} from "../src/databuffer";
+import test from 'ava';
+import {DataBuffer} from '../src/databuffer';
 
 
 test('empty', (t) => {
@@ -31,20 +31,19 @@ test('empty', (t) => {
 
 });
 
-
 test('simple', (t) => {
     t.plan(6);
 
     let buf = new DataBuffer();
-    buf.fill(Buffer.from("Hello"));
-    buf.fill(Buffer.from(" "));
-    buf.fill(Buffer.from("World"));
+    buf.fill(Buffer.from('Hello'));
+    buf.fill(Buffer.from(' '));
+    buf.fill(Buffer.from('World'));
     t.is(3, buf.length());
     t.is(11, buf.size());
     let p = buf.peek();
     t.is(11, p.byteLength);
-    t.is("Hello World", p.toString());
+    t.is('Hello World', p.toString());
     let d = buf.drain();
     t.is(11, d.byteLength);
-    t.is("Hello World", d.toString());
+    t.is('Hello World', d.toString());
 });
