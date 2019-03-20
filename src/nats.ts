@@ -249,6 +249,8 @@ export interface NatsConnectionOptions {
     userCreds?: string;
     /** nkey file path - will automatically setup an `nkey` and `nonceSigner` that references the specified nkey seed file.*/
     nkeyCreds?: string;
+    /** number of milliseconds when making a connection to wait for the connection to succeed. Must be greater than zero. */
+    connectionTimeout?:number
 }
 
 /** @hidden */

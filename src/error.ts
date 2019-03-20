@@ -29,6 +29,7 @@ export enum ErrorCode {
     CONN_CLOSED = 'CONN_CLOSED',
     CONN_DRAINING = 'CONN_DRAINING',
     CONN_ERR = 'CONN_ERR',
+    CONN_TIMEOUT = 'CONN_TIMEOUT',
     INVALID_ENCODING = 'INVALID_ENCODING',
     NKEY_OR_JWT_REQ = 'NKEY_OR_JWT_REQ',
     NO_ECHO_NOT_SUPPORTED = 'NO_ECHO_NOT_SUPPORTED',
@@ -70,6 +71,7 @@ export class Messages {
         this.messages[ErrorCode.CLIENT_CERT_REQ] = 'Server requires a client certificate.';
         this.messages[ErrorCode.CONN_CLOSED] = 'Connection closed';
         this.messages[ErrorCode.CONN_DRAINING] = 'Connection draining';
+        this.messages[ErrorCode.CONN_TIMEOUT] = 'Connection timeout';
         this.messages[ErrorCode.NKEY_OR_JWT_REQ] = 'An Nkey or User JWT callback is required.';
         this.messages[ErrorCode.NO_ECHO_NOT_SUPPORTED] = 'No echo option is not supported by this server';
         this.messages[ErrorCode.NO_SEED_IN_CREDS] = 'Cannot locate signing key in credentials';
