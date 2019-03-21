@@ -14,11 +14,10 @@
  *
  */
 
-import {connect} from '../src/nats';
+import {connect, ErrorCode, NatsError} from '../src/nats';
 import test from 'ava';
 import {SC, startServer, stopServer} from './helpers/nats_server_control';
 import {Lock, wait} from './helpers/latch';
-import {ErrorCode, NatsError} from '../src/error';
 
 
 test.before(async (t) => {

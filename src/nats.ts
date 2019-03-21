@@ -31,8 +31,10 @@ import {
 import {ConnectionOptions} from 'tls';
 import {next} from 'nuid';
 
+export {ErrorCode, NatsError}
+
 /** Version of the ts-nats library */
-export const VERSION = "1.1.4";
+export const VERSION = "1.1.5";
 
 /**
  * @hidden
