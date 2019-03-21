@@ -34,7 +34,7 @@ import {next} from 'nuid';
 export {ErrorCode, NatsError}
 
 /** Version of the ts-nats library */
-export const VERSION = "1.1.5";
+export const VERSION = "1.2.0";
 
 /**
  * @hidden
@@ -252,7 +252,7 @@ export interface NatsConnectionOptions {
     /** nkey file path - will automatically setup an `nkey` and `nonceSigner` that references the specified nkey seed file.*/
     nkeyCreds?: string;
     /** number of milliseconds when making a connection to wait for the connection to succeed. Must be greater than zero. */
-    connectionTimeout?:number
+    timeout?:number
 }
 
 /** @hidden */

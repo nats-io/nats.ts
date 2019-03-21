@@ -250,7 +250,7 @@ test('connectTimeout is honored', async (t) => {
     try {
         await connect({
             servers: servers,
-            connectionTimeout: 1000,
+            timeout: 1000,
             maxReconnectAttempts: -1,
             reconnectTimeWait: 100,
             waitOnFirstConnect: true
