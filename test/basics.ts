@@ -16,11 +16,10 @@
 
 import test from 'ava';
 import {SC, startServer, stopServer} from './helpers/nats_server_control';
-import {connect, NatsConnectionOptions, Payload, SubEvent} from '../src/nats';
+import {connect, NatsConnectionOptions, Payload, SubEvent, ErrorCode, NatsError} from '../src/nats';
 import {Lock} from './helpers/latch';
 import {createInbox} from '../src/util';
 import url from 'url';
-import {ErrorCode, NatsError} from '../src/error';
 
 
 test.before(async (t) => {

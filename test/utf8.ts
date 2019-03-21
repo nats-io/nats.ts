@@ -16,9 +16,8 @@
 
 import test from 'ava';
 import {SC, startServer, stopServer} from './helpers/nats_server_control';
-import {connect, NatsConnectionOptions} from '../src/nats';
+import {connect, NatsConnectionOptions, NatsError} from '../src/nats';
 import {createInbox} from '../src/util';
-import {NatsError} from '../src/error';
 
 test.before(async (t) => {
     let server = await startServer();

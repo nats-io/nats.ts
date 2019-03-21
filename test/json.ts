@@ -15,11 +15,10 @@
  */
 
 import test from 'ava';
-import {connect, Payload} from '../src/nats';
+import {connect, Payload, ErrorCode} from '../src/nats';
 import {Lock} from './helpers/latch';
 import {SC, startServer, stopServer} from './helpers/nats_server_control';
 import {next} from 'nuid';
-import {ErrorCode} from '../src/error';
 
 
 test.before(async (t) => {

@@ -15,10 +15,9 @@
  */
 
 import test from 'ava';
-import {Client, connect, NatsConnectionOptions} from '../src/nats';
+import {Client, connect, NatsConnectionOptions, ErrorCode} from '../src/nats';
 import {Lock} from './helpers/latch';
 import * as mockserver from './helpers/mock_server';
-import {ErrorCode} from '../src/error';
 
 
 test.before(async (t) => {

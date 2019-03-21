@@ -17,8 +17,7 @@
 import test from 'ava';
 import {Lock} from './helpers/latch';
 import {SC, startServer, stopServer, serverVersion} from './helpers/nats_server_control';
-import {connect, NatsConnectionOptions} from '../src/nats';
-import {ErrorCode, NatsError} from '../src/error';
+import {connect, NatsConnectionOptions, ErrorCode, NatsError} from '../src/nats';
 import path from 'path';
 import {next} from 'nuid';
 import {fromSeed} from 'ts-nkeys';

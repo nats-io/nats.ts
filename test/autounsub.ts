@@ -16,9 +16,8 @@
 
 import {SC, startServer, stopServer} from './helpers/nats_server_control';
 import test from 'ava';
-import {connect, NatsConnectionOptions} from '../src/nats';
+import {connect, NatsConnectionOptions, ErrorCode, NatsError} from '../src/nats';
 import {next} from 'nuid';
-import {ErrorCode, NatsError} from '../src/error';
 
 
 test.before(async (t) => {

@@ -16,10 +16,9 @@
 
 import test from 'ava';
 import {SC, startServer, stopServer} from './helpers/nats_server_control';
-import {connect, SubEvent} from '../src/nats';
+import {connect, SubEvent, ErrorCode} from '../src/nats';
 import {Lock} from './helpers/latch';
 import {createInbox} from '../src/util';
-import {ErrorCode} from '../src/error';
 
 test.before(async (t) => {
     let server = await startServer();

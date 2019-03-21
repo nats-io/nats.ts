@@ -15,11 +15,10 @@
  */
 
 import test, {ExecutionContext} from 'ava';
-import {connect, NatsConnectionOptions, Payload, VERSION} from '../src/nats';
+import {connect, NatsConnectionOptions, Payload, VERSION, ErrorCode} from '../src/nats';
 import {SC, Server, startServer, stopServer} from './helpers/nats_server_control';
 import {Lock} from './helpers/latch';
 import {createInbox} from '../src/util';
-import {ErrorCode} from '../src/error';
 import * as mockserver from './helpers/mock_server';
 
 
