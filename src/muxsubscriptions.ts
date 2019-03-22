@@ -46,6 +46,15 @@ export class MuxSubscriptions {
         return null;
     }
 
+    all(): Req[] {
+        let buf = [];
+        for (let token in this.reqs) {
+            let req = this.reqs[token];
+            buf.push(req);
+        }
+        return buf;
+    }
+
     cancel(r: Req): void {
         if (r && r.timeout) {
             clearTimeout(r.timeout);
@@ -54,6 +63,13 @@ export class MuxSubscriptions {
         if (r.token in this.reqs) {
             delete this.reqs[r.token];
             this.length--;
+        }
+    }
+
+    close(): void {
+        let reqs = this.all();
+        for (let i = 0; i < reqs.length; i++) {
+            this.cancel(reqs[i]);
         }
     }
 

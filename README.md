@@ -6,7 +6,7 @@ A TypeScript [Node.js](http://nodejs.org/) client for the [NATS messaging system
 [![Travis branch](https://img.shields.io/travis/nats-io/ts-nats/master.svg)]()
 [![Coveralls github branch](https://img.shields.io/coveralls/github/nats-io/ts-nats/master.svg)](https://coveralls.io/github/nats-io/ts-nats)
 [![npm](https://img.shields.io/npm/v/ts-nats.svg)](https://www.npmjs.com/package/ts-nats)
-[![npm](https://img.shields.io/npm/dt/ts-nats.svg)](https://www.npmjs.com/package/ts-nats)
+[![npm](https://img.shields.io/npm/dm/ts-nats.svg)](https://www.npmjs.com/package/ts-nats)
 
 ts-nats is a typescript nats library for node that supports Promises and async/await patterns.
 [Full documentation](https://nats-io.github.io/ts-nats/).
