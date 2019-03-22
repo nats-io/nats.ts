@@ -457,10 +457,9 @@ The following is the list of connection options and default values.
 
 | Option                 | Default                   | Description
 |--------                |---------                  |------------
-| `connectionTimeout`    | `0`                       | Number of milliseconds to wait before timing out the initial connection. Must be greater than `0`. Note that `waitOnFirst` must be specified, and `reconnectTimeWait` and `maxReconnectAttempts` must have sensible values supporting the desired timeout.
 | `encoding`             | `"utf8"`                  | Encoding specified by the client to encode/decode data
 | `maxPingOut`           | `2`                       | Max number of pings the client will allow unanswered before rasing a stale connection error
-| `maxReconnectAttempts` | `10`                      | Sets the maximun number of reconnect attempts. The value of `-1` specifies no limit
+| `maxReconnectAttempts` | `10`                      | Sets the maximum number of reconnect attempts. The value of `-1` specifies no limit
 | `name`                 |                           | Optional client name (useful for debugging a client on the server output `-DV`)
 | `nkey`                 |                           | The public NKey identifying the client
 | `nkeyCreds`            |                           | Path to a file containing seed nkey for the client. This property sets a `nonceSigner` and `nkey` automatically.
@@ -474,6 +473,7 @@ The following is the list of connection options and default values.
 | `reconnect`            | `true`                    | If false server will not attempt reconnecting
 | `reconnectTimeWait`    | `2000`                    | If disconnected, the client will wait the specified number of milliseconds between reconnect attempts
 | `servers`              |                           | Array of connection `url`s
+| `timeout`              | `0`                       | Number of milliseconds to wait before timing out the initial connection. Must be greater than `0`. Note that `waitOnFirst` must be specified, and `reconnectTimeWait` and `maxReconnectAttempts` must have sensible values supporting the desired timeout.
 | `tls`                  | `undefined`               | This property can be a boolean or an Object. If `true` the client requires a TLS connection. If `false` a non-tls connection is required. `undefined` allows connecting to either secure or non-secured.  The value can also be an object specifying TLS certificate data, which will implicitly require a secured connection. The properties `ca`, `key`, `cert` should contain the certificate file data. `ca` should be provided for self-signed certificates. `key` and `cert` are required for client provided certificates. `rejectUnauthorized` if `true` validates server's credentials
 | `token`                |                           | Sets a authorization token for a connection
 | `url`                  | `"nats://localhost:4222"` | Connection url

@@ -136,8 +136,8 @@ export class ProtocolHandler extends EventEmitter {
             let expired = false;
             let to: NodeJS.Timeout;
             let millis: number = 0;
-            if(opts.connectionTimeout && !isNaN(opts.connectionTimeout)) {
-                millis = opts.connectionTimeout;
+            if(opts.timeout && !isNaN(opts.timeout)) {
+                millis = opts.timeout;
             }
             if(millis > 0) {
                 to = setTimeout(() => {
