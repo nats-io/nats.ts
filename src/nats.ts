@@ -34,7 +34,7 @@ import {next} from 'nuid';
 export {ErrorCode, NatsError}
 
 /** Version of the ts-nats library */
-export const VERSION = "1.2.0";
+export const VERSION = "1.2.2";
 
 /**
  * @hidden
