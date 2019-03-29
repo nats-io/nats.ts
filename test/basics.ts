@@ -16,7 +16,7 @@
 
 import test from 'ava';
 import {SC, startServer, stopServer} from './helpers/nats_server_control';
-import {connect, NatsConnectionOptions, Payload, SubEvent, ErrorCode, NatsError} from '../src/nats';
+import {connect, ErrorCode, NatsConnectionOptions, NatsError, Payload, SubEvent} from '../src/nats';
 import {Lock} from './helpers/latch';
 import {createInbox} from '../src/util';
 import url from 'url';
@@ -513,3 +513,47 @@ test('server info', async (t) => {
     await lock.latch;
     nc.close();
 });
+
+test('timers are not left behind on close', async (t) => {
+    let lock = new Lock();
+    const s1 = await startServer();
+
+    t.plan(3);
+    let nc = await connect({
+        url: s1.nats,
+        reconnectTimeWait: 100,
+        maxReconnectAttempts: 1
+    });
+
+    nc.on('connect', async (nc) => {
+        const sub = await nc.subscribe("foo", () => {
+            t.fail("shouldn't have received an error or message");
+        }, {max: 1});
+        sub.setTimeout(3000);
+
+        nc.request("bar", 3000);
+
+        await nc.flush();
+        stopServer(s1);
+    });
+
+    nc.on('close', () => {
+        //@ts-ignore
+        t.is(nc.protocolHandler.pingTimer, undefined, "there should be no ping timer");
+
+        //@ts-ignore
+        const subcriptions = nc.protocolHandler.subscriptions;
+        const subs = subcriptions.all();
+        t.is(subs.length, 0, "there should be no subscriptions");
+
+        //@ts-ignore
+        const muxSubscriptions = nc.protocolHandler.muxSubscriptions;
+        const muxsubs = muxSubscriptions.all();
+        t.is(muxsubs.length, 0, "there should be no muxsubs");
+
+        lock.unlock()
+    });
+
+    await lock.latch;
+});
+

@@ -30,7 +30,7 @@ import {
 } from './nats';
 import {MuxSubscriptions} from './muxsubscriptions';
 import {Callback, Transport, TransportHandlers} from './transport';
-import {CONN_ERR_PREFIX, ErrorCode, Messages, NatsError} from './error';
+import {CONN_ERR_PREFIX, ErrorCode, NatsError} from './error';
 
 import {EventEmitter} from 'events';
 import {CR_LF, DEFAULT_PING_INTERVAL, EMPTY} from './const';
@@ -205,6 +205,7 @@ export class ProtocolHandler extends EventEmitter {
         this.closeStream();
         this.ssid = -1;
         this.subscriptions.close();
+        this.muxSubscriptions.close();
         this.state = ParserState.CLOSED;
         this.pongs = [];
         this.outbound.reset();
