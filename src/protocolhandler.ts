@@ -18,7 +18,6 @@ import {
     Client,
     defaultSub,
     FlushCallback,
-    Msg,
     NatsConnectionOptions,
     Payload,
     Req,
@@ -949,8 +948,7 @@ export class ProtocolHandler extends EventEmitter {
         if (sub.callback) {
             try {
                 if (this.msgBuffer.error) {
-                    let empty = {sid: sub.sid, size: 0, reply: '', subject: sub.subject} as Msg;
-                    sub.callback(this.msgBuffer.error, empty);
+                    sub.callback(this.msgBuffer.error, this.msgBuffer.msg);
                 } else {
                     sub.callback(null, this.msgBuffer.msg);
                 }
