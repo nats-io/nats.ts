@@ -34,7 +34,7 @@ import Timer = NodeJS.Timer;
 export {ErrorCode, NatsError}
 
 /** Version of the ts-nats library */
-export const VERSION = "1.2.2";
+export const VERSION = "1.2.4";
 
 /**
  * @hidden

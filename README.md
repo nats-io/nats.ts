@@ -1,15 +1,15 @@
-# TypeScript NATS - Node.js Client
+# NATS.ts - Node.js Client
 
 A TypeScript [Node.js](http://nodejs.org/) client for the [NATS messaging system](https://nats.io).
 
-[![license](https://img.shields.io/github/license/nats-io/ts-nats.svg)](https://www.apache.org/licenses/LICENSE-2.0)
-[![Travis branch](https://img.shields.io/travis/nats-io/ts-nats/master.svg)]()
-[![Coveralls github branch](https://img.shields.io/coveralls/github/nats-io/ts-nats/master.svg)](https://coveralls.io/github/nats-io/ts-nats)
+[![license](https://img.shields.io/github/license/nats-io/nats.ts.svg)](https://www.apache.org/licenses/LICENSE-2.0)
+[![Travis branch](https://img.shields.io/travis/nats-io/nats.ts/master.svg)]()
+[![Coverage Status](https://coveralls.io/repos/github/nats-io/nats.ts/badge.svg?branch=master)](https://coveralls.io/github/nats-io/nats.ts?branch=master)
 [![npm](https://img.shields.io/npm/v/ts-nats.svg)](https://www.npmjs.com/package/ts-nats)
 [![npm](https://img.shields.io/npm/dm/ts-nats.svg)](https://www.npmjs.com/package/ts-nats)
 
 ts-nats is a typescript nats library for node that supports Promises and async/await patterns.
-[Full documentation](https://nats-io.github.io/ts-nats/).
+[Full documentation](https://nats-io.github.io/nats.ts/).
 
 ## Installation
 
@@ -20,7 +20,7 @@ npm install ts-nats
 ## Basic Usage
 
 The starting point is the `connect()` function. You can give no arguments, a port, an URL or a
-[`NatsConnectionOption`](https://nats-io.github.io/ts-nats/interfaces/_nats_.natsconnectionoptions.html) 
+[`NatsConnectionOption`](https://nats-io.github.io/nats.ts/interfaces/_nats_.natsconnectionoptions.html) 
 specifying detailed behaviour. Inside an async function, you can use async/await to wait for the
 promise to resolve or reject.
 
