@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The NATS Authors
+ * Copyright 2018-2019 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -11,11 +11,12 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
  */
 
 import * as events from 'events';
 import * as tls from 'tls';
-import Timer = NodeJS.Timer;
+import {ConnectionOptions} from 'tls';
 import {ErrorCode, INVALID_ENCODING_MSG_PREFIX, NatsError} from './error';
 import {createInbox, extend} from './util';
 import {ProtocolHandler} from './protocolhandler';
@@ -27,9 +28,8 @@ import {
     DEFAULT_RECONNECT_TIME_WAIT,
     DEFAULT_URI
 } from './const';
-
-import {ConnectionOptions} from 'tls';
 import {next} from 'nuid';
+import Timer = NodeJS.Timer;
 
 export {ErrorCode, NatsError}
 
@@ -168,7 +168,7 @@ export interface FlushCallback {
     (err?: NatsError): void;
 }
 
-/** [[Client.subscribe]] callbacks. First argument will be an error if an error occurred (such as a timeout) or null. Message argument is the received message. */
+/** [[Client.subscribe]] callbacks. First argument will be an error if an error occurred (such as a timeout) or null. Message argument is the received message (which should be treated as debug information when an error is provided). */
 export interface MsgCallback {
     (err: NatsError | null, msg: Msg): void;
 }

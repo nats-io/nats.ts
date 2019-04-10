@@ -15,10 +15,11 @@
  */
 
 import test from 'ava';
-import {connect, Payload, ErrorCode} from '../src/nats';
+import {connect, ErrorCode, NatsConnectionOptions, Payload} from '../src/nats';
 import {Lock} from './helpers/latch';
 import {SC, startServer, stopServer} from './helpers/nats_server_control';
 import {next} from 'nuid';
+import {createInbox} from "../src/util";
 
 
 test.before(async (t) => {
@@ -144,6 +145,26 @@ const complex = {
     empty_string: '',
     string: 'abc'
 };
+
+
+test('subscribe subject should be in subject ', async (t) => {
+    t.plan(2);
+    let sc = t.context as SC;
+    let nc = await connect({url: sc.server.nats, payload: Payload.STRING} as NatsConnectionOptions);
+    let jnc = await connect({url: sc.server.nats, payload: Payload.JSON} as NatsConnectionOptions);
+    let prefix = createInbox();
+    let subj = `${prefix}.*`;
+    await jnc.subscribe(subj, (err, msg) => {
+        t.truthy(err);
+        t.is(msg.subject, `${prefix}.foo`);
+    });
+    await jnc.flush();
+    nc.publish(`${prefix}.foo`);
+    await nc.flush();
+    await jnc.flush();
+    jnc.close();
+    nc.close();
+});
 
 test('string', pubsub, 'helloworld');
 test('empty', pubsub, '');

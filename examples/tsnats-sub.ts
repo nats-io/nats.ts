@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 The NATS Authors
+ * Copyright 2018-2019 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -58,8 +58,12 @@ async function main() {
 
     // create the subscription
     let count = 0;
-    let sub = await nc.subscribe(flags.subject, (err, msg) => {
+    await nc.subscribe(flags.subject, (err, msg) => {
         count++;
+        if (err) {
+            console.error(`[#${count}] error processing message [${err.message} - ${msg}`);
+            return;
+        }
         if (msg.reply) {
             console.log(`[#${count}] received request on [${msg.subject}]: ${msg.data} respond to ${msg.reply}`);
         } else {
