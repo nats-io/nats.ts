@@ -15,10 +15,10 @@
   "homepage": "https://nats.io",
   "repository": {
     "type": "git",
-    "url": "git@github.com:nats-io/ts-nats.git"
+    "url": "git@github.com:nats-io/nats.ts.git"
   },
   "bugs": {
-    "url": "https://github.com/nats-io/ts-nats/issues"
+    "url": "https://github.com/nats-io/nats.ts/issues"
   },
   "license": "Apache-2.0",
   "private": false,
@@ -44,7 +44,7 @@
     "doc": "node_modules/.bin/typedoc --options ./typedocconfig.ts && touch ./docs/.nojekyll"
   },
   "engines": {
-    "node": ">= 6.14.4"
+    "node": ">= 8.16.0"
   },
   "dependencies": {
     "nuid": "^1.1.0",
