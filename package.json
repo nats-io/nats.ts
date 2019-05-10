@@ -31,7 +31,7 @@
   "scripts": {
     "build": "npm run clean:dist && tsc",
     "clean": "npm run clean:dist",
-    "clean:dist": "rm -rf lib",
+    "clean:dist": "rm -rf lib/* coverage/* .nyc_output/*",
     "copy:dist": "cp lib/src/* lib/",
     "cover:html": "nyc report --reporter=html && open coverage/index.html",
     "cover:coveralls": "nyc report --reporter=text-lcov | coveralls",
@@ -52,6 +52,7 @@
   },
   "devDependencies": {
     "@types/node": "^12.0.0",
+    "acorn": "^6.1.1",
     "ava": "^1.4.1",
     "coveralls": "^3.0.3",
     "dependency-check": "3.3.0",
@@ -76,10 +77,20 @@
     ]
   },
   "nyc": {
+    "extension": [
+      ".ts",
+      ".js"
+    ],
+    "include": [
+      "src/**/*.ts",
+      "lib/src/**/*.js"
+    ],
     "exclude": [
       "lib/test/**",
       "examples/**",
       "benchmark/**"
-    ]
+    ],
+    "sourceMap": true,
+    "all": true
   }
 }
