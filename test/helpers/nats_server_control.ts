@@ -220,6 +220,7 @@ export function startServer(opt_flags?: string[]): Promise<Server> {
         });
 
         // Server does not exist..
+        // @ts-ignore
         server.stderr.on('data', function (data) {
             if (/^execvp\(\)/.test(data.toString())) {
                 if (timer) {
