@@ -34,6 +34,7 @@ test('should not send multiple subscriptions on startup', async (t) => {
 
     // Capture log output from nats-server and check for double SUB protos.
     let sc = t.context as SC;
+    //@ts-ignore
     sc.server.stderr.on('data', function (data) {
         let lines = data.toString().split('\n');
         lines.forEach((s: string) => {
