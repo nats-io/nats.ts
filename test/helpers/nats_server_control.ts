@@ -22,7 +22,7 @@ import fs from 'fs';
 import {URL} from 'url';
 import Timer = NodeJS.Timer;
 
-let SERVER = (process.env.TRAVIS) ? 'gnatsd/gnatsd' : 'gnatsd';
+let SERVER = (process.env.TRAVIS) ? 'nats-server/nats-server' : 'nats-server';
 let PID_DIR = (process.env.TRAVIS) ? process.env.TRAVIS_BUILD_DIR : process.env.TMPDIR;
 
 let SERVER_VERSION: any[];
@@ -163,7 +163,7 @@ export function startServer(opt_flags?: string[]): Promise<Server> {
                     rjct('Unable to find the pid');
                 }
                 //@ts-ignore
-                let portsFile = path.join(PID_DIR, `gnatsd_${server.pid}.ports`);
+                let portsFile = path.join(PID_DIR, `nats-server_${server.pid}.ports`);
                 if (fs.existsSync(portsFile)) {
                     let data = fs.readFileSync(portsFile).toString();
                     let s = (server as Server);
