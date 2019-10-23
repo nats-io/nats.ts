@@ -21,8 +21,8 @@ import {Client, connect} from '../src/nats';
 import {Lock} from './helpers/latch';
 import {readFileSync} from 'fs';
 
-let serverCert = join(__dirname, '../../test/helpers/certs/server-cert.pem');
-let serverKey = join(__dirname, '../../test/helpers/certs/server-key.pem');
+let serverCert = join(__dirname, '../../test/helpers/certs/server.pem');
+let serverKey = join(__dirname, '../../test/helpers/certs/key.pem');
 let caCert = join(__dirname, '../../test/helpers/certs/ca.pem');
 let clientCert = join(__dirname, '../../test/helpers/certs/client-cert.pem');
 let clientKey = join(__dirname, '../../test/helpers/certs/client-key.pem');
