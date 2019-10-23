@@ -23,8 +23,8 @@ import {readFileSync} from 'fs';
 
 
 test.before(async (t) => {
-    let cert = join(__dirname, '../../test/helpers/certs/noip-cert.pem');
-    let key = join(__dirname, '../../test/helpers/certs/noip-key.pem');
+    let cert = join(__dirname, '../../test/helpers/certs/server_noip.pem');
+    let key = join(__dirname, '../../test/helpers/certs/key_noip.pem');
     let ca = join(__dirname, '../../test/helpers/certs/ca.pem');
 
 
