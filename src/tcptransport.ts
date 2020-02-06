@@ -49,8 +49,9 @@ export class TCPTransport implements Transport {
                 this.connectedOnce = true;
                 this.handlers.connect();
             });
+            // @ts-ignore
             this.stream.setNoDelay(true);
-
+            // @ts-ignore
             this.stream.on('error', (error) => {
                 if (!this.connectedOnce) {
                     reject(error);
@@ -61,11 +62,13 @@ export class TCPTransport implements Transport {
                     this.handlers.error(error);
                 }
             });
+            // @ts-ignore
             this.stream.on('close', () => {
                 if (this.connectedOnce) {
                     this.handlers.close();
                 }
             });
+            // @ts-ignore
             this.stream.on('data', (data: Buffer) => {
                 // console.log('data', '< ', data.toString());
                 this.handlers.data(data);

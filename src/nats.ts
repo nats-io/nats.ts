@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 The NATS Authors
+ * Copyright 2018-2020 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -30,11 +30,18 @@ import {
 } from './const';
 import {next} from 'nuid';
 import Timer = NodeJS.Timer;
+import {existsSync} from "fs";
 
 export {ErrorCode, NatsError}
 
+// locate our package.json
+let pkgFile = __dirname + '/../package.json';
+if (!existsSync(pkgFile)) {
+    // tests will find it here
+    pkgFile = __dirname + '/../../package.json';
+}
 /** Version of the ts-nats library */
-export const VERSION = "1.2.4";
+export const VERSION = require(pkgFile).version;
 
 /**
  * @hidden

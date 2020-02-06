@@ -1,6 +1,6 @@
 {
   "name": "ts-nats",
-  "version": "1.2.4",
+  "version": "1.2.7-3",
   "description": "Typescript Node.js client for NATS, a lightweight, high-performance cloud native messaging system",
   "keywords": [
     "nats",
@@ -27,47 +27,41 @@
   },
   "contributors": [],
   "main": "./index.js",
-  "types": "./lib/src/nats.d.ts",
+  "types": "./",
   "scripts": {
-    "build": "npm run clean:dist && tsc",
-    "clean": "npm run clean:dist",
-    "clean:dist": "rm -rf lib/* coverage/* .nyc_output/*",
-    "copy:dist": "cp lib/src/* lib/",
+    "build": "npm run clean && tsc && npm run copy",
+    "clean": "rm -Rf lib/ || true && rm -Rf .nyc_output/ || true && rm ./*.d.ts || true && rm -Rf coverage/",
+    "copy": "cp -R ./lib/src ./dist && rm -Rf lib/ && mv dist lib && mv lib/*.d.ts ./",
     "cover:html": "nyc report --reporter=html && open coverage/index.html",
-    "cover:coveralls": "nyc report --reporter=text-lcov | coveralls",
-    "dist": "npm run build && npm run copy:dist",
-    "pack": "npm pack",
+    "cover:coveralls": "nyc report --reporter=lcovonly && cat ./coverage/lcov.info | coveralls",
+    "pack": "npm run build && npm pack",
     "debugtest": "tsc && node $NODE_DEBUG_OPTION node_modules/.bin/ava --verbose -T 6500000 -m",
     "test": "tsc && nyc ava --verbose -T 15000",
-    "publish-npm": "npm run dist && npm publish",
-    "publish-npm:beta": "npm run dist && npm publish --tag=next",
     "doc": "node_modules/.bin/typedoc --options ./typedocconfig.ts && touch ./docs/.nojekyll"
   },
   "engines": {
-    "node": ">= 8.16.0"
+    "node": ">= 8.17.0"
   },
   "dependencies": {
     "nuid": "^1.1.0",
-    "ts-nkeys": "^1.0.12"
+    "ts-nkeys": "^1.0.14"
   },
   "devDependencies": {
-    "@types/node": "^12.0.7",
-    "acorn": "^6.1.1",
-    "ava": "^1.4.1",
+    "@types/node": "^13.7.0",
+    "acorn": "^7.1.0",
+    "ava": "^2.4.0",
     "coveralls": "^3.0.4",
-    "dependency-check": "3.3.0",
-    "if-node-version": "^1.1.1",
-    "nyc": "^14.1.1",
-    "ts-node": "^8.2.0",
+    "nyc": "^15.0.0",
     "typedoc": "^0.15.0",
     "typedoc-plugin-markdown": "^1.2.1",
-    "typescript": "^3.5.1",
-    "why-is-node-running": "^2.1.0"
+    "typescript": "^3.5.3"
   },
   "typings": "./lib/nats.d.ts",
   "ava": {
     "failFast": false,
-    "require": [],
+    "require": [
+      "./lib/test/helpers/ava_fix.js"
+    ],
     "files": [
       "./lib/test/**/*.js",
       "!./lib/test/helpers/**/*.js"

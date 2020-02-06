@@ -1,24 +1,12 @@
 node_modules/
-npm-debug.log
 
 lib/
-
+*.d.ts
 .DS_Store
 .idea
-.settings/
 .nyc_output/
 benchmark/
 coverage/
-docs/
 
-*.log
-*.heapsnapshot
-*.sock
-.coverrun
-.coverdata
-dump.rdb
-xunit.xml
 
-logs/*
-reports/*
-tmp/*
+
