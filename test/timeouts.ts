@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 The NATS Authors
+ * Copyright 2018-2020 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -261,4 +261,54 @@ test('connectTimeout is honored', async (t) => {
         t.true((end-start) > 900);
         t.true((end-start) < 1100);
     }
+});
+
+test('subscription timers are cleared', async (t) => {
+    t.plan(1);
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+    let lock = new Lock();
+
+    let subj = createInbox();
+    let sub = await nc.subscribe(subj, (err) => {
+        t.fail("shouldn't have been called")
+    });
+    sub.setTimeout(100);
+    setTimeout(() => {
+        lock.unlock();
+    }, 500);
+    nc.close();
+
+    await lock.latch;
+    t.pass()
+});
+
+test('request timers are cleared', async (t) => {
+    t.plan(1);
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+    let lock = new Lock();
+
+    let subj = createInbox();
+    let v = nc.request(subj, 100);
+    setTimeout(() => {
+        lock.unlock();
+    }, 500);
+
+    nc.close();
+    await lock.latch;
+    // will get unhandled rejection
+    t.pass()
+});
+
+test('heartbeats are cancelled', async (t) => {
+    t.plan(2);
+    let sc = t.context as SC;
+    let nc = await connect(sc.server.nats);
+
+    //@ts-ignore
+    t.truthy(nc.protocolHandler.pingTimer);
+    nc.close();
+    //@ts-ignore
+    t.falsy(nc.protocolHandler.pingTimer);
 });
