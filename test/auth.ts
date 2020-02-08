@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 The NATS Authors
+ * Copyright 2018-2020 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -158,6 +158,22 @@ test('cannot pub bar', async (t) => {
     nc.publish('bar');
     nc.flush();
 
+    return lock.latch;
+});
+
+test('permission error is not fatal', async (t) => {
+    t.plan(2);
+    let sc = t.context as SC;
+    let lock = new Lock();
+    let nc = await connect({url: sc.server.nats, user: 'derek', pass: 'foobar'} as NatsConnectionOptions);
+    nc.addListener('permissionError', (err: NatsError) => {
+        t.is(err.code, ErrorCode.PERMISSIONS_VIOLATION);
+        t.false(nc.isClosed());
+        lock.unlock();
+    });
+
+    nc.publish('bar');
+    nc.flush();
     return lock.latch;
 });
 

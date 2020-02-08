@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 The NATS Authors
+ * Copyright 2018-2020 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -42,7 +42,7 @@ import {settle} from './util';
 import * as fs from 'fs';
 import * as url from 'url';
 import * as nkeys from 'ts-nkeys';
-import Timer = NodeJS.Timer;
+import Timeout = NodeJS.Timeout;
 
 const PERMISSIONS_ERR = 'permissions violation';
 const STALE_CONNECTION_ERR = 'stale connection';
@@ -96,7 +96,7 @@ export class ProtocolHandler extends EventEmitter {
     private msgBuffer?: MsgBuffer | null;
     private outbound = new DataBuffer();
     private payload: Payload;
-    private pingTimer?: Timer;
+    private pingTimer?: Timeout;
     private pongs: any[] = [];
     private pout: number = 0;
     private reconnecting: boolean = false;
@@ -195,10 +195,7 @@ export class ProtocolHandler extends EventEmitter {
     }
 
     close(): void {
-        if (this.pingTimer) {
-            clearTimeout(this.pingTimer);
-            delete this.pingTimer;
-        }
+        this.cancelHeartbeat();
         this.closed = true;
         this.removeAllListeners();
         this.closeStream();
@@ -428,10 +425,7 @@ export class ProtocolHandler extends EventEmitter {
     private getTransportHandlers(): TransportHandlers {
         let handlers = {} as TransportHandlers;
         handlers.connect = () => {
-            if (this.pingTimer) {
-                clearTimeout(this.pingTimer);
-                delete this.pingTimer;
-            }
+            this.cancelHeartbeat();
             this.connected = true;
             this.scheduleHeartbeat();
         };
@@ -1069,6 +1063,13 @@ export class ProtocolHandler extends EventEmitter {
             // reschedule
             this.scheduleHeartbeat();
         }, this.options.pingInterval || DEFAULT_PING_INTERVAL, this);
+    }
+
+    private cancelHeartbeat(): void {
+        if (this.pingTimer) {
+            clearTimeout(this.pingTimer);
+            delete this.pingTimer;
+        }
     }
 
     /**
