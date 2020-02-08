@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 The NATS Authors
+ * Copyright 2018-2020 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -81,7 +81,6 @@ export class Messages {
         this.messages[ErrorCode.NONCE_SIGNER_NOTFUNC] = 'nonce signer is not a function';
         this.messages[ErrorCode.REQ_TIMEOUT] = 'Request timed out.';
         this.messages[ErrorCode.REQ_TIMEOUT] = 'Request timed out.';
-        this.messages[ErrorCode.SECURE_CONN_REQ] = 'Server requires a secure connection.';
         this.messages[ErrorCode.SECURE_CONN_REQ] = 'Server requires a secure connection.';
         this.messages[ErrorCode.SIGNATURE_REQUIRED] = 'Server requires an nkey signature.';
         this.messages[ErrorCode.SUB_CLOSED] = 'Subscription closed';
