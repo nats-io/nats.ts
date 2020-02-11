@@ -80,7 +80,8 @@ export class Messages {
         this.messages[ErrorCode.NO_ECHO_NOT_SUPPORTED] = 'No echo option is not supported by this server';
         this.messages[ErrorCode.NO_SEED_IN_CREDS] = 'Cannot locate signing key in credentials';
         this.messages[ErrorCode.NO_USER_JWT_IN_CREDS] = 'Cannot locate user jwt in credentials.';
-        this.messages[ErrorCode.REQ_TIMEOUT] = 'Request timed out.';
+        this.messages[ErrorCode.NON_SECURE_CONN_REQ] = 'Server does not support a secure connection.';
+        this.messages[ErrorCode.NONCE_SIGNER_NOTFUNC] = 'nonce signer is not a function';
         this.messages[ErrorCode.REQ_TIMEOUT] = 'Request timed out.';
         this.messages[ErrorCode.SECURE_CONN_REQ] = 'Server requires a secure connection.';
         this.messages[ErrorCode.SIGNATURE_REQUIRED] = 'Server requires an nkey signature.';
