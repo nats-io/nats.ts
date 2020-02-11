@@ -20,6 +20,7 @@ import {join} from 'path';
 import {Client, connect} from '../src/nats';
 import {Lock} from './helpers/latch';
 import {readFileSync} from 'fs';
+import {ErrorCode, NatsError} from "../src/error";
 
 let serverCert = join(__dirname, '../../test/helpers/certs/server.pem');
 let serverKey = join(__dirname, '../../test/helpers/certs/key.pem');
@@ -167,6 +168,23 @@ test('authorized with proper cert', async (t) => {
         //@ts-ignore
         t.true(nc.protocolHandler.transport.isAuthorized());
         nc.close();
+        lock.unlock();
+    });
+    return lock.latch;
+});
+
+test('handle openssl error', async (t) => {
+    t.plan(3);
+    let lock = new Lock();
+    let sc = t.context as SC;
+    // pass the wrong cert/ca to fail it
+    //@ts-ignore
+    const nc = await connect({url: sc.tls.nats, tls: {key: sc.clientkey, cert: sc.cacert, ca: sc.clientcert}});
+    nc.on('error',  (err: NatsError) => {
+        t.is(err.code, ErrorCode.CONN_ERR);
+        const nerr = err.chainedError as NatsError;
+        t.is(nerr.code, ErrorCode.SSL_ERR);
+        t.truthy(nerr.chainedError);
         lock.unlock();
     });
     return lock.latch;

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 The NATS Authors
+ * Copyright 2018-2020 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -16,10 +16,11 @@
 
 import test from 'ava';
 import {SC, startServer, stopServer} from './helpers/nats_server_control';
-import {connect, ErrorCode, NatsConnectionOptions, NatsError, Payload, SubEvent} from '../src/nats';
+import {Client, connect, ErrorCode, NatsConnectionOptions, NatsError, Payload, SubEvent} from '../src/nats';
 import {Lock} from './helpers/latch';
 import {createInbox} from '../src/util';
 import url from 'url';
+import * as net from 'net';
 
 
 test.before(async (t) => {
@@ -557,3 +558,96 @@ test('timers are not left behind on close', async (t) => {
     await lock.latch;
 });
 
+test('reconnect sends unsubs', (t) => {
+    let conn : Client;
+    const lock = new Lock();
+    let unsubs = 0;
+    let pongs = 0;
+    t.plan(4);
+    const srv = net.createServer((c) => {
+        c.write(`INFO ${JSON.stringify({
+            server_id: 'TEST',
+            version: '0.0.0',
+            host: '127.0.0.1',
+            // @ts-ignore
+            port: srv.address.port,
+            auth_required: false
+        })}\r\n`);
+        c.on('data', (d) => {
+            const r = d.toString();
+            const lines = r.split('\r\n');
+            lines.forEach((line) => {
+                if (line === '') {
+                    return
+                }
+                if (/^CONNECT\s+/.test(line)) {
+                } else if (/^PING/.test(line)) {
+                    c.write('PONG\r\n');
+                } else if (/^PONG/.test(line)) {
+                    if (pongs === 0) {
+                        c.end();
+                        c.destroy();
+                    }
+                    pongs++;
+                } else if (/^SUB\s+/i.test(line)) {
+                    c.write('MSG test 1 11\r\nHello World\r\n');
+                } else if (/^UNSUB\s+/i.test(line)) {
+                    unsubs++;
+                    if (unsubs === 1) {
+                        const args = line.split(' ');
+                        t.is(args.length, 3);
+                        // number of messages to when to unsub
+                        t.is(args[2], '10');
+                    }
+                    if (unsubs === 2) {
+                        const args = line.split(' ');
+                        t.is(args.length, 3, args.join(':'));
+                        t.is(args[2], '9');
+                    }
+                    // kick the client on the pong
+                    c.write('PING\r\n');
+                } else if (/^MSG\s+/i.test(line)) {
+                } else if (/^INFO\s+/i.test(line)) {
+                } else {
+                    // unknown
+                }
+            })
+        });
+    });
+
+    srv.listen(0, () => {
+        // @ts-ignore
+        const {port} = srv.address();
+        connect({
+            port: port,
+            reconnect: true,
+            reconnectTimeWait: 250
+        }).then((nc) => {
+            conn = nc;
+            nc.on('connect', () => {
+                nc.subscribe("test", (err, _) => {
+                    if (err) {
+                        t.fail(err.toString());
+                    }
+                }, { max: 10 });
+                nc.on('error', (err) => {
+                    t.fail(err.toString());
+                    lock.unlock();
+                });
+                nc.on('reconnect', () => {
+                    nc.flush(() => {
+                        process.nextTick(() => {
+                            nc.close();
+                            srv.close();
+                            lock.unlock();
+                        });
+                    })
+                });
+            });
+        });
+        srv.on('error', (err) => {
+            t.fail(err.message);
+        });
+    });
+    return lock.latch;
+});

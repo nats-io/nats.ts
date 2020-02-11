@@ -19,6 +19,7 @@ import * as tls from 'tls';
 import {ConnectionOptions, TLSSocket} from 'tls';
 import {Transport, TransportHandlers} from './transport';
 import {UrlObject} from 'url';
+import {Messages, NatsError, ErrorCode} from "./error";
 
 /**
  * @hidden
@@ -102,18 +103,22 @@ export class TCPTransport implements Transport {
             }
             opts.socket = this.stream;
             this.stream.removeAllListeners();
-            this.stream = tls.connect(opts, () => {
-                done();
-            });
-            this.stream.on('error', (error) => {
-                this.handlers.error(error);
-            });
-            this.stream.on('close', () => {
-                this.handlers.close();
-            });
-            this.stream.on('data', (data: Buffer) => {
-                this.handlers.data(data);
-            });
+            try {
+                this.stream = tls.connect(opts, () => {
+                    done();
+                });
+                this.stream.on('error', (error) => {
+                    this.handlers.error(error);
+                });
+                this.stream.on('close', () => {
+                    this.handlers.close();
+                });
+                this.stream.on('data', (data: Buffer) => {
+                    this.handlers.data(data);
+                });
+            } catch (err) {
+                this.handlers.error(new NatsError(Messages.getMessage(ErrorCode.SSL_ERR), ErrorCode.SSL_ERR, err));
+            }
         }
     }
 

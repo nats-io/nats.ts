@@ -59,6 +59,7 @@ const MSG = /^MSG\s+([^\s\r\n]+)\s+([^\s\r\n]+)\s+(([^\s\r\n]+)[^\S\r\n]+)?(\d+)
 
     // Protocol
     SUB = 'SUB',
+    UNSUB = 'UNSUB',
     CONNECT = 'CONNECT',
 
     FLUSH_THRESHOLD = 65536;
@@ -191,7 +192,7 @@ export class ProtocolHandler extends EventEmitter {
             }
         }
         this.pongs.push(cb);
-        this.sendCommand(this.buildProtocolMessage('PING'));
+        this.sendCommand(ProtocolHandler.buildProtocolMessage('PING'));
     }
 
     close(): void {
@@ -255,7 +256,7 @@ export class ProtocolHandler extends EventEmitter {
         } else {
             proto = `PUB ${subject} ${len}`;
         }
-        this.sendCommand(this.buildProtocolMessage(proto, data))
+        this.sendCommand(ProtocolHandler.buildProtocolMessage(proto, data))
     }
 
     subscribe(s: Sub): Subscription {
@@ -267,9 +268,9 @@ export class ProtocolHandler extends EventEmitter {
         }
         let sub = this.subscriptions.add(s) as Sub;
         if (sub.queue) {
-            this.sendCommand(this.buildProtocolMessage(`SUB ${sub.subject} ${sub.queue} ${sub.sid}`));
+            this.sendCommand(ProtocolHandler.buildProtocolMessage(`SUB ${sub.subject} ${sub.queue} ${sub.sid}`));
         } else {
-            this.sendCommand(this.buildProtocolMessage(`SUB ${sub.subject} ${sub.sid}`));
+            this.sendCommand(ProtocolHandler.buildProtocolMessage(`SUB ${sub.subject} ${sub.sid}`));
         }
         if (s.max) {
             this.unsubscribe(this.ssid, s.max);
@@ -296,7 +297,7 @@ export class ProtocolHandler extends EventEmitter {
         let sub = s;
         return new Promise((resolve) => {
             sub.draining = true;
-            this.sendCommand(this.buildProtocolMessage(`UNSUB ${sid}`));
+            this.sendCommand(ProtocolHandler.buildProtocolMessage(`UNSUB ${sid}`));
             this.flush(() => {
                 this.subscriptions.cancel(sub);
                 resolve({sid: sub.sid, subject: sub.subject, queue: sub.queue} as SubEvent);
@@ -311,9 +312,9 @@ export class ProtocolHandler extends EventEmitter {
         let s = this.subscriptions.get(sid);
         if (s) {
             if (max) {
-                this.sendCommand(this.buildProtocolMessage(`UNSUB ${sid} ${max}`));
+                this.sendCommand(ProtocolHandler.buildProtocolMessage(`${UNSUB} ${sid} ${max}`));
             } else {
-                this.sendCommand(this.buildProtocolMessage(`UNSUB ${sid}`));
+                this.sendCommand(ProtocolHandler.buildProtocolMessage(`${UNSUB} ${sid}`));
             }
             s.max = max;
             if (s.max === undefined || s.received >= s.max) {
@@ -374,7 +375,7 @@ export class ProtocolHandler extends EventEmitter {
         }
     }
 
-    private buildProtocolMessage(protocol: string, payload?: Buffer): Buffer {
+    private static buildProtocolMessage(protocol: string, payload?: Buffer): Buffer {
         let protoLen = Buffer.byteLength(protocol);
         let cmd = protoLen + 2;
         let len = cmd;
@@ -577,9 +578,17 @@ export class ProtocolHandler extends EventEmitter {
         let cmds: string[] = [];
         this.subscriptions.all().forEach((s) => {
             if (s.queue) {
-                cmds.push(`${SUB} ${s.subject} ${s.queue} ${s.sid} ${CR_LF}`);
+                cmds.push(`${SUB} ${s.subject} ${s.queue} ${s.sid}${CR_LF}`);
             } else {
-                cmds.push(`${SUB} ${s.subject} ${s.sid} ${CR_LF}`);
+                cmds.push(`${SUB} ${s.subject} ${s.sid}${CR_LF}`);
+            }
+            if (s.max) {
+                const max = s.max - s.received;
+                if (max > 0) {
+                    cmds.push(`${UNSUB} ${s.sid} ${max}${CR_LF}`);
+                } else {
+                    cmds.push(`${UNSUB} ${s.sid}${CR_LF}`);
+                }
             }
         });
         if (cmds.length) {
@@ -647,7 +656,7 @@ export class ProtocolHandler extends EventEmitter {
                             }
                         } // FIXME: Should we check for exceptions?
                     } else if ((m = PING.exec(buf)) !== null) {
-                        this.sendCommand(this.buildProtocolMessage('PONG'));
+                        this.sendCommand(ProtocolHandler.buildProtocolMessage('PONG'));
                     } else if ((m = INFO.exec(buf)) !== null) {
                         this.info = JSON.parse(m[1]);
                         // Check on TLS mismatch.
@@ -682,16 +691,16 @@ export class ProtocolHandler extends EventEmitter {
                             // Send the connect message and subscriptions immediately
                             let cs = JSON.stringify(new Connect(this.currentServer, this.options, this.info));
                             this.transport.write(`${CONNECT} ${cs}${CR_LF}`);
-                            this.sendSubscriptions();
                             this.pongs.unshift(() => {
+                                this.sendSubscriptions();
+                                this.stripPendingSubs();
                                 this.connectCB();
                             });
-                            this.transport.write(this.buildProtocolMessage('PING'));
+                            this.transport.write(ProtocolHandler.buildProtocolMessage('PING'));
 
                             // Mark as received
-                            this.infoReceived = true;
-                            this.stripPendingSubs();
                             this.flushPending();
+                            this.infoReceived = true;
                         }
                     } else {
                         // FIXME, check line length for something weird.
@@ -1052,7 +1061,7 @@ export class ProtocolHandler extends EventEmitter {
                     return;
                 } else {
                     // send the ping
-                    this.sendCommand(this.buildProtocolMessage('PING'));
+                    this.sendCommand(ProtocolHandler.buildProtocolMessage('PING'));
                     if (this.pongs) {
                         // no callback
                         this.pongs.push(undefined);

@@ -20,9 +20,9 @@ export enum ErrorCode {
     API_ERROR = 'API_ERROR',
     BAD_AUTHENTICATION = 'BAD_AUTHENTICATION',
     BAD_CREDS = 'BAD_CREDENTIALS',
-    BAD_NKEY_SEED = 'BAD_NKEY_CREDENTIALS',
     BAD_JSON = 'BAD_JSON',
     BAD_MSG = 'BAD_MSG',
+    BAD_NKEY_SEED = 'BAD_NKEY_CREDENTIALS',
     BAD_REPLY = 'BAD_REPLY',
     BAD_SUBJECT = 'BAD_SUBJECT',
     CLIENT_CERT_REQ = 'CLIENT_CERT_REQ',
@@ -32,14 +32,15 @@ export enum ErrorCode {
     CONN_TIMEOUT = 'CONN_TIMEOUT',
     INVALID_ENCODING = 'INVALID_ENCODING',
     NKEY_OR_JWT_REQ = 'NKEY_OR_JWT_REQ',
+    NONCE_SIGNER_NOTFUNC = 'NONCE_SIGNER_NOT_FUNC',
+    NON_SECURE_CONN_REQ = 'NON_SECURE_CONN_REQ',
     NO_ECHO_NOT_SUPPORTED = 'NO_ECHO_NOT_SUPPORTED',
     NO_SEED_IN_CREDS = 'NO_SEED_IN_CREDS',
     NO_USER_JWT_IN_CREDS = 'NO_USER_JWT_IN_CREDS',
-    NON_SECURE_CONN_REQ = 'NON_SECURE_CONN_REQ',
-    NONCE_SIGNER_NOTFUNC = 'NONCE_SIGNER_NOT_FUNC',
     REQ_TIMEOUT = 'REQ_TIMEOUT',
     SECURE_CONN_REQ = 'SECURE_CONN_REQ',
     SIGNATURE_REQUIRED = 'SIG_REQ',
+    SSL_ERR = 'SSL_ERR',
     SUB_CLOSED = 'SUB_CLOSED',
     SUB_DRAINING = 'SUB_DRAINING',
     SUB_TIMEOUT = 'SUB_TIMEOUT',
@@ -63,9 +64,9 @@ export class Messages {
     private constructor() {
         this.messages[ErrorCode.BAD_AUTHENTICATION] = 'User and Token can not both be provided';
         this.messages[ErrorCode.BAD_CREDS] = 'Bad user credentials';
-        this.messages[ErrorCode.BAD_NKEY_SEED] = 'Bad nkey credentials';
         this.messages[ErrorCode.BAD_JSON] = 'Message should be a non-circular JSON-serializable value';
         this.messages[ErrorCode.BAD_MSG] = 'Message cannot be a function';
+        this.messages[ErrorCode.BAD_NKEY_SEED] = 'Bad nkey credentials';
         this.messages[ErrorCode.BAD_REPLY] = 'Reply cannot be a function';
         this.messages[ErrorCode.BAD_SUBJECT] = 'Subject must be supplied';
         this.messages[ErrorCode.CLIENT_CERT_REQ] = 'Server requires a client certificate.';
@@ -73,6 +74,9 @@ export class Messages {
         this.messages[ErrorCode.CONN_DRAINING] = 'Connection draining';
         this.messages[ErrorCode.CONN_TIMEOUT] = 'Connection timeout';
         this.messages[ErrorCode.NKEY_OR_JWT_REQ] = 'An Nkey or User JWT callback is required.';
+        this.messages[ErrorCode.NONCE_SIGNER_NOTFUNC] = 'nonce signer is not a function';
+        this.messages[ErrorCode.NON_SECURE_CONN_REQ] = 'Server does not support a secure connection.';
+        this.messages[ErrorCode.NON_SECURE_CONN_REQ] = 'Server does not support a secure connection.';
         this.messages[ErrorCode.NO_ECHO_NOT_SUPPORTED] = 'No echo option is not supported by this server';
         this.messages[ErrorCode.NO_SEED_IN_CREDS] = 'Cannot locate signing key in credentials';
         this.messages[ErrorCode.NO_USER_JWT_IN_CREDS] = 'Cannot locate user jwt in credentials.';
@@ -81,6 +85,7 @@ export class Messages {
         this.messages[ErrorCode.REQ_TIMEOUT] = 'Request timed out.';
         this.messages[ErrorCode.SECURE_CONN_REQ] = 'Server requires a secure connection.';
         this.messages[ErrorCode.SIGNATURE_REQUIRED] = 'Server requires an nkey signature.';
+        this.messages[ErrorCode.SSL_ERR] = 'TLS credentials verification failed';
         this.messages[ErrorCode.SUB_CLOSED] = 'Subscription closed';
         this.messages[ErrorCode.SUB_DRAINING] = 'Subscription draining';
         this.messages[ErrorCode.SUB_TIMEOUT] = 'Subscription timed out.';
