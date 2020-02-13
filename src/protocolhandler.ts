@@ -38,14 +38,11 @@ import {TCPTransport} from './tcptransport';
 import {Subscriptions} from './subscriptions';
 import {DataBuffer} from './databuffer';
 import {MsgBuffer} from './messagebuffer';
-import {settle} from './util';
+import {delay, settle} from './util';
 import * as fs from 'fs';
 import * as url from 'url';
 import * as nkeys from 'ts-nkeys';
 import Timeout = NodeJS.Timeout;
-
-const PERMISSIONS_ERR = 'permissions violation';
-const STALE_CONNECTION_ERR = 'stale connection';
 
 // Protocol
 const MSG = /^MSG\s+([^\s\r\n]+)\s+([^\s\r\n]+)\s+(([^\s\r\n]+)[^\S\r\n]+)?(\d+)\r\n/i,
@@ -101,7 +98,6 @@ export class ProtocolHandler extends EventEmitter {
     private pongs: any[] = [];
     private pout: number = 0;
     private reconnecting: boolean = false;
-    private reconnects: number = 0;
     private servers: Servers;
     private ssid: number = 1;
     private state: ParserState = ParserState.AWAITING_CONTROL;
@@ -110,6 +106,7 @@ export class ProtocolHandler extends EventEmitter {
     private wasConnected: boolean = false;
     private draining: boolean = false;
     private noMorePublishing: boolean = false;
+    private connectionTimer?: NodeJS.Timeout | undefined;
 
     constructor(client: Client, options: NatsConnectionOptions) {
         super();
@@ -132,54 +129,54 @@ export class ProtocolHandler extends EventEmitter {
     }
 
     static connect(client: Client, opts: NatsConnectionOptions): Promise<ProtocolHandler> {
-        return new Promise<ProtocolHandler>(async (resolve, reject) => {
-            let expired = false;
-            let to: NodeJS.Timeout;
-            let millis: number = 0;
-            if(opts.timeout && !isNaN(opts.timeout)) {
-                millis = opts.timeout;
-            }
-            if(millis > 0) {
-                to = setTimeout(() => {
-                    expired = true;
-                }, millis);
-            }
+        let lastError: Error|undefined;
 
-
+        // loop through all the servers and bail or loop until connect if waitOnFirstConnect
+        return new Promise<ProtocolHandler>(async(resolve, reject) => {
             let ph = new ProtocolHandler(client, opts);
-            // the initial connection handles the reconnect logic
-            // for all the servers. This way we can return at least
-            // one error to the user. Once connected (wasConnected is set),
-            // the event handlers will take over
-            let lastError: Error | null = null;
-            let fn = function(n: number) {
-                if(expired) {
-                    reject(NatsError.errorForCode(ErrorCode.CONN_TIMEOUT));
-                    return
-                }
-                if (n <= 0) {
-                    if (!ph.options.waitOnFirstConnect) {
-                        reject(lastError);
-                        return;
+            while(true) {
+                let wait = ph.options.reconnectTimeWait || 0;
+                let maxWait = wait;
+                for (let i=0; i < ph.servers.length(); i++) {
+                    const srv = ph.selectServer();
+                    if (srv) {
+                        const now = Date.now();
+                        if (srv.lastConnect === 0 || srv.lastConnect + wait <= now) {
+                            try {
+                                await ph.connect();
+                                resolve(ph);
+                                ph.startHandshakeTimeout();
+                                return;
+                            } catch (err) {
+                                lastError = err;
+                                // if waitOnFirstConnect and fail, remove the server
+                                if (!ph.options.waitOnFirstConnect) {
+                                    ph.servers.removeCurrentServer();
+                                }
+                            }
+                        } else {
+                            maxWait = Math.min(maxWait, srv.lastConnect + wait - now);
+                        }
                     }
                 }
-                ph.connect()
-                    .then(() => {
-                        if(to) {
-                            clearTimeout(to);
-                        }
-                        resolve(ph);
-                    })
-                    .catch((ex) => {
-                        // FIXME: cannot honor a delay
-                        lastError = ex;
-                        setTimeout(() => {
-                            fn(n-1);
-                        }, ph.options.reconnectTimeWait || 0)
-                    });
-            };
-            fn(ph.servers.length());
+                // we could have removed all the known servers
+                if (ph.servers.length() === 0) {
+                    const err = lastError || NatsError.errorForCode(ErrorCode.UNABLE_TO_CONNECT);
+                    reject(err);
+                    return;
+                }
+                // soonest to retry is maxWait
+                await delay(maxWait);
+            }
         });
+    }
+
+    startHandshakeTimeout(): void {
+        if(this.options.timeout) {
+            this.connectionTimer = setTimeout(() => {
+                this.processErr(ErrorCode.CONN_TIMEOUT);
+            }, this.options.timeout - this.transport.dialDuration());
+        }
     }
 
     flush(cb: FlushCallback): void {
@@ -193,6 +190,11 @@ export class ProtocolHandler extends EventEmitter {
         }
         this.pongs.push(cb);
         this.sendCommand(ProtocolHandler.buildProtocolMessage('PING'));
+    }
+
+    closeAndEmit() {
+        this.close();
+        this.client.emit('close');
     }
 
     close(): void {
@@ -357,11 +359,16 @@ export class ProtocolHandler extends EventEmitter {
     }
 
     private connect(): Promise<Transport> {
+        this.currentServer.lastConnect = Date.now();
         this.prepareConnection();
-        if (this.currentServer.didConnect) {
+        if (this.reconnecting) {
+            this.currentServer.reconnects += 1;
             this.client.emit('reconnecting', this.url.href);
+        } else {
+            // not on the 'reconnect' loop but honoring the reconnect policy
+            this.currentServer.connects += 1;
         }
-        return this.transport.connect(this.url);
+        return this.transport.connect(this.url, this.options.timeout);
     }
 
     private flushPending(): void {
@@ -426,29 +433,18 @@ export class ProtocolHandler extends EventEmitter {
     private getTransportHandlers(): TransportHandlers {
         let handlers = {} as TransportHandlers;
         handlers.connect = () => {
-            this.cancelHeartbeat();
             this.connected = true;
-            this.scheduleHeartbeat();
         };
 
         handlers.close = () => {
+            this.cancelHeartbeat();
             let wasConnected = this.connected;
             this.closeStream();
-
-            //@ts-ignore - guaranteed to be set
-            let mra = parseInt(this.options.maxReconnectAttempts, 10);
             if (wasConnected) {
                 this.client.emit('disconnect', this.currentServer.url.href);
             }
             if (this.closed) {
-                this.client.close();
-                this.client.emit('close');
-            } else if (this.options.reconnect === false) {
-                this.client.close();
-                this.client.emit('close');
-            } else if (mra > -1 && this.reconnects >= mra) {
-                this.client.close();
-                this.client.emit('close');
+                this.closeAndEmit();
             } else {
                 this.scheduleReconnect();
             }
@@ -532,9 +528,6 @@ export class ProtocolHandler extends EventEmitter {
         // Clear info processing.
         this.info = {} as ServerInfo;
         this.infoReceived = false;
-
-        // Select a server to connect to.
-        this.selectServer();
     };
 
     getInfo(): ServerInfo | null {
@@ -692,8 +685,13 @@ export class ProtocolHandler extends EventEmitter {
                             let cs = JSON.stringify(new Connect(this.currentServer, this.options, this.info));
                             this.transport.write(`${CONNECT} ${cs}${CR_LF}`);
                             this.pongs.unshift(() => {
+                                if(this.connectionTimer) {
+                                    clearTimeout(this.connectionTimer);
+                                    this.connectionTimer = undefined;
+                                }
                                 this.sendSubscriptions();
                                 this.stripPendingSubs();
+                                this.scheduleHeartbeat();
                                 this.connectCB();
                             });
                             this.transport.write(ProtocolHandler.buildProtocolMessage('PING'));
@@ -957,18 +955,19 @@ export class ProtocolHandler extends EventEmitter {
                 }
             } catch (error) {
                 // client could have died
-                console.log(error);
                 this.client.emit('error', error);
             }
         }
     };
 
     static toError(s: string) {
-        let t = s ? s.toLowerCase() : '';
+        let t = s ? s.toUpperCase() : '';
         if (t.indexOf('permissions violation') !== -1) {
             return new NatsError(s, ErrorCode.PERMISSIONS_VIOLATION);
         } else if (t.indexOf('authorization violation') !== -1) {
             return new NatsError(s, ErrorCode.AUTHORIZATION_VIOLATION);
+        } else if (t.indexOf(ErrorCode.CONN_TIMEOUT) !== -1) {
+            return NatsError.errorForCode(ErrorCode.CONN_TIMEOUT);
         } else {
             return new NatsError(s, ErrorCode.NATS_PROTOCOL_ERR);
         }
@@ -993,6 +992,10 @@ export class ProtocolHandler extends EventEmitter {
                 // just emit
                 this.client.emit('permissionError', err);
                 return false;
+            case ErrorCode.CONN_TIMEOUT:
+                this.client.emit('error', NatsError.errorForCode(ErrorCode.CONN_TIMEOUT));
+                this.closeStream();
+                return true;
             default:
                 this.client.emit('error', err);
                 // closeStream() triggers a reconnect if allowed
@@ -1022,25 +1025,47 @@ export class ProtocolHandler extends EventEmitter {
      * @api private
      */
     private scheduleReconnect(): void {
-        let ph = this;
-        // Just return if no more servers
-        if (ph.servers.length() === 0) {
+        if (this.closed) {
             return;
         }
-        // Don't set reconnecting state if we are just trying
-        // for the first time.
-        if (ph.wasConnected) {
-            ph.reconnecting = true;
+        // Just return if no more servers or if no reconnect is desired
+        if (this.servers.length() === 0 || this.options.reconnect === false) {
+            this.closeAndEmit();
+            return;
         }
-        // Only stall if we have connected before.
-        let wait = 0;
-        let s = ph.servers.next();
-        if (s && s.didConnect && this.options.reconnectTimeWait !== undefined) {
-            wait = this.options.reconnectTimeWait;
+        // Don't set reconnecting state if we are just trying for the first time.
+        if (this.wasConnected) {
+            this.reconnecting = true;
         }
+        let wait = this.options.reconnectTimeWait || 0;
+        let maxWait = wait;
+        const now = Date.now();
+        for (let i=0; i < this.servers.length(); i++) {
+            const srv = this.selectServer();
+            if (srv) {
+                const mra =  this.options.maxReconnectAttempts || 0;
+                if (mra !== -1 && srv.reconnects >= mra) {
+                    this.servers.removeCurrentServer();
+                    continue;
+                }
+                // if never connected or last connect is past the wait, try right away
+                if (srv.lastConnect === 0 || srv.lastConnect + wait <= now) {
+                    this.reconnect();
+                    return;
+                }
+                // start collecting min retry
+                maxWait = Math.min(maxWait, srv.lastConnect + wait - now);
+            }
+        }
+        // we could have removed all the known servers
+        if (this.servers.length() === 0) {
+            this.closeAndEmit();
+            return;
+        }
+        // soonest to retry is maxWait
         setTimeout(() => {
-            ph.reconnect();
-        }, wait);
+            this.scheduleReconnect()
+        }, maxWait);
     }
 
     private scheduleHeartbeat(): void {
@@ -1056,7 +1081,7 @@ export class ProtocolHandler extends EventEmitter {
                 // @ts-ignore
                 if (this.pout > this.options.maxPingOut) {
                     // processErr will scheduleReconnect
-                    this.processErr(STALE_CONNECTION_ERR);
+                    this.processErr(ErrorCode.STALE_CONNECTION_ERR);
                     // don't reschedule, new connection initiated
                     return;
                 } else {
@@ -1081,6 +1106,7 @@ export class ProtocolHandler extends EventEmitter {
         }
     }
 
+
     /**
      * Reconnect to the server.
      *
@@ -1090,8 +1116,9 @@ export class ProtocolHandler extends EventEmitter {
         if (this.closed) {
             return;
         }
-        this.reconnects += 1;
+        const ph = this;
         this.connect().then(() => {
+            ph.startHandshakeTimeout();
             // all good the pong handler deals with it
         }).catch(() => {
             // the stream handler deals with it
@@ -1106,15 +1133,15 @@ export class ProtocolHandler extends EventEmitter {
      *
      * @api private
      */
-    private selectServer(): void {
+    private selectServer(): Server | undefined {
         let server = this.servers.selectServer();
         if (server === undefined) {
-            return;
+            return undefined
         }
-
         // Place in client context.
         this.currentServer = server;
         this.url = server.url;
+        return this.currentServer;
     }
 
     private toBuffer(data: any = undefined): Buffer {
@@ -1159,10 +1186,11 @@ export class ProtocolHandler extends EventEmitter {
     private connectCB(): void {
         let event = this.reconnecting ? 'reconnect' : 'connect';
         this.reconnecting = false;
-        this.reconnects = 0;
         this.wasConnected = true;
         if (this.currentServer) {
             this.currentServer.didConnect = true;
+            this.currentServer.reconnects = 0;
+            this.currentServer.connects = 0;
         }
 
         // copy the info

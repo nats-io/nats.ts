@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 The NATS Authors
+ * Copyright 2018-2020 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -25,6 +25,8 @@ export class Server {
     url: url.Url;
     didConnect: boolean;
     reconnects: number;
+    connects: number;
+    lastConnect: number;
     implicit: boolean;
 
     constructor(u: string, implicit = false) {
@@ -39,6 +41,8 @@ export class Server {
         }
         this.didConnect = false;
         this.reconnects = 0;
+        this.connects = 0;
+        this.lastConnect = 0;
         this.implicit = implicit;
     }
 
@@ -58,6 +62,7 @@ export class Server {
  * @hidden
  */
 export class Servers {
+    private firstSelect : boolean = true;
     private readonly servers: Server[];
     private currentServer: Server;
 
@@ -98,6 +103,11 @@ export class Servers {
     }
 
     selectServer(): Server | undefined {
+        // allow using select without breaking the order of the servers
+        if(this.firstSelect) {
+            this.firstSelect = false;
+            return this.currentServer;
+        }
         let t = this.servers.shift();
         if (t) {
             this.servers.push(t);

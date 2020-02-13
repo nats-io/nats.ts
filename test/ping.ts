@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 The NATS Authors
+ * Copyright 2018-2020 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -17,95 +17,95 @@
 import test from 'ava';
 import {Client, connect, NatsConnectionOptions, ErrorCode} from '../src/nats';
 import {Lock} from './helpers/latch';
-import * as mockserver from './helpers/mock_server';
+import * as net from "net";
+import {SC, startServer, stopServer} from "./helpers/nats_server_control";
+import url from "url";
 
 
 test.before(async (t) => {
-    let server = new mockserver.ScriptedServer(0);
-    try {
-        await server.start();
-    } catch (ex) {
-        t.log(ex);
-    }
+    let server = await startServer();
     t.context = {server: server};
 });
 
 test.after.always((t) => {
     // @ts-ignore
-    t.context.server.stop();
+    stopServer(t.context.server);
 });
 
-test('reconnect if no ping', async (t) => {
-    let lock = new Lock();
-    t.plan(2);
-    //@ts-ignore
-    let port = t.context.server.port;
-    let nc = await connect({port: port, pingInterval: 200, maxReconnectAttempts: 1, reconnectTimeWait: 100,
-    });
-    nc.on('reconnect', () => {
-        nc.close();
+
+test('timer pings are sent', async (t) => {
+    const lock = new Lock();
+    t.plan(1);
+    let sc = t.context as SC;
+    let u = new url.URL(sc.server.nats);
+    let nc = await connect({port: parseInt(u.port, 10), pingInterval: 100} as NatsConnectionOptions);
+    nc.on('pingtimer', () => {
         t.pass();
-        if (timer) {
-            clearTimeout(timer);
-        }
+        nc.close();
         lock.unlock();
     });
-
-    nc.on('error', (err) => {
-        t.is(err.code, ErrorCode.NATS_PROTOCOL_ERR);
-    });
-
-    let timer = setTimeout(() => {
-        t.fail('should have reconnected');
-        lock.unlock();
-    }, 5000);
-
     return lock.latch;
 });
 
-test('timer pings are sent', async (t) => {
-    let lock = new Lock();
-    t.plan(2);
-
-    //@ts-ignore
-    let port = t.context.server.port;
-    let opts = {
-        port: port,
-        pingInterval: 200,
-        maxPingOut: 3,
-        reconnectTimeWait: 100,
-        maxReconnectAttempts: 1
-    } as NatsConnectionOptions;
-
-    let nc: Client;
-    try {
-        nc = await connect(opts);
-    } catch (ex) {
-        t.log(ex);
-        return;
-    }
-    let fired = false;
-    nc.on('pingtimer', () => {
-        fired = true;
+test('missed timer pings reconnect', (t) => {
+    let conn : Client;
+    const lock = new Lock();
+    t.plan(3);
+    const srv = net.createServer((c) => {
+        let firstPing = true;
+        c.write(`INFO ${JSON.stringify({
+            server_id: 'TEST',
+            version: '0.0.0',
+            host: '127.0.0.1',
+            // @ts-ignore
+            port: srv.address.port,
+            auth_required: false
+        })}\r\n`);
+        c.on('data', (d) => {
+            const r = d.toString();
+            const lines = r.split('\r\n');
+            lines.forEach((line) => {
+                if (line === '') {
+                    return
+                }
+                if (/^CONNECT\s+/.test(line)) {
+                } else if (/^PING/.test(line)) {
+                    if (firstPing) {
+                        c.write('PONG\r\n');
+                        firstPing = false;
+                    }
+                } else if (/^PONG/.test(line)) {
+                } else if (/^INFO\s+/i.test(line)) {
+                } else {
+                    // unknown
+                }
+            })
+        });
     });
 
-    nc.on('error', (err) => {
-        t.is(err.code, ErrorCode.NATS_PROTOCOL_ERR);
+    srv.listen(0, () => {
+        // @ts-ignore
+        const {port} = srv.address();
+        connect({
+            port: port,
+            reconnectTimeWait: 250,
+            pingInterval: 100
+        }).then((nc) => {
+            conn = nc;
+            nc.on('error', (err) => {
+                t.is(err.code, ErrorCode.NATS_PROTOCOL_ERR);
+                t.is(err.message, ErrorCode.STALE_CONNECTION_ERR);
+            });
+            nc.on('reconnect', () => {
+                t.pass();
+                nc.close();
+                srv.close();
+                lock.unlock();
+            });
+        });
+        srv.on('error', (err) => {
+            t.fail(err.message);
+        });
     });
-
-    nc.on('reconnect', () => {
-        t.true(fired);
-        nc.close();
-        if (timer) {
-            clearTimeout(timer);
-        }
-        lock.unlock();
-    });
-
-    let timer = setTimeout(() => {
-        t.fail('should have reconnected');
-        lock.unlock();
-    }, 5000);
-
     return lock.latch;
 });

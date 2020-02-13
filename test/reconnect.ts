@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 The NATS Authors
+ * Copyright 2018-2020 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -92,7 +92,7 @@ test('should receive when some servers are invalid', async (t) => {
 
     let nc = await connect({servers: servers, noRandomize: true});
     let subj = createInbox();
-    let sub = await nc.subscribe(subj, (err, msg) => {
+    await nc.subscribe(subj, (err) => {
         if (err) {
             t.fail(err.message);
         } else {
@@ -107,12 +107,11 @@ test('should receive when some servers are invalid', async (t) => {
 });
 
 test('reconnect events', async (t) => {
-    t.plan(5);
+    t.plan(2);
     let lock = new Lock();
 
     let server = await startServer();
     registerServer(server, t);
-
 
     let nc = await connect({
         url: server.nats,
@@ -121,6 +120,7 @@ test('reconnect events', async (t) => {
         maxReconnectAttempts: 10
     });
 
+    let reconnecting = 0;
     let stopTime = 0;
     nc.on('connect', () => {
         setTimeout(() => {
@@ -130,32 +130,22 @@ test('reconnect events', async (t) => {
         }, 100);
     });
 
-    // we get a disconnect event for the initial connection
-    // and for each of the failed reattempts
     let disconnects = 0;
-    nc.on('disconnect', (url) => {
-        if (disconnects === 0) {
-            t.is(url, server.nats);
-        }
+    nc.on('disconnect', () => {
         disconnects++;
     });
 
-    nc.on('error', (err) => {
-        console.log(err);
-        t.fail('on error should not have produced error: ' + err);
-    });
-
-    let reconnecting = 0;
     nc.on('reconnecting', () => {
         reconnecting++;
     });
 
+    nc.on('error', (err) => {
+        t.fail('on error should not have produced error: ' + err);
+    });
+
     nc.on('close', () => {
-        let elapsed = Date.now() - stopTime;
         t.is(reconnecting, 10, 'reconnecting count');
         t.is(disconnects, 1, 'disconnect count');
-        t.true(elapsed >= 10 * 100);
-        t.true(elapsed <= 15 * 100);
         lock.unlock();
     });
 
@@ -205,14 +195,16 @@ test('reconnecting after proper delay', async (t) => {
 
     let server = await startServer();
     registerServer(server, t);
-
     let nc = await connect({
         url: server.nats,
         reconnectTimeWait: 500,
         maxReconnectAttempts: 1
     });
 
+    let serverLastConnect = 0;
     nc.on('connect', () => {
+        //@ts-ignore
+        serverLastConnect = nc.protocolHandler.servers.getCurrentServer().lastConnect;
         setTimeout(() => {
             stopServer(server);
         }, 100);
@@ -224,10 +216,10 @@ test('reconnecting after proper delay', async (t) => {
     });
 
     nc.on('reconnecting', () => {
+        let elapsed = Date.now() - serverLastConnect;
+        t.true(elapsed >= 485);
+        t.true(elapsed <= 600);
         nc.close();
-        let elapsed = Date.now() - disconnect;
-        t.true(elapsed >= 475);
-        t.true(elapsed <= 2500);
         lock.unlock();
     });
 

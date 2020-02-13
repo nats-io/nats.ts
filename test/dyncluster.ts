@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 The NATS Authors
+ * Copyright 2018-2020 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -18,6 +18,7 @@ import {addClusterMember, SC, Server, startServer, stopServer} from './helpers/n
 import test, {ExecutionContext} from 'ava';
 import {Client, connect} from '../src/nats';
 import {Lock} from './helpers/latch';
+import {delay} from "../src/util";
 
 test.before(async (t) => {
     t.context = {servers: []};
@@ -122,42 +123,39 @@ test('reconnects to gossiped server', async (t) => {
 });
 
 test('fails after maxReconnectAttempts when servers killed', async (t) => {
-    t.plan(5);
+    t.plan(4);
     let s1 = registerServer(t, await startServer());
     let s2 = await addClusterServer(t, s1);
+    await delay(100);
 
     let lock = new Lock();
     let nc = await connect({url: s2.nats, maxReconnectAttempts: 10, reconnectTimeWait: 50});
-    //@ts-ignore
-    let servers = nc.protocolHandler.servers;
-
-    nc.on('connect', (c, url) => {
-        t.is(url, s2.nats);
-        setTimeout(() => {
-            stopServer(s2);
-        }, 200);
-    });
-
-    nc.on('reconnect', (c, url) => {
-        t.is(url, s1.nats);
-        t.is(servers.getCurrentServer().url.href, s1.nats);
-        setTimeout(() => {
-            stopServer(s1);
-        }, 200);
-    });
 
     let disconnects = 0;
+    let reconnectings = 0;
+    nc.on('connect', (c, url) => {
+        t.is(url, s2.nats);
+        process.nextTick(() => {
+            stopServer(s2);
+        });
+    });
+
     nc.on('disconnect', () => {
         disconnects++;
     });
 
-    let reconnectings = 0;
-    nc.on('reconnecting', () => {
-        reconnectings++;
+    nc.on('reconnect', (c, url) => {
+        t.is(url, s1.nats);
+        nc.on('reconnecting', () => {
+            reconnectings++;
+        });
+        process.nextTick(() => {
+            stopServer(s1);
+        });
     });
 
     nc.on('close', () => {
-        t.is(reconnectings, 11);
+        t.is(reconnectings, 20);
         t.is(disconnects, 2);
         lock.unlock();
     });

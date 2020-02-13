@@ -41,7 +41,7 @@ export interface TransportHandlers {
 export interface Transport {
     close(): void;
 
-    connect(url: url.UrlObject): Promise<Transport>;
+    connect(url: url.UrlObject, timeout?: number): Promise<Transport>;
 
     destroy(): void;
 
@@ -60,5 +60,7 @@ export interface Transport {
     upgrade(tlsOptions: any, done: Function): void;
 
     write(data: Buffer | string): void;
+
+    dialDuration(): number;
 }
 

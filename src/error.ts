@@ -41,9 +41,11 @@ export enum ErrorCode {
     SECURE_CONN_REQ = 'SECURE_CONN_REQ',
     SIGNATURE_REQUIRED = 'SIG_REQ',
     SSL_ERR = 'SSL_ERR',
+    STALE_CONNECTION_ERR = 'STALE CONNECTION',
     SUB_CLOSED = 'SUB_CLOSED',
     SUB_DRAINING = 'SUB_DRAINING',
     SUB_TIMEOUT = 'SUB_TIMEOUT',
+    UNABLE_TO_CONNECT = 'UNABLE_TO_CONNECT',
 
     // emitted by the server
     AUTHORIZATION_VIOLATION = 'AUTHORIZATION_VIOLATION',
@@ -89,6 +91,7 @@ export class Messages {
         this.messages[ErrorCode.SUB_CLOSED] = 'Subscription closed';
         this.messages[ErrorCode.SUB_DRAINING] = 'Subscription draining';
         this.messages[ErrorCode.SUB_TIMEOUT] = 'Subscription timed out.';
+        this.messages[ErrorCode.UNABLE_TO_CONNECT] = 'Unable to connect.';
     }
 
     static getMessage(s: string): string {
