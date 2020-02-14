@@ -25,7 +25,6 @@ export class Server {
     url: url.Url;
     didConnect: boolean;
     reconnects: number;
-    connects: number;
     lastConnect: number;
     implicit: boolean;
 
@@ -41,7 +40,6 @@ export class Server {
         }
         this.didConnect = false;
         this.reconnects = 0;
-        this.connects = 0;
         this.lastConnect = 0;
         this.implicit = implicit;
     }

@@ -364,9 +364,6 @@ export class ProtocolHandler extends EventEmitter {
         if (this.reconnecting) {
             this.currentServer.reconnects += 1;
             this.client.emit('reconnecting', this.url.href);
-        } else {
-            // not on the 'reconnect' loop but honoring the reconnect policy
-            this.currentServer.connects += 1;
         }
         return this.transport.connect(this.url, this.options.timeout);
     }
@@ -1190,7 +1187,6 @@ export class ProtocolHandler extends EventEmitter {
         if (this.currentServer) {
             this.currentServer.didConnect = true;
             this.currentServer.reconnects = 0;
-            this.currentServer.connects = 0;
         }
 
         // copy the info
