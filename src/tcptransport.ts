@@ -29,12 +29,18 @@ export class TCPTransport implements Transport {
     stream: net.Socket | TLSSocket | null = null;
     handlers: TransportHandlers;
     closed: boolean = false;
+    dialTime: number = 0;
+
 
     constructor(handlers: TransportHandlers) {
         this.handlers = handlers;
     }
 
-    connect(url: UrlObject): Promise<any> {
+    connect(url: UrlObject, timeout?: number): Promise<any> {
+        let dialStart = 0;
+        if(timeout) {
+            dialStart = Date.now();
+        }
         return new Promise((resolve, reject) => {
             // Create the stream
             // See #45 if we have a stream release the listeners
@@ -43,8 +49,26 @@ export class TCPTransport implements Transport {
                 this.destroy();
             }
             let connected = false;
+            let to: NodeJS.Timeout | undefined;
+            if(timeout) {
+                to = setTimeout(() => {
+                    if (!this.connectedOnce) {
+                        reject(NatsError.errorForCode(ErrorCode.CONN_TIMEOUT));
+                        this.destroy();
+                    } else {
+                        // if the client didn't resolve, the error handler
+                        // is not set, so emitting 'error' will shutdown node
+                        this.handlers.error(NatsError.errorForCode(ErrorCode.CONN_TIMEOUT));
+                    }
+                }, timeout);
+            }
             // @ts-ignore typescript requires this parsed to a number
             this.stream = net.createConnection(parseInt(url.port, 10), url.hostname, () => {
+                if(to) {
+                    this.dialTime = Date.now() - dialStart;
+                    clearTimeout(to);
+                    to = undefined;
+                }
                 resolve();
                 connected = true;
                 this.connectedOnce = true;
@@ -159,5 +183,9 @@ export class TCPTransport implements Transport {
         if (this.stream && this.stream.isPaused()) {
             this.stream.resume();
         }
+    }
+
+    dialDuration(): number {
+        return this.dialTime;
     }
 }
