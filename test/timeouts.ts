@@ -19,6 +19,7 @@ import {Lock, wait} from './helpers/latch';
 import {SC, startServer, stopServer} from './helpers/nats_server_control';
 import {connect, ErrorCode} from '../src/nats';
 import {createInbox} from '../src/util';
+import * as net from "net";
 
 test.before(async (t) => {
     let server = await startServer();
@@ -91,7 +92,7 @@ test('message cancels subscription timeout', async (t) => {
     let nc = await connect(sc.server.nats);
     let subj = createInbox();
     let count = 0;
-    let sub = await nc.subscribe(subj, (err, msg) => {
+    let sub = await nc.subscribe(subj, (err) => {
         if (err) {
             t.fail();
         } else {
@@ -113,7 +114,7 @@ test('max message cancels subscription timeout', async (t) => {
     let lock = new Lock();
     let subj = createInbox();
     let count = 0;
-    let sub = await nc.subscribe(subj, (err, msg) => {
+    let sub = await nc.subscribe(subj, (err) => {
         if (err) {
             t.fail();
         } else {
@@ -187,7 +188,6 @@ test('sub timeout returns false if no sub', async (t) => {
     t.plan(1);
     let sc = t.context as SC;
     let nc = await connect(sc.server.nats);
-    let lock = new Lock();
 
     let sub = await nc.subscribe(createInbox(), () => {
     });
@@ -200,8 +200,6 @@ test('sub getReceived returns 0 if no sub', async (t) => {
     t.plan(2);
     let sc = t.context as SC;
     let nc = await connect(sc.server.nats);
-    let lock = new Lock();
-
     let subj = createInbox();
     let count = 0;
     let sub = await nc.subscribe(subj, () => {
@@ -244,23 +242,32 @@ test('timeout unsubscribes', async (t) => {
 });
 
 test('connectTimeout is honored', async (t) => {
-    t.plan(3);
-    let start = Date.now();
-    let servers = ['nats://localhost:7'];
+    t.plan(1);
     try {
         await connect({
-            servers: servers,
-            timeout: 1000,
-            maxReconnectAttempts: -1,
-            reconnectTimeWait: 100,
-            waitOnFirstConnect: true
+            servers: ['nats://connect.ngs.global'],
+            timeout: 1
         });
     } catch(ex) {
         t.is(ex.code, ErrorCode.CONN_TIMEOUT);
-        let end = Date.now();
-        t.true((end-start) > 900);
-        t.true((end-start) < 1100);
     }
+});
+
+test('connection timeout - socket timeout', (t) => {
+    const srv = net.createServer(() => {});
+    t.plan(1);
+    const lock = new Lock();
+    srv.listen(0, async () => {
+        // @ts-ignore
+        const {port} = srv.address();
+        const nc = await connect({port: port, timeout: 500});
+        nc.on('error', (err) => {
+            t.is(err.code, ErrorCode.CONN_TIMEOUT);
+            srv.close();
+            lock.unlock();
+        });
+    });
+    return lock.latch;
 });
 
 test('subscription timers are cleared', async (t) => {
@@ -270,7 +277,7 @@ test('subscription timers are cleared', async (t) => {
     let lock = new Lock();
 
     let subj = createInbox();
-    let sub = await nc.subscribe(subj, (err) => {
+    let sub = await nc.subscribe(subj, () => {
         t.fail("shouldn't have been called")
     });
     sub.setTimeout(100);
@@ -290,7 +297,7 @@ test('request timers are cleared', async (t) => {
     let lock = new Lock();
 
     let subj = createInbox();
-    let v = nc.request(subj, 100);
+    nc.request(subj, 100);
     setTimeout(() => {
         lock.unlock();
     }, 500);
@@ -302,13 +309,18 @@ test('request timers are cleared', async (t) => {
 });
 
 test('heartbeats are cancelled', async (t) => {
+    const lock = new Lock();
     t.plan(2);
     let sc = t.context as SC;
     let nc = await connect(sc.server.nats);
 
-    //@ts-ignore
-    t.truthy(nc.protocolHandler.pingTimer);
-    nc.close();
-    //@ts-ignore
-    t.falsy(nc.protocolHandler.pingTimer);
+    nc.on('connect', () => {
+        //@ts-ignore
+        t.truthy(nc.protocolHandler.pingTimer);
+        nc.close();
+        //@ts-ignore
+        t.falsy(nc.protocolHandler.pingTimer);
+        lock.unlock();
+    });
+    return lock.latch;
 });

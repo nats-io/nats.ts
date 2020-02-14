@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 The NATS Authors
+ * Copyright 2018-2020 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -71,7 +71,7 @@ test('reject if no valid server', async (t) => {
     t.plan(1);
     let a = ['nats://localhost:7'];
     await t.throwsAsync(() => {
-        return connect({servers: a});
+        return connect({servers: a, reconnectTimeWait: 50});
     }, {code: 'ECONNREFUSED'});
 });
 
@@ -79,7 +79,7 @@ test('throws if no valid server', async (t) => {
     t.plan(1);
     let a = ['nats://localhost:7', 'nats://localhost:9'];
     try {
-        await connect({servers: a});
+        await connect({servers: a, reconnectTimeWait: 50});
     } catch (ex) {
         t.is(ex.code, 'ECONNREFUSED');
     }
@@ -108,18 +108,13 @@ test('random server connections', async (t) => {
 });
 
 test('no random server if noRandomize', async (t) => {
-    let first = getServers(t)[0];
-    let count = 0;
+    let servers = getServers(t);
+    let first = servers[0].toString();
     for (let i = 0; i < 100; i++) {
-        let nc = await connect({servers: getServers(t), noRandomize: true});
+        let nc = await connect({servers: servers, noRandomize: true});
         //@ts-ignore
-        let s = nc.protocolHandler.servers.getCurrentServer();
-        //@ts-ignore
-        if (s.toString() === first) {
-            count++;
-        }
+        let s = nc.protocolHandler.currentServer;
+        t.is(s.toString(), first.toString());
         nc.close();
     }
-
-    t.is(count, 100);
 });
