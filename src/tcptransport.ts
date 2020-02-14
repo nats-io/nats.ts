@@ -37,6 +37,10 @@ export class TCPTransport implements Transport {
     }
 
     connect(url: UrlObject, timeout?: number): Promise<any> {
+        let dialStart = 0;
+        if(timeout) {
+            dialStart = Date.now();
+        }
         return new Promise((resolve, reject) => {
             // Create the stream
             // See #45 if we have a stream release the listeners
@@ -47,7 +51,6 @@ export class TCPTransport implements Transport {
             let connected = false;
             let to: NodeJS.Timeout | undefined;
             if(timeout) {
-                this.dialTime = Date.now();
                 to = setTimeout(() => {
                     if (!this.connectedOnce) {
                         reject(NatsError.errorForCode(ErrorCode.CONN_TIMEOUT));
@@ -62,7 +65,7 @@ export class TCPTransport implements Transport {
             // @ts-ignore typescript requires this parsed to a number
             this.stream = net.createConnection(parseInt(url.port, 10), url.hostname, () => {
                 if(to) {
-                    this.dialTime = Date.now() - this.dialTime;
+                    this.dialTime = Date.now() - dialStart;
                     clearTimeout(to);
                     to = undefined;
                 }
