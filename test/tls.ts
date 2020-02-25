@@ -17,10 +17,9 @@
 import {SC, startServer, stopServer} from './helpers/nats_server_control';
 import test from 'ava';
 import {join} from 'path';
-import {Client, connect} from '../src/nats';
+import {Client, connect, ErrorCode, NatsError} from '../src/nats';
 import {Lock} from './helpers/latch';
 import {readFileSync} from 'fs';
-import {ErrorCode, NatsError} from "../src/error";
 
 let serverCert = join(__dirname, '../../test/helpers/certs/server.pem');
 let serverKey = join(__dirname, '../../test/helpers/certs/key.pem');
@@ -183,7 +182,7 @@ test('handle openssl error', async (t) => {
     nc.on('error',  (err: NatsError) => {
         t.is(err.code, ErrorCode.CONN_ERR);
         const nerr = err.chainedError as NatsError;
-        t.is(nerr.code, ErrorCode.SSL_ERR);
+        t.is(nerr.code, ErrorCode.OPENSSL_ERR);
         t.truthy(nerr.chainedError);
         lock.unlock();
     });

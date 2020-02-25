@@ -81,7 +81,7 @@ async function start() {
         server = await startServer(['-c', conf]);
         pargs.server = server.nats;
     }
-    nc = await connect({url: pargs.server, payload: Payload.BINARY});
+    nc = await connect({url: pargs.server, encoding: 'binary'});
     nc.on('connect', () => {
         testFn();
     });
@@ -104,7 +104,7 @@ async function subTest() {
             process.stdout.write('=');
         }
     }, {max: loop});
-    nc.flush(() => {
+    nc.flush((_) => {
         console.log('Waiting for', loop, 'messages');
         try {
             let process = spawn('nats-bench', ['-s', pargs.server || "", '-n', count.toString(), '-ns', '0', '-np', '1', "-ms", size.toString(), "test"]);
@@ -151,7 +151,7 @@ async function pubTest() {
 }
 
 async function pubsubTest() {
-    let nc1 = await connect({url: pargs.server, payload: Payload.STRING});
+    let nc1 = await connect({url: pargs.server});
     let received = 0;
     let sub = await nc1.subscribe(pargs.subject, (err, msg) => {
         received++;
@@ -179,7 +179,7 @@ async function pubsubTest() {
 }
 
 async function reqrepTest() {
-    let nc2 = await connect({url: pargs.server, payload: Payload.BINARY});
+    let nc2 = await connect({url: pargs.server, encoding: 'binary'});
     let r = 0;
     let sub = await nc2.subscribe('request.test', (err, msg) => {
         if(msg.reply) {

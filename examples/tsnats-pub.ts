@@ -14,11 +14,11 @@
  *
  */
 
-import {connect, NatsConnectionOptions} from '../src/nats'
+import {connect, ConnectionOptions} from '../src/nats'
 import {parseFlags} from "../test/helpers/argparser";
 
 let flags = parseFlags(process.argv.slice(2), usage, ["count", "creds", "nkey"]);
-let opts = {} as NatsConnectionOptions;
+let opts = {} as ConnectionOptions;
 opts.url = flags.server;
 if (flags.options.creds && flags.options.nkey) {
     console.error("specify one of -creds or -nkey");
@@ -28,7 +28,7 @@ if (flags.options.creds) {
     opts.userCreds = flags.options.creds;
 }
 if (flags.options.nkey) {
-    opts.nkeyCreds = flags.options.nkey;
+    opts.nkey = flags.options.nkey;
 }
 
 function usage() {

@@ -16,9 +16,8 @@
 
 import test from 'ava';
 import {SC, startServer, stopServer} from './helpers/nats_server_control';
-import {Client, connect, ErrorCode, NatsConnectionOptions, NatsError, Payload, SubEvent} from '../src/nats';
+import {Client, connect, ErrorCode, ConnectionOptions, NatsError, Payload, SubEvent, createInbox} from '../src/nats';
 import {Lock} from './helpers/latch';
-import {createInbox} from '../src/util';
 import url from 'url';
 import * as net from 'net';
 
@@ -41,7 +40,7 @@ test('connect with port', async (t) => {
     t.plan(1);
     let sc = t.context as SC;
     let u = new url.URL(sc.server.nats);
-    let nc = await connect({port: parseInt(u.port, 10)} as NatsConnectionOptions);
+    let nc = await connect({port: parseInt(u.port, 10)} as ConnectionOptions);
     nc.flush(() => {
         t.pass();
     });
@@ -392,7 +391,7 @@ test('no data after unsubscribe', async (t) => {
 test('JSON messages', async (t) => {
     t.plan(2);
     let sc = t.context as SC;
-    let nc = await connect({url: sc.server.nats, payload: Payload.JSON} as NatsConnectionOptions);
+    let nc = await connect({url: sc.server.nats, payload: Payload.JSON} as ConnectionOptions);
     let subj = createInbox();
     let m = {
         boolean: true,
@@ -412,7 +411,7 @@ test('JSON messages', async (t) => {
 test('UTF8 messages', async (t) => {
     t.plan(2);
     let sc = t.context as SC;
-    let nc = await connect({url: sc.server.nats, payload: Payload.STRING} as NatsConnectionOptions);
+    let nc = await connect({url: sc.server.nats, payload: Payload.STRING} as ConnectionOptions);
     let subj = createInbox();
     let m = 'CEDILA-Ç';
 
@@ -429,7 +428,7 @@ test('UTF8 messages', async (t) => {
 test('request removes mux', async (t) => {
     t.plan(3);
     let sc = t.context as SC;
-    let nc = await connect({url: sc.server.nats, payload: Payload.STRING} as NatsConnectionOptions);
+    let nc = await connect({url: sc.server.nats, payload: Payload.STRING} as ConnectionOptions);
     let subj = createInbox();
 
     nc.subscribe(subj, (err, msg) => {
@@ -448,7 +447,7 @@ test('request removes mux', async (t) => {
 test('unsubscribe unsubscribes', async (t) => {
     t.plan(2);
     let sc = t.context as SC;
-    let nc = await connect({url: sc.server.nats, payload: Payload.STRING} as NatsConnectionOptions);
+    let nc = await connect({url: sc.server.nats, payload: Payload.STRING} as ConnectionOptions);
     let subj = createInbox();
 
     let sub = await nc.subscribe(subj, () => {
@@ -622,7 +621,7 @@ test('reconnect sends unsubs', (t) => {
             port: port,
             reconnect: true,
             reconnectTimeWait: 250
-        }).then((nc) => {
+        } as ConnectionOptions).then((nc) => {
             conn = nc;
             nc.on('connect', () => {
                 nc.subscribe("test", (err, _) => {

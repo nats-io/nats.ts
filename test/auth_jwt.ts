@@ -17,7 +17,7 @@
 import test from 'ava';
 import {Lock} from './helpers/latch';
 import {SC, startServer, stopServer, serverVersion} from './helpers/nats_server_control';
-import {connect, NatsConnectionOptions, ErrorCode, NatsError} from '../src/nats';
+import {connect, ConnectionOptions, ErrorCode, NatsError} from '../src/nats';
 import path from 'path';
 import {next} from 'nuid';
 import {fromSeed} from 'ts-nkeys';
@@ -78,7 +78,7 @@ test('error when no nonceSigner callback is defined', async (t) => {
     let lock = new Lock();
     t.plan(1);
     let sc = t.context as SC;
-    let nc = await connect({url: sc.server.nats} as NatsConnectionOptions);
+    let nc = await connect({url: sc.server.nats} as ConnectionOptions);
     nc.on('error', (err) => {
         let ne = err as NatsError;
         t.is(ne.code, ErrorCode.SIGNATURE_REQUIRED);
@@ -101,10 +101,10 @@ test('error if nonceSigner is not function', async (t) => {
     t.plan(1);
     let sc = t.context as SC;
     //@ts-ignore - ts requires function
-    let opts = {url: sc.server.nats, nonceSigner: 'BAD'} as NatsConnectionOptions;
+    let opts = {url: sc.server.nats, nonceSigner: 'BAD'} as ConnectionOptions;
     await t.throwsAsync(() => {
         return connect(opts);
-    }, {code: ErrorCode.NONCE_SIGNER_NOTFUNC});
+    }, {code: ErrorCode.SIGCB_NOTFUNC});
 });
 
 test('error if no nkey or userJWT', async (t) => {
@@ -120,7 +120,7 @@ test('error if no nkey or userJWT', async (t) => {
     let nc = await connect({
         url: sc.server.nats, nonceSigner: function () {
         }
-    } as NatsConnectionOptions);
+    } as ConnectionOptions);
     nc.on('error', (err) => {
         let ne = err as NatsError;
         t.is(ne.code, ErrorCode.NKEY_OR_JWT_REQ);
@@ -152,7 +152,7 @@ test('connects with userJWT and nonceSigner', async (t) => {
             let sk = fromSeed(Buffer.from(uSeed));
             return sk.sign(Buffer.from(nonce));
         }
-    } as NatsConnectionOptions);
+    } as ConnectionOptions);
 
     nc.on('connect', () => {
         t.pass();
@@ -182,7 +182,7 @@ test('connects with userJWT function', async (t) => {
             let sk = fromSeed(Buffer.from(uSeed));
             return sk.sign(Buffer.from(nonce));
         }
-    } as NatsConnectionOptions);
+    } as ConnectionOptions);
 
     nc.on('connect', () => {
         t.pass();
@@ -206,7 +206,7 @@ test('connects with creds file', async (t) => {
     let nc = await connect({
         url: sc.server.nats,
         userCreds: path.join(confdir, 'nkeys', 'test.creds')
-    } as NatsConnectionOptions);
+    } as ConnectionOptions);
 
     nc.on('connect', () => {
         t.pass();
@@ -230,7 +230,7 @@ test('fails connects with bad creds file', async (t) => {
     let nc = await connect({
         url: sc.server.nats,
         userCreds: path.join(confdir, 'nkeys', 'test.txt')
-    } as NatsConnectionOptions);
+    } as ConnectionOptions);
 
     nc.on('error', (err) => {
         t.is(err.code, 'ENOENT');

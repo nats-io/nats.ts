@@ -32,7 +32,7 @@ test.after.always((t) => {
 test('should yield to other events', async (t) => {
     t.plan(2);
     let sc = t.context as SC;
-    let nc = await connect({url: sc.server.nats, payload: Payload.JSON, yieldTime: 5});
+    let nc = await connect({url: sc.server.nats, json: true, yieldTime: 5});
     let lock = new Lock();
     let last: number = -1;
 
@@ -54,7 +54,7 @@ test('should yield to other events', async (t) => {
     }, 10);
 
     let subj = next();
-    nc.subscribe(subj, async (err, msg) => {
+    nc.subscribe(subj, (err, msg) => {
         last = msg.data;
         // take some time
         sleep(1);

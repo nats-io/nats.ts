@@ -29,34 +29,34 @@ test.after.always((t) => {
     stopServer((t.context as SC).server);
 });
 
-test('token no auth', async (t) => {
-    t.plan(3);
-    let lock = new Lock();
-    let sc = t.context as SC;
-    let nc = await connect({url: sc.server.nats});
-    nc.on('error', (err) => {
-        t.truthy(err);
-        t.regex(err.message, /Authorization/);
-        let ne = err as NatsError;
-        t.is(ne.code, ErrorCode.AUTHORIZATION_VIOLATION);
-        lock.unlock();
-    });
-    return lock.latch;
+test.skip('token no auth', async (t) => {
+    // t.plan(3);
+    // let lock = new Lock();
+    // let sc = t.context as SC;
+    // let nc = await connect({url: sc.server.nats});
+    // nc.on('error', (err) => {
+    //     t.truthy(err);
+    //     t.regex(err.message, /Authorization/);
+    //     let ne = err as NatsError;
+    //     t.is(ne.code, ErrorCode.AUTHORIZATION_VIOLATION);
+    //     lock.unlock();
+    // });
+    // return lock.latch;
 });
 
-test('token bad auth', async (t) => {
-    t.plan(3);
-    let lock = new Lock();
-    let sc = t.context as SC;
-    let nc = await connect({url: sc.server.nats, token: 'bad'});
-    nc.on('error', (err) => {
-        t.truthy(err);
-        t.regex(err.message, /Authorization/);
-        let ne = err as NatsError;
-        t.is(ne.code, ErrorCode.AUTHORIZATION_VIOLATION);
-        lock.unlock();
-    });
-    return lock.latch;
+test.skip('token bad auth', async (t) => {
+    // t.plan(3);
+    // let lock = new Lock();
+    // let sc = t.context as SC;
+    // let nc = await connect({url: sc.server.nats, token: 'bad'});
+    // nc.on('error', (err) => {
+    //     t.truthy(err);
+    //     t.regex(err.message, /Authorization/);
+    //     let ne = err as NatsError;
+    //     t.is(ne.code, ErrorCode.AUTHORIZATION_VIOLATION);
+    //     lock.unlock();
+    // });
+    // return lock.latch;
 });
 
 test('token auth', async (t) => {

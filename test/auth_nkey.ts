@@ -17,7 +17,7 @@
 import test from 'ava';
 import {Lock} from './helpers/latch';
 import {SC, startServer, stopServer, serverVersion} from './helpers/nats_server_control';
-import {connect, NatsConnectionOptions} from '../src/nats';
+import {connect, ConnectionOptions} from '../src/nats';
 import path from 'path';
 import {next} from 'nuid';
 import {fromSeed} from 'ts-nkeys';
@@ -66,11 +66,11 @@ test('basic nkey authentication', async (t) => {
     let nc = await connect({
         url: sc.server.nats,
         nkey: uPub,
-        nonceSigner: function (nonce): Buffer {
+        nonceSigner: function (nonce: any): Buffer {
             let sk = fromSeed(Buffer.from(uSeed));
             return sk.sign(Buffer.from(nonce));
         }
-    } as NatsConnectionOptions);
+    } as ConnectionOptions);
     nc.on('error', (err) => {
         t.fail(`should have connected ${err}`);
         lock.unlock();

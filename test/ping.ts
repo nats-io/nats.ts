@@ -15,7 +15,7 @@
  */
 
 import test from 'ava';
-import {Client, connect, NatsConnectionOptions, ErrorCode} from '../src/nats';
+import {Client, connect, ConnectionOptions, ErrorCode} from '../src/nats';
 import {Lock} from './helpers/latch';
 import * as net from "net";
 import {SC, startServer, stopServer} from "./helpers/nats_server_control";
@@ -38,7 +38,7 @@ test('timer pings are sent', async (t) => {
     t.plan(1);
     let sc = t.context as SC;
     let u = new url.URL(sc.server.nats);
-    let nc = await connect({port: parseInt(u.port, 10), pingInterval: 100} as NatsConnectionOptions);
+    let nc = await connect({port: parseInt(u.port, 10), pingInterval: 100} as ConnectionOptions);
     nc.on('pingtimer', () => {
         t.pass();
         nc.close();
@@ -90,7 +90,7 @@ test('missed timer pings reconnect', (t) => {
             port: port,
             reconnectTimeWait: 250,
             pingInterval: 100
-        }).then((nc) => {
+        } as ConnectionOptions).then((nc) => {
             conn = nc;
             nc.on('error', (err) => {
                 t.is(err.code, ErrorCode.NATS_PROTOCOL_ERR);

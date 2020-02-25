@@ -18,8 +18,8 @@ import test from 'ava';
 import {Lock, wait} from './helpers/latch';
 import {SC, startServer, stopServer} from './helpers/nats_server_control';
 import {connect, ErrorCode} from '../src/nats';
-import {createInbox} from '../src/util';
 import * as net from "net";
+import {ConnectionOptions, createInbox} from "nats";
 
 test.before(async (t) => {
     let server = await startServer();
@@ -145,7 +145,7 @@ test('timeout if expected is not received', async (t) => {
     let count = 0;
     let sub = await nc.subscribe(subj, (err) => {
         if (err) {
-            t.is(err.code, ErrorCode.SUB_TIMEOUT);
+            t.is(err.code, ErrorCode.TIMEOUT_ERR);
             t.is(sub.getReceived(), 1);
             t.is(sub.getMax(), 2);
             nc.close();
@@ -260,7 +260,7 @@ test('connection timeout - socket timeout', (t) => {
     srv.listen(0, async () => {
         // @ts-ignore
         const {port} = srv.address();
-        const nc = await connect({port: port, timeout: 500});
+        const nc = await connect({port: port, timeout: 500} as ConnectionOptions);
         nc.on('error', (err) => {
             t.is(err.code, ErrorCode.CONN_TIMEOUT);
             srv.close();

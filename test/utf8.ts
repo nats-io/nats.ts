@@ -16,8 +16,8 @@
 
 import test from 'ava';
 import {SC, startServer, stopServer} from './helpers/nats_server_control';
-import {connect, NatsConnectionOptions, NatsError} from '../src/nats';
-import {createInbox} from '../src/util';
+import {connect, ConnectionOptions} from '../src/nats';
+import {createInbox, NatsError} from 'nats';
 
 test.before(async (t) => {
     let server = await startServer();
@@ -52,7 +52,7 @@ test('pub sub with utf8 payloads by default', async (t) => {
 test('override encoding', async (t) => {
     t.plan(5);
     let sc = t.context as SC;
-    let opts = {url: sc.server.nats, encoding: 'ascii'} as NatsConnectionOptions;
+    let opts = {url: sc.server.nats, encoding: 'ascii'} as ConnectionOptions;
     let nc = await connect(opts);
 
     // ½ + ¼ = ¾: 9 characters, 12 bytes
@@ -82,7 +82,7 @@ test('unsupported encoding', async (t) => {
     t.plan(1);
     let sc = t.context as SC;
     //@ts-ignore
-    let opts = {url: sc.server.nats, encoding: 'foobar'} as NatsConnectionOptions;
+    let opts = {url: sc.server.nats, encoding: 'foobar'} as ConnectionOptions;
     let error = connect(opts);
     await t.throwsAsync(error, {instanceOf: NatsError, code: 'INVALID_ENCODING'});
 });

@@ -16,7 +16,7 @@
 
 import {SC, startServer, stopServer} from './helpers/nats_server_control';
 import test from 'ava';
-import {connect, NatsConnectionOptions, ErrorCode, NatsError} from '../src/nats';
+import {connect, ConnectionOptions, ErrorCode, NatsError} from '../src/nats';
 import {next} from 'nuid';
 
 
@@ -33,7 +33,7 @@ test('auto unsub from max from options', async (t) => {
     t.plan(1);
     try {
         let sc = t.context as SC;
-        let nc = await connect({url: sc.server.nats} as NatsConnectionOptions);
+        let nc = await connect({url: sc.server.nats} as ConnectionOptions);
 
         let count = 0;
         let subj = next();

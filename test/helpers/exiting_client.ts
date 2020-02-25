@@ -14,7 +14,7 @@
  *
  */
 import * as fs from 'fs';
-import {Client, connect, NatsConnectionOptions} from '../../src/nats';
+import {Client, connect, ConnectionOptions} from '../../src/nats';
 
 let count = process.argv.length;
 let port = parseInt(process.argv[count - 1], 10);
@@ -23,7 +23,7 @@ test(port);
 async function test(port: number) {
     let nc: Client;
     try {
-        nc = await connect({port: port, name: 'closer test script'} as NatsConnectionOptions);
+        nc = await connect({port: port, name: 'closer test script'} as ConnectionOptions);
         nc.on('connect', function () {
             fs.writeFile('/tmp/existing_client.log', 'connected\n', (err) => {
                 if (err) {

@@ -36,7 +36,7 @@ async function macro(t: any, input: any): Promise<any> {
     let lock = new Lock();
     let sc = t.context as SC;
     let subj = next();
-    let nc = await connect({url: sc.server.nats, payload: Payload.BINARY});
+    let nc = await connect({url: sc.server.nats, encoding: 'binary'});
 
     nc.subscribe(subj, (err, msg) => {
         if (err) {
@@ -70,7 +70,7 @@ test('no control characters on chunk processing', async (t) => {
     t.plan(count);
     let sc = t.context as SC;
     let subj = next();
-    let nc = await connect({url: sc.server.nats, payload: Payload.BINARY});
+    let nc = await connect({url: sc.server.nats, encoding: 'binary'});
 
     let data = randomBytes(1032);
     let lock = new Lock(count);

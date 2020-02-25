@@ -15,11 +15,11 @@
  */
 
 import test, {ExecutionContext} from 'ava';
-import {connect, NatsConnectionOptions, Payload, VERSION, ErrorCode} from '../src/nats';
+import {connect, ConnectionOptions, Payload, VERSION, ErrorCode} from '../src/nats';
 import {SC, Server, startServer, stopServer} from './helpers/nats_server_control';
 import {Lock} from './helpers/latch';
-import {createInbox} from '../src/util';
 import * as mockserver from './helpers/mock_server';
+import {createInbox} from "nats";
 
 
 test.before(async (t) => {
@@ -59,7 +59,7 @@ test('default connect properties', async (t) => {
     let c = await connect(sc.server.nats);
     c.on('connect', () => {
         //@ts-ignore
-        let opts = c.protocolHandler.options as NatsConnectionOptions;
+        let opts = c.protocolHandler.options as ConnectionOptions;
         t.is(opts.verbose, false);
         t.is(opts.pedantic, false);
         t.is(opts.user, undefined);
@@ -68,57 +68,6 @@ test('default connect properties', async (t) => {
         t.is(opts.name, undefined);
         lock.unlock();
     });
-    return lock.latch;
-});
-
-test('configured options', async (t) => {
-    let s1 = registerServer(t, await startServer(['--user', 'me', '--pass', 'secret']));
-
-    let nco = {} as NatsConnectionOptions;
-    nco.encoding = 'ascii';
-    nco.maxPingOut = 42;
-    nco.maxReconnectAttempts = 24;
-    nco.name = 'test';
-    nco.noRandomize = true;
-    nco.pass = 'secret';
-    nco.payload = Payload.STRING;
-    nco.pedantic = true;
-    nco.pingInterval = 1000;
-    nco.reconnect = false;
-    nco.reconnectTimeWait = 987;
-    nco.url = s1.nats;
-    nco.user = 'me';
-    nco.verbose = true;
-    nco.waitOnFirstConnect = true;
-    nco.yieldTime = 10;
-
-    let lock = new Lock();
-    let nc = await connect(nco);
-
-    nc.on('connect', () => {
-        //@ts-ignore
-        let opts = nc.protocolHandler.options;
-        t.is(opts.encoding, nco.encoding);
-        t.is(opts.maxPingOut, nco.maxPingOut);
-        t.is(opts.maxReconnectAttempts, nco.maxReconnectAttempts);
-        t.is(opts.name, nco.name);
-        t.is(opts.noRandomize, nco.noRandomize);
-        t.is(opts.pass, nco.pass);
-        t.is(opts.payload, nco.payload);
-        t.is(opts.pedantic, nco.pedantic);
-        t.is(opts.pingInterval, nco.pingInterval);
-        t.is(opts.reconnect, nco.reconnect);
-        t.is(opts.reconnectTimeWait, nco.reconnectTimeWait);
-        t.is(opts.token, nco.token);
-        t.is(opts.user, nco.user);
-        t.is(opts.verbose, nco.verbose);
-        t.is(opts.waitOnFirstConnect, nco.waitOnFirstConnect);
-        t.is(opts.yieldTime, nco.yieldTime);
-        nc.close();
-
-        lock.unlock();
-    });
-
     return lock.latch;
 });
 
@@ -160,7 +109,7 @@ test('noEcho not supported', async (t) => {
     }
     t.plan(1);
 
-    let nc = await connect({port: server.port, noEcho: true, reconnect: false});
+    let nc = await connect({port: server.port, noEcho: true, reconnect: false} as ConnectionOptions);
     nc.on('error', (err) => {
         t.is(err.code, ErrorCode.NO_ECHO_NOT_SUPPORTED);
         lock.unlock();

@@ -35,7 +35,7 @@ test('json types', async (t) => {
     t.plan(2);
     let lock = new Lock();
     let sc = t.context as SC;
-    let nc = await connect({url: sc.server.nats, payload: Payload.JSON});
+    let nc = await connect({url: sc.server.nats, json: true});
     let subj = next();
     nc.subscribe(subj, (err, msg) => {
         if (err) {
@@ -55,7 +55,7 @@ test('string types', async (t) => {
     t.plan(2);
     let lock = new Lock();
     let sc = t.context as SC;
-    let nc = await connect({url: sc.server.nats, payload: Payload.STRING});
+    let nc = await connect({url: sc.server.nats});
     let subj = next();
     nc.subscribe(subj, (err, msg: Msg) => {
         t.is(typeof msg.data, 'string');
@@ -72,7 +72,7 @@ test('binary types', async (t) => {
     t.plan(2);
     let lock = new Lock();
     let sc = t.context as SC;
-    let nc = await connect({url: sc.server.nats, payload: Payload.BINARY});
+    let nc = await connect({url: sc.server.nats, encoding: 'binary'});
     let subj = next();
     nc.subscribe(subj, (err, msg) => {
         t.truthy(Buffer.isBuffer(msg.data));
@@ -90,8 +90,8 @@ test('binary encoded per client', async (t) => {
     let lock = new Lock(2);
 
     let sc = t.context as SC;
-    let nc1 = await connect({url: sc.server.nats, payload: Payload.BINARY});
-    let nc2 = await connect({url: sc.server.nats, payload: Payload.STRING});
+    let nc1 = await connect({url: sc.server.nats, encoding: 'binary'});
+    let nc2 = await connect({url: sc.server.nats, encoding: 'binary'});
     let subj = next();
     nc1.subscribe(subj, (err, msg) => {
         if (err) {
@@ -122,7 +122,7 @@ test('binary client gets binary', async (t) => {
     let lock = new Lock();
 
     let sc = t.context as SC;
-    let nc1 = await connect({url: sc.server.nats, payload: Payload.BINARY});
+    let nc1 = await connect({url: sc.server.nats, encoding: 'binary'});
     let subj = next();
     nc1.subscribe(subj, (err, msg) => {
         t.truthy(Buffer.isBuffer(msg.data));

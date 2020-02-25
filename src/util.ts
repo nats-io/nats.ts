@@ -14,14 +14,7 @@
  *
  */
 
-import nuid = require('nuid');
 
-/**
- * Create a properly formatted inbox subject.
- */
-export function createInbox(): string {
-    return `_INBOX.${nuid.next()}`;
-}
 
 /**
  * @hidden

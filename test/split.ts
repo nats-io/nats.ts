@@ -19,6 +19,7 @@ import test from 'ava';
 import {connect, Payload} from '../src/nats';
 import {randomBytes} from 'crypto';
 import {next} from 'nuid'
+import {ConnectionOptions} from "nats";
 
 
 test.before(async (t) => {
@@ -30,11 +31,11 @@ test.after.always((t) => {
     stopServer((t.context as SC).server);
 });
 
-async function macro(t: any, input: any, payload: Payload) : Promise<any> {
+async function macro(t: any, input: any, encoding: string) : Promise<any> {
     let max = 10000;
     t.plan(max);
     let sc = t.context as SC;
-    let nc = await connect({url: sc.server.nats, payload: payload});
+    let nc = await connect({url: sc.server.nats, encoding: encoding} as ConnectionOptions);
     let subj = next();
     nc.subscribe(subj, (err, msg) => {
         if(err) {
@@ -50,6 +51,6 @@ async function macro(t: any, input: any, payload: Payload) : Promise<any> {
     nc.close();
 }
 
-test('large # of utf8 messages from split buffers', macro, '½ + ¼ = ¾', Payload.STRING);
-test('large # of messages from split buffers', macro, 'hello world', Payload.STRING);
-test('large # of binary messages from split buffers', macro, randomBytes(50), Payload.BINARY);
+test('large # of utf8 messages from split buffers', macro, '½ + ¼ = ¾', 'utf8');
+test('large # of messages from split buffers', macro, 'hello world', 'utf8');
+test('large # of binary messages from split buffers', macro, randomBytes(50), 'binary');
