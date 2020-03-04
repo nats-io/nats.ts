@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 The NATS Authors
+ * Copyright 2019-2020 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,72 +14,67 @@
  *
  */
 
-import test from 'ava';
-import {Lock} from './helpers/latch';
-import {SC, startServer, stopServer, serverVersion} from './helpers/nats_server_control';
-import {connect, ConnectionOptions} from '../src/nats';
-import path from 'path';
-import {next} from 'nuid';
-import {fromSeed} from 'ts-nkeys';
-import {jsonToNatsConf, writeFile} from './helpers/nats_conf_utils';
+import test from 'ava'
+import {SC, startServer, stopServer, serverVersion} from './helpers/nats_server_control'
+import {connect, ConnectionOptions} from '../src/nats'
+import path from 'path'
+import {next} from 'nuid'
+import {fromSeed} from 'ts-nkeys'
+import {jsonToNatsConf, writeFile} from './helpers/nats_conf_utils'
 
-const uSeed = 'SUAEL6GG2L2HIF7DUGZJGMRUFKXELGGYFMHF76UO2AYBG3K4YLWR3FKC2Q';
-const uPub = 'UD6OU4D3CIOGIDZVL4ANXU3NWXOW5DCDE2YPZDBHPBXCVKHSODUA4FKI';
+const uSeed = 'SUAEL6GG2L2HIF7DUGZJGMRUFKXELGGYFMHF76UO2AYBG3K4YLWR3FKC2Q'
+const uPub = 'UD6OU4D3CIOGIDZVL4ANXU3NWXOW5DCDE2YPZDBHPBXCVKHSODUA4FKI'
 
 test.before(async (t) => {
-    if (serverVersion()[0] < 2) {
-        return;
+  if (serverVersion()[0] < 2) {
+    return
+  }
+  let conf = {
+    authorization: {
+      users: [
+        {nkey: uPub}
+      ]
     }
-    let conf = {
-        authorization: {
-            users: [
-                {nkey: uPub}
-            ]
-        }
-    };
+  }
 
-    let confDir = (process.env.TRAVIS) ? process.env.TRAVIS_BUILD_DIR : process.env.TMPDIR;
-    //@ts-ignore
-    let fp = path.join(confDir, next() + '.conf');
-    writeFile(fp, jsonToNatsConf(conf));
+  let confDir = (process.env.TRAVIS) ? process.env.TRAVIS_BUILD_DIR : process.env.TMPDIR
+  //@ts-ignore
+  let fp = path.join(confDir, next() + '.conf')
+  writeFile(fp, jsonToNatsConf(conf))
 
-    let server = await startServer(['-c', fp]);
-    t.context = {server: server};
-});
+  let server = await startServer(['-c', fp])
+  t.context = {server: server}
+})
 
 test.after.always((t) => {
-    if (serverVersion()[0] < 2) {
-        return;
-    }
-    stopServer((t.context as SC).server);
-});
+  if (serverVersion()[0] < 2) {
+    return
+  }
+  stopServer((t.context as SC).server)
+})
 
 test('basic nkey authentication', async (t) => {
-    if (serverVersion()[0] < 2) {
-        t.pass('skipping server version ' + serverVersion());
-        return;
+  if (serverVersion()[0] < 2) {
+    t.pass('skipping server version ' + serverVersion())
+    return
+  }
+  t.plan(1)
+  let sc = t.context as SC
+
+  return connect({
+    url: sc.server.nats,
+    nkey: uPub,
+    nonceSigner: function (nonce: any): Buffer {
+      let sk = fromSeed(Buffer.from(uSeed))
+      return sk.sign(Buffer.from(nonce))
     }
-    let lock = new Lock();
-    t.plan(1);
-    let sc = t.context as SC;
-
-    let nc = await connect({
-        url: sc.server.nats,
-        nkey: uPub,
-        nonceSigner: function (nonce: any): Buffer {
-            let sk = fromSeed(Buffer.from(uSeed));
-            return sk.sign(Buffer.from(nonce));
-        }
-    } as ConnectionOptions);
-    nc.on('error', (err) => {
-        t.fail(`should have connected ${err}`);
-        lock.unlock();
-    });
-    nc.on('connect', () => {
-        t.pass();
-        nc.close();
-        lock.unlock();
-    });
-
-    return lock.latch;
-});
+  } as ConnectionOptions)
+    .then((nc) => {
+      t.pass()
+      nc.close()
+    })
+    .catch((err) => {
+      t.log(err)
+      t.fail('error connecting')
+    })
+})

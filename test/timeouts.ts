@@ -38,7 +38,7 @@ test('subscription timeouts', async (t) => {
 
     let sub = await nc.subscribe(createInbox(), (err) => {
         //@ts-ignore
-        t.is(err.code, ErrorCode.SUB_TIMEOUT);
+        t.is(err.code, ErrorCode.TIMEOUT_ERR);
         let elapsed = Date.now() - start;
         t.true(elapsed >= 45 && elapsed <= 100);
         nc.close();
@@ -50,7 +50,7 @@ test('subscription timeouts', async (t) => {
     return lock.latch;
 });
 
-test('message cancels timeout', async (t) => {
+test('sub cancel timeout, cancels timeout', async (t) => {
     t.plan(2);
     let sc = t.context as SC;
     let nc = await connect(sc.server.nats);
@@ -60,11 +60,11 @@ test('message cancels timeout', async (t) => {
             t.fail();
         }
     });
-    sub.setTimeout(500);
-    t.true(sub.hasTimeout());
+    sub.setTimeout(1000);
+    t.true(sub.hasTimeout())
     sub.cancelTimeout();
-    await wait(500);
     t.false(sub.hasTimeout());
+    await wait(1000);
     nc.close();
 });
 
@@ -94,16 +94,17 @@ test('message cancels subscription timeout', async (t) => {
     let count = 0;
     let sub = await nc.subscribe(subj, (err) => {
         if (err) {
-            t.fail();
+            t.fail('no timeout expected');
         } else {
             count++;
         }
     });
-    sub.setTimeout(50);
+    sub.setTimeout(250);
     t.true(sub.hasTimeout());
     nc.publish(subj);
-    await wait(500);
+    await nc.flush()
     t.false(sub.hasTimeout());
+    await wait(250)
     nc.close();
 });
 
@@ -126,7 +127,7 @@ test('max message cancels subscription timeout', async (t) => {
             }
         }
     }, {max: 2});
-    sub.setTimeout(50);
+    sub.setTimeout(500);
     t.true(sub.hasTimeout());
     nc.publish(subj);
     nc.publish(subj);
@@ -136,7 +137,7 @@ test('max message cancels subscription timeout', async (t) => {
 });
 
 test('timeout if expected is not received', async (t) => {
-    t.plan(3);
+    t.plan(2);
     let sc = t.context as SC;
     let nc = await connect(sc.server.nats);
     let lock = new Lock();
@@ -147,15 +148,13 @@ test('timeout if expected is not received', async (t) => {
         if (err) {
             t.is(err.code, ErrorCode.TIMEOUT_ERR);
             t.is(sub.getReceived(), 1);
-            t.is(sub.getMax(), 2);
             nc.close();
             lock.unlock();
         } else {
             count++;
         }
     });
-    sub.unsubscribe(2);
-    sub.setTimeout(50);
+    sub.setTimeout(100, 2);
     nc.publish(subj);
 
     return lock.latch;
@@ -177,7 +176,7 @@ test('no timeout if unsubscribed', async (t) => {
     await nc.flush();
     setTimeout(() => {
         // shouldn't expect anything because it is unsubscribed
-        t.is(sub.getMax(), 0);
+        t.true(sub.isCancelled());
         lock.unlock();
     }, 100);
 
@@ -196,22 +195,6 @@ test('sub timeout returns false if no sub', async (t) => {
     nc.close();
 });
 
-test('sub getReceived returns 0 if no sub', async (t) => {
-    t.plan(2);
-    let sc = t.context as SC;
-    let nc = await connect(sc.server.nats);
-    let subj = createInbox();
-    let count = 0;
-    let sub = await nc.subscribe(subj, () => {
-        count++;
-        sub.unsubscribe();
-    });
-    nc.publish(subj);
-    await nc.flush();
-    t.is(sub.getReceived(), 0);
-    t.is(count, 1);
-    nc.close();
-});
 
 test('timeout unsubscribes', async (t) => {
     t.plan(1);
@@ -242,32 +225,39 @@ test('timeout unsubscribes', async (t) => {
 });
 
 test('connectTimeout is honored', async (t) => {
-    t.plan(1);
+    t.plan(2);
     try {
         await connect({
             servers: ['nats://connect.ngs.global'],
             timeout: 1
         });
     } catch(ex) {
-        t.is(ex.code, ErrorCode.CONN_TIMEOUT);
+        t.is(ex.code, ErrorCode.CONN_ERR);
+        t.is(ex.chainedError.code, ErrorCode.CONN_TIMEOUT)
     }
 });
 
 test('connection timeout - socket timeout', (t) => {
     const srv = net.createServer(() => {});
-    t.plan(1);
-    const lock = new Lock();
+    let lock = new Lock();
+    t.plan(2);
     srv.listen(0, async () => {
         // @ts-ignore
         const {port} = srv.address();
-        const nc = await connect({port: port, timeout: 500} as ConnectionOptions);
-        nc.on('error', (err) => {
-            t.is(err.code, ErrorCode.CONN_TIMEOUT);
+        return connect({port: port, timeout: 500} as ConnectionOptions)
+        .then((nc) => {
+            nc.close()
+            t.fail('should have not connected')
+            lock.unlock()
+        })
+        .catch((err) => {
+            t.is(err.code, ErrorCode.CONN_ERR);
+            t.is(err.chainedError.code, ErrorCode.CONN_TIMEOUT)
             srv.close();
-            lock.unlock();
-        });
+            lock.unlock()
+        })
     });
-    return lock.latch;
+    return lock.latch
 });
 
 test('subscription timers are cleared', async (t) => {
@@ -306,21 +296,4 @@ test('request timers are cleared', async (t) => {
     await lock.latch;
     // will get unhandled rejection
     t.pass()
-});
-
-test('heartbeats are cancelled', async (t) => {
-    const lock = new Lock();
-    t.plan(2);
-    let sc = t.context as SC;
-    let nc = await connect(sc.server.nats);
-
-    nc.on('connect', () => {
-        //@ts-ignore
-        t.truthy(nc.protocolHandler.pingTimer);
-        nc.close();
-        //@ts-ignore
-        t.falsy(nc.protocolHandler.pingTimer);
-        lock.unlock();
-    });
-    return lock.latch;
 });

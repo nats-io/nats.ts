@@ -1,6 +1,6 @@
 /*
  * Copyright 2018-2020 The NATS Authors
- * Licensed under the Apache License, Version 2.0 (the "License");
+ * Licensed under the Apache License, Version 2.0 (the "License")
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
@@ -14,639 +14,458 @@
  *
  */
 
-import test from 'ava';
-import {SC, startServer, stopServer} from './helpers/nats_server_control';
-import {Client, connect, ErrorCode, ConnectionOptions, NatsError, Payload, SubEvent, createInbox} from '../src/nats';
-import {Lock} from './helpers/latch';
-import url from 'url';
-import * as net from 'net';
+import test from 'ava'
+import {SC, startServer, stopServer} from './helpers/nats_server_control'
+import {connect, ConnectionOptions, createInbox, ErrorCode, NatsError, SubEvent, Subscription} from '../src/nats'
+import {Lock} from './helpers/latch'
+import url from 'url'
+import {Payload} from 'nats'
 
 
 test.before(async (t) => {
-    let server = await startServer();
-    t.context = {server: server};
-});
+    let server = await startServer()
+    t.context = {server: server}
+})
 
 test.after.always((t) => {
     // @ts-ignore
-    stopServer(t.context.server);
-});
+    stopServer(t.context.server)
+})
 
 test('fail connect', async (t) => {
-    await t.throwsAsync(connect);
-});
+    await t.throwsAsync(connect)
+})
 
 test('connect with port', async (t) => {
-    t.plan(1);
-    let sc = t.context as SC;
-    let u = new url.URL(sc.server.nats);
-    let nc = await connect({port: parseInt(u.port, 10)} as ConnectionOptions);
-    nc.flush(() => {
-        t.pass();
-    });
-    await nc.flush();
-    nc.close();
-});
+    t.plan(1)
+    let sc = t.context as SC
+    let u = new url.URL(sc.server.nats)
+    return connect({port: parseInt(u.port, 10)} as ConnectionOptions)
+        .then((nc) => {
+            return nc.flush(() => {
+                nc.close()
+                t.pass()
+            })
+        })
+})
 
-test('pub subject is required', async (t) => {
-    t.plan(1);
-    let sc = t.context as SC;
-    let nc = await connect(sc.server.nats);
-    await t.throws(() => {
-        //@ts-ignore
-        nc.publish();
-    }, {code: ErrorCode.BAD_SUBJECT});
-});
-
-test('sub subject is required', async (t) => {
-    t.plan(1);
-    let sc = t.context as SC;
-    let nc = await connect(sc.server.nats);
-    //@ts-ignore
-    await t.throwsAsync(nc.subscribe(),
-        {code: ErrorCode.BAD_SUBJECT});
-});
+test('pub subject is required', (t) => {
+    t.plan(1)
+    let sc = t.context as SC
+    return connect(sc.server.nats)
+        .then((nc) => {
+            t.throws( () => {
+                //@ts-ignore
+                nc.publish()
+            }, { code: ErrorCode.BAD_SUBJECT })
+        })
+})
 
 test('sub callback is required', async (t) => {
-    t.plan(1);
-    let sc = t.context as SC;
-    let nc = await connect(sc.server.nats);
-    //@ts-ignore
-    await t.throwsAsync(nc.subscribe('foo'),
-        {code: ErrorCode.API_ERROR});
-});
+    t.plan(1)
+    let sc = t.context as SC
+    return connect(sc.server.nats)
+        .then((nc) => {
+            //@ts-ignore
+            nc.subscribe(createInbox())
+                .catch((ex: NatsError) => {
+                    t.is(ex.code, ErrorCode.API_ERROR)
+                })
+                .finally(() => {
+                    nc.close()
+                })
+        })
+})
+
+test('sub subject is required', async (t) => {
+    t.plan(1)
+    let sc = t.context as SC
+    return connect(sc.server.nats)
+        .then((nc) => {
+            //@ts-ignore
+            nc.subscribe('', () => {})
+                .catch((err) => {
+                    t.is(err.code, ErrorCode.BAD_SUBJECT)
+                })
+        })
+})
+
 
 test('subs require connection', async (t) => {
-    t.plan(1);
-    let sc = t.context as SC;
-    let nc = await connect(sc.server.nats);
-    nc.close();
-    //@ts-ignore
-    await t.throwsAsync(nc.subscribe('foo', () => {
-        }),
-        {code: ErrorCode.CONN_CLOSED});
-});
+    t.plan(1)
+    let sc = t.context as SC
+    return connect(sc.server.nats)
+        .then((nc) => {
+            nc.close()
+            nc.subscribe(createInbox(), () => {})
+                .catch((err) => {
+                    t.is(err?.code, ErrorCode.CONN_CLOSED)
+                })
+        })
+
+})
 
 test('sub and unsub', async (t) => {
-    t.plan(1);
-    let sc = t.context as SC;
-    let nc = await connect(sc.server.nats);
-    let sub = await nc.subscribe(createInbox(), () => {
-    }, {});
-    t.truthy(sub);
-    sub.unsubscribe();
-    await nc.flush();
-    nc.close();
-});
+    t.plan(1)
+    let sc = t.context as SC
+    let nc = await connect(sc.server.nats)
+    return nc.subscribe(createInbox(), () => {})
+        .then((sub) => {
+            t.truthy(sub)
+            sub.unsubscribe()
+            nc.flush()
+                .then(() => {
+                    nc.close()
+                })
+        })
+})
 
 test('basic publish', async (t) => {
-    t.plan(1);
-    let sc = t.context as SC;
-    let nc = await connect(sc.server.nats);
-    nc.publish(createInbox());
-    nc.flush(() => {
-        t.pass();
-    });
-    await nc.flush();
-    nc.close();
-});
+    t.plan(1)
+    let sc = t.context as SC
+    return connect(sc.server.nats)
+        .then((nc) => {
+            nc.publish(createInbox())
+            return nc.flush()
+                .then(() => {
+                    t.pass()
+                    nc.close()
+                })
+        })
+})
 
-test('subscription callback', async (t) => {
-    t.plan(1);
-    let sc = t.context as SC;
-    let nc = await connect(sc.server.nats);
-    let subj = createInbox();
-    await nc.subscribe(subj, () => {
-        t.pass();
-    }, {max: 1});
-    nc.publish(subj);
-    await nc.flush();
-    nc.close();
-});
 
-test('subscription message in callback', async (t) => {
-    t.plan(2);
-    let sc = t.context as SC;
-    let nc = await connect(sc.server.nats);
-    let subj = createInbox();
-    const payload = 'Hello World';
-
-    await nc.subscribe(subj, (err, msg) => {
-        t.is(err, null);
-        //@ts-ignore
-        t.is(msg.data, payload);
-
-    }, {});
-    nc.publish(subj, payload);
-    await nc.flush();
-    nc.close();
-});
-
-test('subscription message has reply', async (t) => {
-    t.plan(1);
-    let sc = t.context as SC;
-    let nc = await connect(sc.server.nats);
-    let subj = createInbox();
-    const payload = 'Hello World';
-    const replyInbox = createInbox();
-    await nc.subscribe(subj, (err, msg) => {
-        //@ts-ignore
-        t.is(msg.reply, replyInbox);
-    }, {});
-    nc.publish(subj, payload, replyInbox);
-    await nc.flush();
-    nc.close();
-});
-
-test('subscription message has subject', async (t) => {
-    t.plan(1);
-    let sc = t.context as SC;
-    let nc = await connect(sc.server.nats);
-    let subj = createInbox();
-
-    await nc.subscribe(subj, (err, msg) => {
-        //@ts-ignore
-        t.is(msg.subject, subj);
-    }, {});
-    nc.publish(subj);
-    await nc.flush();
-});
-
-test('subscription has exact subject', async (t) => {
-    t.plan(1);
-    let sc = t.context as SC;
-    let nc = await connect(sc.server.nats);
-    let subj = createInbox();
-
-    await nc.subscribe(`${subj}.*.*.*`, (err, msg) => {
-        //@ts-ignore
-        t.is(msg.subject, `${subj}.1.2.3`);
-    }, {});
-    nc.publish(`${subj}.1.2.3`);
-    await nc.flush();
-});
-
-test('subscription message has sid', async (t) => {
-    t.plan(2);
-    let sc = t.context as SC;
-    let nc = await connect(sc.server.nats);
-    let subj = createInbox();
-
-    let sub = await nc.subscribe(subj, (err, msg) => {
-        //@ts-ignore
-        t.is(msg.sid, sub.sid);
-    }, {});
-    // expecting unlimited number of messages
-    t.is(sub.getMax(), -1);
-    nc.publish(subj);
-    await nc.flush();
-});
+test('subscription message', async (t) => {
+    t.plan(5)
+    let sc = t.context as SC
+    const subj = createInbox()
+    const payload = 'Hello World'
+    const reply = createInbox()
+    let sub: Subscription
+    let sid: number
+    return connect(sc.server.nats)
+        .then((nc) => {
+            return nc.subscribe(subj, (err, m) => {
+                t.is(err, null)
+                t.is(m?.data, payload)
+                t.is(m?.subject, subj)
+                t.is(m?.reply, reply)
+                sid = m?.sid
+            }).then((s) => {
+                sub = s
+                nc.publish(subj, payload, reply)
+                return nc.flush()
+            }).then(() => {
+                t.is(sub.getID(), sid)
+                nc.close()
+            })
+        })
+})
 
 test('subscription generates events', async (t) => {
-    t.plan(3);
-    let sc = t.context as SC;
-    let nc = await connect(sc.server.nats);
-
-    let subj = createInbox();
-    nc.on('subscribe', (se: SubEvent) => {
-        t.is(se.subject, subj);
-        t.is(se.queue, 'A');
-        t.is(se.sid, 1);
-    });
-
-    nc.subscribe(subj, () => {}, {queue: 'A'});
-    await nc.flush();
-});
+    t.plan(3)
+    let sc = t.context as SC
+    return connect(sc.server.nats)
+        .then((nc) => {
+            let subj = createInbox()
+            nc.on('subscribe', (se: SubEvent) => {
+                t.is(se.subject, subj)
+                t.is(se.queue, 'A')
+                t.is(se.sid, 1)
+            })
+            return nc.subscribe(subj, () => {}, {queue: 'A'})
+                .then(() => {
+                    return nc.flush()
+                })
+                .then(() => {
+                    nc.close()
+                })
+        })
+})
 
 test('unsubscribe generates events', async (t) => {
-    t.plan(3);
-    let sc = t.context as SC;
-    let nc = await connect(sc.server.nats);
+    t.plan(3)
+    let sc = t.context as SC
+    return connect(sc.server.nats)
+        .then((nc) => {
+            let subj = createInbox()
+            nc.on('unsubscribe', (se: SubEvent) => {
+                t.is(se.subject, subj)
+                t.is(se.queue, 'A')
+                t.is(se.sid, 1)
+            })
+            return nc.subscribe(subj, () => {}, {queue: 'A'})
+                .then((sub) => {
+                    sub.unsubscribe()
+                    return nc.flush()
+                })
+                .then(() => {
+                    nc.close()
+                })
+        })
+})
 
-    let subj = createInbox();
-    nc.on('unsubscribe', (se: SubEvent) => {
-        t.is(se.subject, subj);
-        t.is(se.queue, 'A');
-        t.is(se.sid, 1);
-    });
-
-    let sub = await nc.subscribe(subj, () => {}, {queue: 'A'});
-    sub.unsubscribe();
-    await nc.flush();
-});
-
-test('unsubscribe notifications only once', async (t) => {
-    t.plan(1);
-    let sc = t.context as SC;
-    let nc = await connect(sc.server.nats);
-
-    let subj = createInbox();
-    let count = 0;
-    nc.on('unsubscribe', () => {
-        count++;
-    });
-
-    await nc.subscribe(subj, () => {
-    }, {queue: 'A', max: 5});
-    for (let i = 0; i < 5; i++) {
-        nc.publish(subj);
-    }
-    await nc.flush();
-    t.is(count, 1);
-});
 
 test('request subject is required', async (t) => {
-    t.plan(1);
-    let sc = t.context as SC;
-    let nc = await connect(sc.server.nats);
-    //@ts-ignore
-    await t.throwsAsync(nc.request(), {code: ErrorCode.BAD_SUBJECT});
-});
+    t.plan(1)
+    let sc = t.context as SC
+    return connect(sc.server.nats)
+        .then((nc) => {
+            //@ts-ignore
+            return nc.request()
+        })
+        .catch((err) => {
+            t.is(err?.code, ErrorCode.BAD_SUBJECT)
+        })
+})
 
 test('requests require connection', async (t) => {
-    t.plan(1);
-    let sc = t.context as SC;
-    let nc = await connect(sc.server.nats);
-    nc.close();
-    //@ts-ignore
-    await t.throwsAsync(nc.request('foo'), {code: ErrorCode.CONN_CLOSED});
-});
+    t.plan(1)
+    let sc = t.context as SC
+    return connect(sc.server.nats)
+        .then((nc) => {
+            nc.close()
+            nc.request(createInbox())
+                .catch((err) => {
+                    t.is(err?.code, ErrorCode.CONN_CLOSED)
+                })
+        })
+})
 
 test('request reply', async (t) => {
-    t.plan(2);
-    let sc = t.context as SC;
-    let nc = await connect(sc.server.nats);
-    let subj = createInbox();
-    const payload = 'Hello World';
-    const response = payload.split('').reverse().join('');
+    t.plan(2)
+    let sc = t.context as SC
+    let nc = await connect(sc.server.nats)
+    let subj = createInbox()
+    const payload = 'Hello World'
+    const response = payload.split('').reverse().join('')
     await nc.subscribe(subj, (err, msg) => {
         //@ts-ignore
-        t.is(msg.data, payload);
+        t.is(msg.data, payload)
         //@ts-ignore
-        nc.publish(msg.reply, response);
-    }, {});
+        nc.publish(msg.reply, response)
+    }, {})
 
-    let msg = await nc.request(subj, 1000, payload);
-    t.is(msg.data, response);
-    nc.close();
-});
+    let msg = await nc.request(subj, 1000, payload)
+    t.is(msg.data, response)
+    nc.close()
+})
 
 test('wildcard subscriptions', async (t) => {
-    t.plan(3);
-    let single = 3;
-    let partial = 2;
-    let full = 5;
+    t.plan(3)
+    let single = 3
+    let partial = 2
+    let full = 5
 
-    let singleCounter = 0;
-    let partialCounter = 0;
-    let fullCounter = 0;
+    let singleCounter = 0
+    let partialCounter = 0
+    let fullCounter = 0
 
-    let sc = t.context as SC;
-    let nc = await connect(sc.server.nats);
+    let sc = t.context as SC
+    let nc = await connect(sc.server.nats)
 
-    let s = createInbox();
+    let s = createInbox()
     nc.subscribe(`${s}.*`, () => {
-        singleCounter++;
-    });
+        singleCounter++
+    })
     nc.subscribe(`${s}.foo.bar.*`, () => {
-        partialCounter++;
-    });
+        partialCounter++
+    })
     nc.subscribe(`${s}.foo.>`, () => {
-        fullCounter++;
-    });
+        fullCounter++
+    })
 
-    nc.publish(`${s}.bar`);
-    nc.publish(`${s}.baz`);
-    nc.publish(`${s}.foo.bar.1`);
-    nc.publish(`${s}.foo.bar.2`);
-    nc.publish(`${s}.foo.baz.3`);
-    nc.publish(`${s}.foo.baz.foo`);
-    nc.publish(`${s}.foo.baz`);
-    nc.publish(`${s}.foo`);
+    nc.publish(`${s}.bar`)
+    nc.publish(`${s}.baz`)
+    nc.publish(`${s}.foo.bar.1`)
+    nc.publish(`${s}.foo.bar.2`)
+    nc.publish(`${s}.foo.baz.3`)
+    nc.publish(`${s}.foo.baz.foo`)
+    nc.publish(`${s}.foo.baz`)
+    nc.publish(`${s}.foo`)
 
-    await nc.flush();
-    t.is(singleCounter, single);
-    t.is(partialCounter, partial);
-    t.is(fullCounter, full);
+    await nc.flush()
+    t.is(singleCounter, single)
+    t.is(partialCounter, partial)
+    t.is(fullCounter, full)
 
-    nc.close();
-});
+    nc.close()
+})
 
 test('flush can be a promise', async (t) => {
-    t.plan(1);
-    let sc = t.context as SC;
-    let nc = await connect(sc.server.nats);
-    let p = nc.flush();
+    t.plan(1)
+    let sc = t.context as SC
+    let nc = await connect(sc.server.nats)
+    let p = nc.flush()
     //@ts-ignore
-    t.truthy(p.then);
-    await p;
-    nc.close();
-});
+    t.truthy(p.then)
+    await p
+    nc.close()
+})
 
 test('flush can be a callback', async (t) => {
-    t.plan(2);
-    let lock = new Lock();
-    let sc = t.context as SC;
-    let nc = await connect(sc.server.nats);
+    t.plan(2)
+    let lock = new Lock()
+    let sc = t.context as SC
+    let nc = await connect(sc.server.nats)
     let p = nc.flush(() => {
-        t.pass();
-        lock.unlock();
-    });
+        t.pass()
+        lock.unlock()
+    })
+    t.truthy(p)
+    await lock.latch
 
-    t.is(p, undefined);
-    await lock.latch;
-
-    nc.close();
-});
+    nc.close()
+})
 
 test('unsubscribe after close', async (t) => {
-    t.plan(1);
-    let sc = t.context as SC;
-    let nc = await connect(sc.server.nats);
+    t.plan(1)
+    let sc = t.context as SC
+    let nc = await connect(sc.server.nats)
     let sub = await nc.subscribe(createInbox(), () => {
-    });
-    nc.close();
-    sub.unsubscribe();
-    t.pass();
-});
+    })
+    nc.close()
+    sub.unsubscribe()
+    t.pass()
+})
 
 test('no data after unsubscribe', async (t) => {
-    t.plan(1);
-    let sc = t.context as SC;
-    let nc = await connect(sc.server.nats);
-    let subj = createInbox();
-    let received = 0;
+    t.plan(1)
+    let sc = t.context as SC
+    let nc = await connect(sc.server.nats)
+    let subj = createInbox()
+    let received = 0
     let sub = await nc.subscribe(subj, () => {
-        received++;
-        sub.unsubscribe();
-    });
-    nc.publish(subj);
-    nc.publish(subj);
-    nc.publish(subj);
-    await nc.flush();
-    t.is(received, 1);
-    nc.close();
-});
+        received++
+        sub.unsubscribe()
+    })
+    nc.publish(subj)
+    nc.publish(subj)
+    nc.publish(subj)
+    await nc.flush()
+    t.is(received, 1)
+    nc.close()
+})
 
 test('JSON messages', async (t) => {
-    t.plan(2);
-    let sc = t.context as SC;
-    let nc = await connect({url: sc.server.nats, payload: Payload.JSON} as ConnectionOptions);
-    let subj = createInbox();
+    t.plan(2)
+    let sc = t.context as SC
+    let nc = await connect({url: sc.server.nats, payload: Payload.JSON} as ConnectionOptions)
+    let subj = createInbox()
     let m = {
         boolean: true,
         string: 'CEDILA-Ç'
-    };
+    }
 
     nc.subscribe(subj, (err, msg) => {
-        t.is(err, null);
+        t.is(err, null)
         // @ts-ignore
-        t.deepEqual(msg.data, m);
-    }, {max: 1});
-    nc.publish(subj, m);
-    await nc.flush();
-    nc.close();
-});
+        t.deepEqual(msg.data, m)
+    }, {max: 1})
+    nc.publish(subj, m)
+    await nc.flush()
+    nc.close()
+})
 
 test('UTF8 messages', async (t) => {
-    t.plan(2);
-    let sc = t.context as SC;
-    let nc = await connect({url: sc.server.nats, payload: Payload.STRING} as ConnectionOptions);
-    let subj = createInbox();
-    let m = 'CEDILA-Ç';
+    t.plan(2)
+    let sc = t.context as SC
+    let nc = await connect({url: sc.server.nats} as ConnectionOptions)
+    let subj = createInbox()
+    let m = 'CEDILA-Ç'
 
     nc.subscribe(subj, (err, msg) => {
-        t.is(err, null);
+        t.is(err, null)
         // @ts-ignore
-        t.is(msg.data, m);
-    }, {max: 1});
-    nc.publish(subj, m);
-    await nc.flush();
-    nc.close();
-});
+        t.is(msg.data, m)
+    }, {max: 1})
+    nc.publish(subj, m)
+    await nc.flush()
+    nc.close()
+})
 
 test('request removes mux', async (t) => {
-    t.plan(3);
-    let sc = t.context as SC;
-    let nc = await connect({url: sc.server.nats, payload: Payload.STRING} as ConnectionOptions);
-    let subj = createInbox();
+    t.plan(4)
+    let sc = t.context as SC
+    let nc = await connect({url: sc.server.nats} as ConnectionOptions)
+    let subj = createInbox()
 
     nc.subscribe(subj, (err, msg) => {
-        t.truthy(msg);
+        t.falsy(err)
+        t.truthy(msg)
         //@ts-ignore
-        nc.publish(msg.reply);
-    }, {max: 1});
+        nc.publish(msg.reply)
+    }, {max: 1})
 
-    let r = await nc.request(subj);
-    t.truthy(r);
+    let r = await nc.request(subj)
+    t.truthy(r)
     //@ts-ignore
-    t.is(nc.protocolHandler.muxSubscriptions.length, 0);
-    nc.close();
-});
+    t.is(nc.nc.reqs.length, 0)
+    nc.close()
+})
 
 test('unsubscribe unsubscribes', async (t) => {
-    t.plan(2);
-    let sc = t.context as SC;
-    let nc = await connect({url: sc.server.nats, payload: Payload.STRING} as ConnectionOptions);
-    let subj = createInbox();
+    t.plan(2)
+    let sc = t.context as SC
+    let nc = await connect({url: sc.server.nats} as ConnectionOptions)
+    let subj = createInbox()
 
     let sub = await nc.subscribe(subj, () => {
-    });
-    t.is(nc.numSubscriptions(), 1);
-    sub.unsubscribe();
-    t.is(nc.numSubscriptions(), 0);
-    nc.close();
-});
+    })
+    t.is(nc.numSubscriptions(), 1)
+    sub.unsubscribe()
+    t.is(nc.numSubscriptions(), 0)
+    nc.close()
+})
 
 test('flush cb calls error on close', async (t) => {
-    let lock = new Lock();
-    t.plan(1);
-    let sc = t.context as SC;
-    let nc = await connect(sc.server.nats);
-    nc.close();
+    t.plan(3)
+    let sc = t.context as SC
+    let nc = await connect(sc.server.nats)
+    nc.close()
     nc.flush((err) => {
-        let ne = err as NatsError;
-        t.is(ne.code, ErrorCode.CONN_CLOSED);
-        lock.unlock();
-    });
-
-    return lock.latch;
-});
+        t.pass()
+        if (err) {
+            t.is(err.code, ErrorCode.CONN_CLOSED)
+        } else {
+            t.fail("expected error")
+        }
+    }).catch((err) => {
+        t.is(err?.code, ErrorCode.CONN_CLOSED)
+    })
+})
 
 test('flush reject on close', async (t) => {
-    t.plan(1);
-    let sc = t.context as SC;
-    let nc = await connect(sc.server.nats);
-    nc.close();
+    t.plan(1)
+    let sc = t.context as SC
+    let nc = await connect(sc.server.nats)
+    nc.close()
     //@ts-ignore
     await t.throwsAsync(() => {
-        return nc.flush();
-    }, {code: ErrorCode.CONN_CLOSED});
-});
+        return nc.flush()
+    }, {code: ErrorCode.CONN_CLOSED})
+})
 
 test('error if publish after close', async (t) => {
-    t.plan(1);
-    let sc = t.context as SC;
-    let nc = await connect(sc.server.nats);
-    nc.close();
+    t.plan(1)
+    let sc = t.context as SC
+    let nc = await connect(sc.server.nats)
+    nc.close()
     await t.throws(() => {
-        nc.publish('foo');
-    }, {code: ErrorCode.CONN_CLOSED});
-});
+        nc.publish('foo')
+    }, {code: ErrorCode.CONN_CLOSED})
+})
 
 test('server info', async (t) => {
-    let lock = new Lock();
-    t.plan(4);
-    let sc = t.context as SC;
-    let nc = await connect(sc.server.nats);
-    nc.on('connect', (nc, url, info) => {
-        t.truthy(info);
+    t.plan(3)
+    let sc = t.context as SC
+    return connect(sc.server.nats)
+    .then((nc) => {
         //@ts-ignore
-        t.truthy(info.client_id > 0);
+        t.truthy(nc.nc.info.client_id > 0)
         //@ts-ignore
-        t.truthy(info.max_payload > 0);
+        t.truthy(nc.nc.info.max_payload > 0)
         //@ts-ignore
-        t.truthy(info.proto > 0);
-        lock.unlock();
-    });
-
-    await lock.latch;
-    nc.close();
-});
-
-test('timers are not left behind on close', async (t) => {
-    let lock = new Lock();
-    const s1 = await startServer();
-
-    t.plan(3);
-    let nc = await connect({
-        url: s1.nats,
-        reconnectTimeWait: 100,
-        maxReconnectAttempts: 1
-    });
-
-    nc.on('connect', async (nc) => {
-        const sub = await nc.subscribe("foo", () => {
-            t.fail("shouldn't have received an error or message");
-        }, {max: 1});
-        sub.setTimeout(3000);
-
-        nc.request("bar", 3000);
-
-        await nc.flush();
-        stopServer(s1);
-    });
-
-    nc.on('close', () => {
-        //@ts-ignore
-        t.is(nc.protocolHandler.pingTimer, undefined, "there should be no ping timer");
-
-        //@ts-ignore
-        const subcriptions = nc.protocolHandler.subscriptions;
-        const subs = subcriptions.all();
-        t.is(subs.length, 0, "there should be no subscriptions");
-
-        //@ts-ignore
-        const muxSubscriptions = nc.protocolHandler.muxSubscriptions;
-        const muxsubs = muxSubscriptions.all();
-        t.is(muxsubs.length, 0, "there should be no muxsubs");
-
-        lock.unlock()
-    });
-
-    await lock.latch;
-});
-
-test('reconnect sends unsubs', (t) => {
-    let conn : Client;
-    const lock = new Lock();
-    let unsubs = 0;
-    let pongs = 0;
-    t.plan(4);
-    const srv = net.createServer((c) => {
-        c.write(`INFO ${JSON.stringify({
-            server_id: 'TEST',
-            version: '0.0.0',
-            host: '127.0.0.1',
-            // @ts-ignore
-            port: srv.address.port,
-            auth_required: false
-        })}\r\n`);
-        c.on('data', (d) => {
-            const r = d.toString();
-            const lines = r.split('\r\n');
-            lines.forEach((line) => {
-                if (line === '') {
-                    return
-                }
-                if (/^CONNECT\s+/.test(line)) {
-                } else if (/^PING/.test(line)) {
-                    c.write('PONG\r\n');
-                } else if (/^PONG/.test(line)) {
-                    if (pongs === 0) {
-                        c.end();
-                        c.destroy();
-                    }
-                    pongs++;
-                } else if (/^SUB\s+/i.test(line)) {
-                    c.write('MSG test 1 11\r\nHello World\r\n');
-                } else if (/^UNSUB\s+/i.test(line)) {
-                    unsubs++;
-                    if (unsubs === 1) {
-                        const args = line.split(' ');
-                        t.is(args.length, 3);
-                        // number of messages to when to unsub
-                        t.is(args[2], '10');
-                    }
-                    if (unsubs === 2) {
-                        const args = line.split(' ');
-                        t.is(args.length, 3, args.join(':'));
-                        t.is(args[2], '9');
-                    }
-                    // kick the client on the pong
-                    c.write('PING\r\n');
-                } else if (/^MSG\s+/i.test(line)) {
-                } else if (/^INFO\s+/i.test(line)) {
-                } else {
-                    // unknown
-                }
-            })
-        });
-    });
-
-    srv.listen(0, () => {
-        // @ts-ignore
-        const {port} = srv.address();
-        connect({
-            port: port,
-            reconnect: true,
-            reconnectTimeWait: 250
-        } as ConnectionOptions).then((nc) => {
-            conn = nc;
-            nc.on('connect', () => {
-                nc.subscribe("test", (err, _) => {
-                    if (err) {
-                        t.fail(err.toString());
-                    }
-                }, { max: 10 });
-                nc.on('error', (err) => {
-                    t.fail(err.toString());
-                    lock.unlock();
-                });
-                nc.on('reconnect', () => {
-                    nc.flush(() => {
-                        process.nextTick(() => {
-                            nc.close();
-                            srv.close();
-                            lock.unlock();
-                        });
-                    })
-                });
-            });
-        });
-        srv.on('error', (err) => {
-            t.fail(err.message);
-        });
-    });
-    return lock.latch;
-});
+        t.truthy(nc.nc.info.proto > 0)
+    })
+})

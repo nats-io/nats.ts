@@ -44,7 +44,7 @@ async function addClusterServer(t: ExecutionContext, server: Server): Promise<Se
 function countImplicit(nc: Client): number {
     let count = 0;
     //@ts-ignore
-    nc.protocolHandler.servers.getServers().forEach(function (s) {
+    nc.nc.servers.getAll().forEach(function (s) {
         if (s.implicit) {
             count++;
         }
@@ -59,7 +59,7 @@ test('updates add', async (t) => {
     let lock = new Lock();
     let nc = await connect(s1.nats);
     //@ts-ignore
-    let servers = nc.protocolHandler.servers;
+    let servers = nc.nc.servers;
     t.is(servers.length(), 1);
     nc.on('serversChanged', (change) => {
         t.is(servers.length(), 2);
@@ -72,29 +72,36 @@ test('updates add', async (t) => {
 });
 
 test('updates remove', async (t) => {
-    t.plan(4);
+    t.plan(2);
     let s1 = registerServer(t, await startServer());
-    let s2 = await addClusterServer(t, s1);
-
+    let s2: Server
     let lock = new Lock();
-    let nc = await connect(s2.nats);
-    //@ts-ignore
-    let servers = nc.protocolHandler.servers;
-    nc.on('connect', () => {
-        t.is(servers.length(), 2);
-        nc.on('serversChanged', (change) => {
-            t.is(servers.length(), 1);
-            t.is(change.deleted.length, 1);
-            t.is(countImplicit(nc), 0);
-            lock.unlock();
-        });
 
-        setTimeout(() => {
-            stopServer(s1);
-        }, 200);
-    });
+    let changes = 0
+    const nc = await connect(s1.nats)
+    nc.on('serversChanged', (sc) => {
+        if (sc.added.length) {
+            t.pass()
+            changes += sc.added.length
+            setTimeout(() => {
+                stopServer(s2, () => {});
+            }, 600)
+        }
+        if (sc.deleted.length) {
+            t.pass()
+            changes += sc.added.length
+            setTimeout(() => {
+                nc.close()
+                lock.unlock()
+            }, 0)
+        }
+    })
 
-    return lock.latch;
+    setTimeout(async () => {
+        s2 = await addClusterServer(t, s1);
+    }, 250)
+
+    return lock.latch
 });
 
 test('reconnects to gossiped server', async (t) => {
@@ -105,17 +112,14 @@ test('reconnects to gossiped server', async (t) => {
     let lock = new Lock();
     let nc = await connect(s2.nats);
     //@ts-ignore
-    let servers = nc.protocolHandler.servers;
+    let servers = nc.nc.servers;
 
-    nc.on('connect', () => {
-        setTimeout(() => {
-            stopServer(s2);
-        }, 200);
-
-    });
+    setTimeout(() => {
+        stopServer(s2);
+    }, 200);
 
     nc.on('reconnect', () => {
-        t.is(servers.getCurrentServer().url.href, s1.nats);
+        t.is(servers.getCurrent().url.href, s1.nats);
         lock.unlock();
     });
 
@@ -130,28 +134,33 @@ test('fails after maxReconnectAttempts when servers killed', async (t) => {
 
     let lock = new Lock();
     let nc = await connect({url: s2.nats, maxReconnectAttempts: 10, reconnectTimeWait: 50});
+    //@ts-ignore
+    t.is(nc.nc.servers.getCurrent().toString(), s2.nats);
+
+    process.nextTick(() => {
+        stopServer(s2);
+    });
 
     let disconnects = 0;
     let reconnectings = 0;
-    nc.on('connect', (c, url) => {
-        t.is(url, s2.nats);
-        process.nextTick(() => {
-            stopServer(s2);
-        });
-    });
 
     nc.on('disconnect', () => {
         disconnects++;
     });
 
-    nc.on('reconnect', (c, url) => {
-        t.is(url, s1.nats);
-        nc.on('reconnecting', () => {
-            reconnectings++;
-        });
-        process.nextTick(() => {
-            stopServer(s1);
-        });
+    let firstReconnect = true
+    nc.on('reconnect', (c) => {
+        if (firstReconnect) {
+            firstReconnect = false
+            t.is(c.servers.getCurrent().toString(), s1.nats);
+            process.nextTick(() => {
+                stopServer(s1);
+            });
+        }
+    });
+
+    nc.on('reconnecting', () => {
+        reconnectings++;
     });
 
     nc.on('close', () => {

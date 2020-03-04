@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 The NATS Authors
+ * Copyright 2018-2020 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,11 +14,12 @@
  *
  */
 
-import test from 'ava';
-import {Lock, sleep} from './helpers/latch';
-import {SC, startServer, stopServer} from './helpers/nats_server_control';
-import {connect, Payload} from '../src/nats';
-import {next} from 'nuid';
+import test from 'ava'
+import {Lock, sleep} from './helpers/latch'
+import {SC, startServer, stopServer} from './helpers/nats_server_control'
+import {connect} from '../src/nats'
+import {next} from 'nuid'
+import {Payload} from 'nats'
 
 test.before(async (t) => {
     let server = await startServer();
@@ -32,7 +33,7 @@ test.after.always((t) => {
 test('should yield to other events', async (t) => {
     t.plan(2);
     let sc = t.context as SC;
-    let nc = await connect({url: sc.server.nats, json: true, yieldTime: 5});
+    let nc = await connect({url: sc.server.nats, payload: Payload.JSON, yieldTime: 5});
     let lock = new Lock();
     let last: number = -1;
 

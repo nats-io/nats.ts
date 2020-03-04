@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 The NATS Authors
+ * Copyright 2019-2020 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -15,9 +15,8 @@
  */
 
 import test from 'ava';
-import {Lock} from './helpers/latch';
 import {SC, startServer, stopServer, serverVersion} from './helpers/nats_server_control';
-import {connect, ConnectionOptions, ErrorCode, NatsError} from '../src/nats';
+import {connect, ConnectionOptions, ErrorCode} from '../src/nats';
 import path from 'path';
 import {next} from 'nuid';
 import {fromSeed} from 'ts-nkeys';
@@ -75,22 +74,16 @@ test('error when no nonceSigner callback is defined', async (t) => {
         t.pass('skipping server version ' + serverVersion());
         return;
     }
-    let lock = new Lock();
     t.plan(1);
-    let sc = t.context as SC;
-    let nc = await connect({url: sc.server.nats} as ConnectionOptions);
-    nc.on('error', (err) => {
-        let ne = err as NatsError;
-        t.is(ne.code, ErrorCode.SIGNATURE_REQUIRED);
-        lock.unlock();
-    });
-    nc.on('connect', () => {
-        t.fail('shouldn\'t have connected');
-        nc.close();
-        lock.unlock();
-    });
-
-    return lock.latch;
+    const sc = t.context as SC;
+    return connect({url: sc.server.nats} as ConnectionOptions)
+      .then((nc) => {
+          t.fail('should have failed to connect')
+          nc.close()
+      })
+      .catch((err) => {
+          t.is(err?.code, ErrorCode.SIGNATURE_REQUIRED)
+      })
 });
 
 test('error if nonceSigner is not function', async (t) => {
@@ -102,9 +95,14 @@ test('error if nonceSigner is not function', async (t) => {
     let sc = t.context as SC;
     //@ts-ignore - ts requires function
     let opts = {url: sc.server.nats, nonceSigner: 'BAD'} as ConnectionOptions;
-    await t.throwsAsync(() => {
-        return connect(opts);
-    }, {code: ErrorCode.SIGCB_NOTFUNC});
+    return connect(opts)
+      .then((nc) => {
+          t.fail('should have failed to connect')
+          nc.close()
+      })
+      .catch((err) => {
+          t.is(err?.code, ErrorCode.SIGCB_NOTFUNC)
+      })
 });
 
 test('error if no nkey or userJWT', async (t) => {
@@ -112,55 +110,39 @@ test('error if no nkey or userJWT', async (t) => {
         t.pass('skipping server version ' + serverVersion());
         return;
     }
-
-    let lock = new Lock();
     t.plan(1);
     let sc = t.context as SC;
     //@ts-ignore
-    let nc = await connect({
-        url: sc.server.nats, nonceSigner: function () {
-        }
-    } as ConnectionOptions);
-    nc.on('error', (err) => {
-        let ne = err as NatsError;
-        t.is(ne.code, ErrorCode.NKEY_OR_JWT_REQ);
-        lock.unlock();
-    });
-    nc.on('connect', () => {
-        t.fail('shouldn\'t have connected');
-        nc.close();
-        lock.unlock();
-    });
-
-    return lock.latch;
+    return connect({url: sc.server.nats, nonceSigner: function () {}} as ConnectionOptions)
+      .then((nc) => {
+          t.fail('should have not connected')
+          nc.close()
+      })
+      .catch((err) => {
+          t.is(err?.code, ErrorCode.NKEY_OR_JWT_REQ)
+      })
 });
 
-test('connects with userJWT and nonceSigner', async (t) => {
+test('connects with userJWT and nonceSigner', (t) => {
     if (serverVersion()[0] < 2) {
-        t.pass('skipping server version ' + serverVersion());
-        return;
+        t.pass('skipping server version ' + serverVersion())
+        return
     }
 
-    let lock = new Lock();
-    t.plan(1);
-    let sc = t.context as SC;
-    //@ts-ignore
-    let nc = await connect({
+    t.plan(1)
+    let sc = t.context as SC
+    return connect({
         url: sc.server.nats,
         userJWT: uJWT,
         nonceSigner: function (nonce: string): Buffer {
             let sk = fromSeed(Buffer.from(uSeed));
             return sk.sign(Buffer.from(nonce));
         }
-    } as ConnectionOptions);
-
-    nc.on('connect', () => {
-        t.pass();
-        nc.close();
-        lock.unlock();
-    });
-
-    return lock.latch;
+    } as ConnectionOptions)
+      .then((nc) => {
+          t.pass()
+          nc.close()
+      })
 });
 
 test('connects with userJWT function', async (t) => {
@@ -169,11 +151,9 @@ test('connects with userJWT function', async (t) => {
         return;
     }
 
-    let lock = new Lock();
     t.plan(1);
-    let sc = t.context as SC;
-    //@ts-ignore
-    let nc = await connect({
+    const sc = t.context as SC;
+    return connect({
         url: sc.server.nats,
         userJWT: function () {
             return uJWT;
@@ -182,15 +162,12 @@ test('connects with userJWT function', async (t) => {
             let sk = fromSeed(Buffer.from(uSeed));
             return sk.sign(Buffer.from(nonce));
         }
-    } as ConnectionOptions);
+    } as ConnectionOptions)
+      .then((nc) => {
+          t.pass();
+          nc.close();
+      })
 
-    nc.on('connect', () => {
-        t.pass();
-        nc.close();
-        lock.unlock();
-    });
-
-    return lock.latch;
 });
 
 test('connects with creds file', async (t) => {
@@ -199,22 +176,17 @@ test('connects with creds file', async (t) => {
         return;
     }
 
-    let lock = new Lock();
     t.plan(1);
-    let sc = t.context as SC;
+    const sc = t.context as SC;
     //@ts-ignore
-    let nc = await connect({
+    return connect({
         url: sc.server.nats,
         userCreds: path.join(confdir, 'nkeys', 'test.creds')
-    } as ConnectionOptions);
-
-    nc.on('connect', () => {
-        t.pass();
-        nc.close();
-        lock.unlock();
-    });
-
-    return lock.latch;
+    } as ConnectionOptions)
+      .then((nc) => {
+          t.pass()
+          nc.close()
+      })
 });
 
 test('fails connects with bad creds file', async (t) => {
@@ -222,22 +194,17 @@ test('fails connects with bad creds file', async (t) => {
         t.pass('skipping server version ' + serverVersion());
         return;
     }
-
-    let lock = new Lock();
-    t.plan(2);
+    t.plan(1);
     let sc = t.context as SC;
-    //@ts-ignore
-    let nc = await connect({
+    return connect({
         url: sc.server.nats,
         userCreds: path.join(confdir, 'nkeys', 'test.txt')
-    } as ConnectionOptions);
-
-    nc.on('error', (err) => {
-        t.is(err.code, 'ENOENT');
-        t.pass();
-        nc.close();
-        lock.unlock();
-    });
-
-    return lock.latch;
+    } as ConnectionOptions)
+      .then((nc) => {
+          t.fail('should have not connected')
+          nc.close()
+      })
+      .catch((err) => {
+          t.is(err?.code, ErrorCode.BAD_CREDS)
+      })
 });

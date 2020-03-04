@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 The NATS Authors
+ * Copyright 2018-2020 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -31,11 +31,16 @@ test.after.always((t) => {
     stopServer((t.context as SC).server);
 });
 
-async function macro(t: any, input: any, encoding: string) : Promise<any> {
+async function macro(t: any, input: any, encoding: string|Buffer) : Promise<any> {
     let max = 10000;
     t.plan(max);
     let sc = t.context as SC;
-    let nc = await connect({url: sc.server.nats, encoding: encoding} as ConnectionOptions);
+    const opts = { url: sc.server.nats }
+    if (encoding === 'binary') {
+        // @ts-ignore
+        opts.payload = Payload.BINARY
+    }
+    let nc = await connect(opts as ConnectionOptions);
     let subj = next();
     nc.subscribe(subj, (err, msg) => {
         if(err) {

@@ -15,27 +15,20 @@
  */
 
 import * as events from 'events';
-import * as tls from 'tls';
+
+import * as nats from 'nats';
+import {NatsError, ConnectionOptions, ErrorCode, createInbox, MsgCallback, SubscriptionOptions, Sub as sub, Msg, SubEvent} from "nats"
+export {NatsError, ConnectionOptions, ErrorCode, createInbox, MsgCallback, SubscriptionOptions, Msg, SubEvent} from "nats"
 import {existsSync} from "fs";
-import Timer = NodeJS.Timer;
 
-import * as nats from 'nats'
-import {NatsError, ConnectionOptions, ErrorCode, createInbox, MsgCallback, SubscriptionOptions, Callback, version} from "nats"
-export {NatsError, ConnectionOptions, ErrorCode, createInbox, MsgCallback, SubscriptionOptions} from "nats"
-
-export const VERSION = version;
-
-/**
- * @hidden
- */
-export interface Base {
-    subject: string;
-    callback: MsgCallback;
-    received: number;
-    timeout?: Timer;
-    max?: number | undefined;
-    draining?: boolean;
+// locate our package.json
+let pkgFile = __dirname + './../package.json';
+if (!existsSync(pkgFile)) {
+    // tests will find it here
+    pkgFile = __dirname + './../../package.json';
 }
+/** Version of the ts-nats library */
+export const VERSION = require(pkgFile).version;
 
 
 /** ServerInfo received from the server */
@@ -53,63 +46,12 @@ export interface ServerInfo {
     nkey?: string;
 }
 
-/** Argument provided to `subscribe` and `unsubscribe` event handlers. */
-export interface SubEvent {
-    /** subscription subject */
-    subject: string;
-    /** subscription id */
-    sid: number;
-    /** subscription queue name if a queue subscription */
-    queue?: string;
-}
-
 /** Argument provided to `serversChanged` event handlers. */
 export interface ServersChangedEvent {
     /** Server URLs learned via cluster gossip */
     added: string[];
     /** Removed server URLs (only added servers are removed). */
     deleted: string[];
-}
-
-export interface Base {
-    subject: string;
-    callback: MsgCallback;
-    received: number;
-    timeout?: Timer;
-    max?: number | undefined;
-    draining?: boolean;
-}
-
-
-/**
- * @hidden
- */
-export interface Sub extends Base {
-    sid: number;
-    queue?: string | null;
-}
-
-/**
- * @hidden
- */
-export interface Req extends Base {
-    token: string;
-}
-
-/**
- * Message object provided to subscription and requests.
- */
-export interface Msg {
-    /** subject used to publish the message */
-    subject: string;
-    /** optional reply subject where replies may be sent. */
-    reply?: string;
-    /** optional payload for the message. Type is controlled by [[ConnectionOptions.payload]]. */
-    data?: any;
-    /** Internal subscription id */
-    sid: number;
-    /** Number of bytes in the payload */
-    size: number;
 }
 
 /**
@@ -158,7 +100,7 @@ export interface YieldCallback {
 
 /** Optional callback argument for [[Client.flush]] */
 export interface FlushCallback {
-    (err?: NatsError): void;
+    (err: NatsError|null): void;
 }
 
 
@@ -176,120 +118,36 @@ export interface JWTProvider {
 /**
  * @deprecated - use ConnectionOptions
  */
-export interface NatsConnectionOptions   {
-    /** Requires server support 1.2.0+. When set to `true`, the server will not forward messages published by the client
-     * to the client's subscriptions. By default value is ignored unless it is set to `true` explicitly */
-    noEcho?: boolean;
-    /** Sets the encoding type used when dealing with [[Payload.STRING]] messages. Only node-supported encoding allowed. */
-    encoding?: BufferEncoding;
-    /** Maximum number of client PINGs that can be outstanding before the connection is considered stale. */
-    maxPingOut?: number;
-    /** Maximum number of consecutive reconnect attempts before the client closes the connection. Specify `-1` to retry forever. */
-    maxReconnectAttempts?: number;
-    /** A name for the client. Useful for identifying a client on the server monitoring and logs. */
-    name?: string;
-    /** When `true` does not randomize the order of servers provided to connect. */
-    noRandomize?: boolean;
-    /** User password. */
-    pass?: string;
-    /** Specifies the payload type of the message. See [[Payload]]. Payload determines [[Msg.data]] types and types published. */
-    payload?: Payload;
-    /** @hidden */
-    pedantic?: boolean;
-    /** Interval in milliseconds that the client will send PINGs to the server. See [[ConnectionOptions.maxPingOut]] */
-    pingInterval?: number;
-    /** Specifies the port on the localhost to make a connection. */
-    port?: number;
-    /** Specifies whether the client should attempt reconnects. */
-    reconnect?: boolean;
-    /** Specifies the interval in milliseconds between reconnect attempts. */
-    reconnectTimeWait?: number;
-    /** A list of server URLs where the client should attempt a connection. */
-    servers?: Array<string>;
-    /** If true, or set as a tls.TlsOption object, requires the connection to be secure. Fine grain tls settings, such as certificates can be specified by using a tls.TlsOptions object. */
-    tls?: boolean | tls.TlsOptions;
-    /** Token to use for authentication. */
-    token?: string;
-    /** Server URL where the client should attempt a connection */
-    url?: string;
-    /** NATS username. */
-    user?: string;
-    /** @hidden */
-    verbose?: boolean;
-    /** If true, the client will perform reconnect logic if it fails to connect when first started. Normal behaviour is for the client to try the supplied list of servers and close if none succeed. */
-    waitOnFirstConnect?: boolean;
-    /** Specifies the max amount of time the client is allowed to process inbound messages before yielding for other IO tasks. When exceeded the client will yield. */
-    yieldTime?: number;
-    /** Nonce signer - a function that signs the nonce challenge sent by the server. */
-    nonceSigner?: NonceSigner;
-    /** Public NKey Identifying the user. */
-    nkey?: string;
-    /** A JWT identifying the user. Can be a static JWT string, or a function that returns a JWT when called. */
-    userJWT?: string | JWTProvider;
-    /** Credentials file path - will automatically setup an `nkey` and `nonceSigner` that references the specified credentials file.*/
-    userCreds?: string;
-    /** nkey file path - will automatically setup an `nkey` and `nonceSigner` that references the specified nkey seed file.*/
-    nkeyCreds?: string;
-    /** number of milliseconds when making a connection to wait for the connection to succeed. Must be greater than zero. */
-    timeout?:number
-}
-
-/** @hidden */
-function defaultReq(): Req {
-    return {token: '', subject: '', received: 0, max: 1} as Req;
-}
+export interface NatsConnectionOptions extends ConnectionOptions  {}
 
 /**
  * NATS server Client object.
  */
-export class Client extends events.EventEmitter {
+export class Client implements events.EventEmitter {
     nc!: nats.Client;
     /** Returns an unique and properly formatted inbox subject that can be used for replies */
 
     /** @hidden */
     constructor(nc: nats.Client) {
-        super();
-        events.EventEmitter.call(this);
         this.nc = nc;
-        // this.addDebugHandlers()
     }
-
-    // private addDebugHandlers() {
-    //     let events = [
-    //         'close',
-    //         'connect',
-    //         'connecting',
-    //         'disconnect',
-    //         'error',
-    //         'permissionError',
-    //         'pingcount',
-    //         'pingtimer',
-    //         'reconnect',
-    //         'reconnecting',
-    //         'serversChanged',
-    //         'subscribe',
-    //         'unsubscribe',
-    //         'yield',
-    //     ];
-    //
-    //     function handler(name: string) {
-    //         return function(arg: any) {
-    //             console.log('debughdlr', name, [arg]);
-    //         }
-    //     }
-    //
-    //     events.forEach((e) => {
-    //         this.on(e, handler(e));
-    //     });
-    // }
 
     /** @hidden */
     static connect(opts?: ConnectionOptions | string | number): Promise<Client> {
         return new Promise((resolve, reject) => {
             const nc = nats.connect(opts as ConnectionOptions);
+            let rr = false
+            nc.on('error', (err) => {
+                if (!rr) {
+                    rr = true
+                    reject(err)
+                }
+            });
             nc.once('connect', (nc) => {
+                nc.removeAllListeners();
                 const c = new Client(nc);
                 c.nc = nc;
+                rr = true
                 resolve(c);
             });
         });
@@ -297,23 +155,22 @@ export class Client extends events.EventEmitter {
 
     /**
      * Flush outbound queue to server and call optional callback when server has processed all data.
-     * @param cb is optional, if not provided a Promise is returned. Flush is completed when promise resolves.
-     * @return Promise<void> or void if a callback was provided.
+     * @param cb is optional. Flush is completed when promise resolves.
+     * @return Promise<any>
      */
-    flush(cb?: FlushCallback): Promise<void> | void {
-        if (cb === undefined) {
-            return new Promise((resolve, reject) => {
-                this.nc?.flush((err) => {
-                    if (!err) {
-                        resolve();
-                    } else {
-                        reject();
-                    }
-                });
+    flush(cb?: FlushCallback): Promise<any> {
+        return new Promise((resolve, reject) => {
+            this.nc?.flush((err) => {
+                if (!err) {
+                    resolve();
+                } else {
+                    reject(err);
+                }
+                if (cb) {
+                    cb(err)
+                }
             });
-        } else {
-            this.nc.flush(cb as Callback);
-        }
+        });
     }
 
     /**
@@ -324,7 +181,7 @@ export class Client extends events.EventEmitter {
      */
     publish(subject: string, data: any = undefined, reply: string = ''): void {
         if (reply) {
-            this.nc.publishRequest(subject, data, reply)
+            this.nc.publishRequest(subject, reply, data)
         } else {
             this.nc.publish(subject, data);
         }
@@ -337,14 +194,23 @@ export class Client extends events.EventEmitter {
      * @param opts   Optional subscription options
      * @return Promise<Subscription>
      */
-    subscribe(subject: string, cb: MsgCallback, opts: SubscriptionOptions = {}): Promise<Subscription> {
-        const client = this;
-        return new Promise<Subscription>((resolve, reject) => {
-            const sid = this.nc.subscribe(subject, (err, m) => {
-                // @ts-ignore
-                cb(err, m);
+    subscribe(subject: string, cb: MsgCallback, opts: SubscriptionOptions = {}): Promise<Sub> {
+        return new Promise<Sub>( (resolve, reject) => {
+            if (typeof cb !== 'function') {
+                reject(new NatsError('requests require a callback', ErrorCode.API_ERROR));
+                return
+            }
+            const sub = this.nc.subscribe(subject, (err, _) => {
+                if (err) {
+                    reject(err)
+                }
             }, opts);
-            resolve(new Subscription(sid, client));
+            if (sub) {
+                // @ts-ignore
+                // swap the callback
+                sub.callback = cb;
+                resolve(new Sub(sub))
+            }
         });
     }
 
@@ -358,11 +224,11 @@ export class Client extends events.EventEmitter {
      */
     drain(): Promise<any> {
         return new Promise((resolve, reject) => {
-            this.nc?.drain((err) => {
-                if (!err) {
-                    resolve();
+            this.nc.drain((err) => {
+                if (err) {
+                    reject(err)
                 } else {
-                    reject();
+                    resolve()
                 }
             });
         });
@@ -405,7 +271,7 @@ export class Client extends events.EventEmitter {
      */
     isClosed(): boolean {
         // @ts-ignore
-        return this.nc.closed ;
+        return this.nc.closed === true ;
     }
 
     /**
@@ -416,6 +282,62 @@ export class Client extends events.EventEmitter {
     numSubscriptions(): number {
         return this.nc.numSubscriptions();
     }
+
+    // implement event emitter, and proxy all events from the underlying nats connection
+    addListener(event: string | symbol, listener: (...args: any[]) => void): this {
+        this.nc.addListener(event, listener);
+        return this;
+    }
+    on(event: string | symbol, listener: (...args: any[]) => void): this {
+        this.nc.on(event, listener);
+        return this;
+    }
+    once(event: string | symbol, listener: (...args: any[]) => void): this {
+        this.nc.once(event, listener);
+        return this;
+    }
+    removeListener(event: string | symbol, listener: (...args: any[]) => void): this {
+        this.nc.removeListener(event, listener);
+        return this;
+    }
+    off(event: string | symbol, listener: (...args: any[]) => void): this {
+        this.nc.off(event, listener);
+        return this;
+    }
+    removeAllListeners(event?: string | symbol): this {
+        this.nc.removeAllListeners(event);
+        return this;
+    }
+    setMaxListeners(n: number): this {
+        this.nc.setMaxListeners(n);
+        return this;
+    }
+    getMaxListeners(): number {
+        return this.nc.getMaxListeners();
+    }
+    listeners(event: string | symbol): Function[] {
+        return this.nc.listeners(event)
+    }
+    rawListeners(event: string | symbol): Function[] {
+        return this.nc.rawListeners(event);
+    }
+    emit(event: string | symbol, ...args: any[]): boolean {
+        return this.nc.emit(event, args);
+    }
+    listenerCount(type: string | symbol): number {
+        return this.nc.listenerCount(type);
+    }
+    prependListener(event: string | symbol, listener: (...args: any[]) => void): this {
+        this.nc.prependListener(event, listener);
+        return this;
+    }
+    prependOnceListener(event: string | symbol, listener: (...args: any[]) => void): this {
+        this.nc.prependOnceListener(event, listener);
+        return this;
+    }
+    eventNames(): Array<string | symbol> {
+        return this.nc.eventNames();
+    }
 }
 
 
@@ -424,32 +346,20 @@ export class Client extends events.EventEmitter {
  * @param opts
  * @return Promise<Client>
  */
-export function connect(opts?: ConnectionOptions | ConnectionOptions | string | number): Promise<Client> {
+export function connect(opts?: NatsConnectionOptions | ConnectionOptions | string | number): Promise<Client> {
     return Client.connect(opts);
 }
 
 /**
  * Type returned when a subscribe call resolved. Provides methods to manage the subscription.
  */
-export class Subscription {
-    client: Client;
-    sid: number;
+export class Sub {
+    sub: sub;
     /**
      * @hidden
      */
-    constructor(sid: number, client: Client) {
-        this.sid = sid;
-        this.client = client;
-    }
-
-    /**
-     * @hidden
-     */
-    static cancelTimeout(s: Sub | null): void {
-        if (s && s.timeout) {
-            clearTimeout(s.timeout);
-            delete s.timeout;
-        }
+    constructor(sub: sub) {
+        this.sub = sub;
     }
 
     /**
@@ -460,7 +370,7 @@ export class Subscription {
      * @see [[drain]]
      */
     unsubscribe(max?: number): void {
-        this.client.nc.unsubscribe(this.sid, max);
+        this.sub.unsubscribe(max);
     }
 
     /**
@@ -471,11 +381,11 @@ export class Subscription {
      * @see [[unsubscribe]]
      */
     drain(): Promise<any> {
-        const client = this.client;
+        const sub = this.sub;
         return new Promise<any>((resolve, reject) => {
-            client.nc.drainSubscription(this.sid, (err, sid) => {
+            sub.drain((err) => {
                 if (err) {
-                    reject(err);
+                    reject(err)
                 } else {
                     resolve(true)
                 }
@@ -487,29 +397,14 @@ export class Subscription {
      * Returns true if the subscription has an associated timeout.
      */
     hasTimeout(): boolean {
-        if (this.sid > 0) {
-            // @ts-ignore
-            const s = this.client.nc.subs[sid];
-            return s.timeout !== undefined;
-        } else {
-            // FIXME: requests timeout verification
-            return false
-        }
+        return this.sub.hasTimeout();
     }
 
     /**
      * Cancels a timeout associated with the subscription
      */
     cancelTimeout(): void {
-        if (this.sid > 0) {
-            // @ts-ignore
-            const s = this.client.nc.subs[sid];
-            if (s && s.timeout) {
-                clearTimeout(s.timeout);
-            }
-        } else {
-            // FIXME: requests timeout verification
-        }
+        this.sub.cancelTimeout();
     }
 
     /**
@@ -523,34 +418,17 @@ export class Subscription {
      * Returns `true` if the subscription was found and the timeout was registered.
      *
      * @param millis
+     * @param max - max number of messages
      */
-    setTimeout(millis: number): boolean {
-        this.cancelTimeout();
-        //@ts-ignore
-        let sub = this.client.nc.subs[this.sid];
-        if (sub) {
-            sub.timeout = setTimeout(() => {
-                if (sub.callback) {
-                    const mc = sub.callback as MsgCallback;
-                    mc(new NatsError(ErrorCode.TIMEOUT_ERR, ErrorCode.TIMEOUT_ERR), {} as Msg);
-                }
-                this.unsubscribe();
-            }, millis);
-            return true;
-        }
-        return false;
+    setTimeout(millis: number, max?: number): boolean {
+        return this.sub.setTimeout(millis, max);
     }
 
     /**
      * Returns the number of messages received by the subscription.
      */
     getReceived(): number {
-        // @ts-ignore
-        let sub = this.client.nc.subs[this.sid];
-        if (sub) {
-            return sub.received;
-        }
-        return 0;
+        return this.sub.getReceived();
     }
 
     /**
@@ -559,20 +437,14 @@ export class Subscription {
      * If `-1`, the subscription didn't specify a count for expected messages.
      */
     getMax(): number {
-        // @ts-ignore
-        let sub = this.client.nc.subs[this.sid];
-        if (sub) {
-            return sub.max;
-        }
-        return -1;
+        return this.sub.getMax();
     }
 
     /**
      * @return true if the subscription is not found.
      */
     isCancelled(): boolean {
-        // @ts-ignore
-        return this.client.nc.subs[this.sid] === undefined;
+        return this.sub.isCancelled()
     }
 
     /**
@@ -580,11 +452,19 @@ export class Subscription {
      * @see [[drain]]
      */
     isDraining(): boolean {
-        // @ts-ignore
-        let sub = this.client.nc.subs[this.sid]
-        if (sub) {
-            return sub.draining === true;
-        }
-        return false;
+        return this.sub.isDraining()
+    }
+
+    getID(): number {
+        return this.sub.getID()
+    }
+}
+
+/**
+ * @deprecated
+ */
+export class Subscription extends Sub {
+    constructor(sub: sub) {
+        super(sub);
     }
 }

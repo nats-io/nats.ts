@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 The NATS Authors
+ * Copyright 2018-2020 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -30,48 +30,34 @@ test.after.always((t) => {
     stopServer(t.context.server);
 });
 
-test('connection drains when no subs', async (t) => {
+test('connection drains and closes when no subs', async (t) => {
     t.plan(2);
     let sc = t.context as SC;
     let nc = await connect({url: sc.server.nats});
-    let dp = await nc.drain();
-    t.true(Array.isArray(dp));
-    t.is(dp.length, 0);
-    nc.close();
+    return nc.drain()
+        .then((err) => {
+            t.falsy(err)
+            t.true(nc.isClosed())
+        })
 });
 
 test('connection drain', async (t) => {
-    t.plan(5);
-    let lock = new Lock();
-    let sc = t.context as SC;
-    let subj = createInbox();
+    t.plan(4)
+    let sc = t.context as SC
+    let subj = createInbox()
 
-    let nc1 = await connect({url: sc.server.nats});
-    let c1 = 0;
+    let nc1 = await connect({url: sc.server.nats})
+    let drained = false
     let s1 = await nc1.subscribe(subj, () => {
-        c1++;
-        if (c1 === 1) {
-            let dp = nc1.drain();
-            dp.then((subs: SubEvent[]) => {
-                t.is(subs.length, 1);
-                if (subs[0].sid) {
-                    t.is(subs[0].sid, s1.sid);
-                } else {
-                    t.fail('unexpected resolve');
-                }
-                lock.unlock();
-            })
-                .catch((ex) => {
-                    t.fail(ex);
-                });
+        if (! drained) {
+            t.pass()
+            drained = true
+            nc1.drain()
         }
-    }, {queue: 'q1'});
+    }, {queue: 'q1'})
 
-    let nc2 = await connect({url: sc.server.nats});
-    let c2 = 0;
-    let s2 = await nc2.subscribe(subj, () => {
-        c2++;
-    }, {queue: 'q1'});
+    let nc2 = await connect({url: sc.server.nats})
+    let s2 = await nc2.subscribe(subj, () => {}, {queue: 'q1'});
 
     await nc1.flush();
     await nc2.flush();
@@ -79,15 +65,17 @@ test('connection drain', async (t) => {
     for (let i = 0; i < 10000; i++) {
         nc2.publish(subj);
     }
-    await nc2.flush();
-    // @ts-ignore
 
-    await lock.latch;
+    return nc2.drain()
+        .then(() => {
+            t.is(s1.getReceived() + s2.getReceived(), 10000);
+            t.true(s1.getReceived() >= 1, 's1 got more than one message');
+            t.true(s2.getReceived() >= 1, 's2 got more than one message');
+        })
+        .catch((err) => {
+            t.log(err)
+        })
 
-    t.is(c1 + c2, 10000);
-    t.true(c1 >= 1, 's1 got more than one message');
-    t.true(c2 >= 1, 's2 got more than one message');
-    nc2.close();
 });
 
 test('subscription drain', async (t) => {
@@ -103,17 +91,15 @@ test('subscription drain', async (t) => {
         if (!s1.isDraining()) {
             // resolve when done
             s1.drain()
-                .then((se: SubEvent) => {
-                    t.is(se.sid, s1.sid);
+                .then(() => {
+                    t.pass();
                     lock.unlock();
                 });
         }
     }, {queue: 'q1'});
 
     let c2 = 0;
-    let s2 = await nc.subscribe(subj, () => {
-        c2++;
-    }, {queue: 'q1'});
+    await nc.subscribe(subj, () => { c2++;}, {queue: 'q1'});
 
 
     // first notification is the unsubscribe notification
@@ -121,7 +107,7 @@ test('subscription drain', async (t) => {
     let handled = false;
     nc.on('unsubscribe', (se: SubEvent) => {
         if (!handled) {
-            t.is(se.sid, s1.sid);
+            t.is(se.sid, s1.getID());
             handled = true;
         }
     });
@@ -140,55 +126,43 @@ test('subscription drain', async (t) => {
 });
 
 test('publisher drain', async (t) => {
-    t.plan(5);
+    t.plan(4);
     let lock = new Lock();
-    let sc = t.context as SC;
-    let subj = createInbox();
+    let sc = t.context as SC
+    let subj = createInbox()
 
-    let nc1 = await connect({url: sc.server.nats});
-    let c1 = 0;
-    let s1 = await nc1.subscribe(subj, () => {
-        c1++;
-        if (c1 === 1) {
-            let dp = nc1.drain();
+    const nc1 = await connect({url: sc.server.nats})
+    const s1 = await nc1.subscribe(subj, () => {
+        if (s1.getReceived() === 1) {
             for (let i = 0; i < 100; i++) {
-                nc1.publish(subj);
+                nc1.publish(subj)
             }
-            dp.then((subs: SubEvent[]) => {
-                t.is(subs.length, 1);
-                if (subs[0].sid) {
-                    t.is(subs[0].sid, s1.sid);
-                } else {
-                    t.fail('unexpected resolve');
-                }
-                lock.unlock();
+            nc1.drain().then(() => {
+                t.pass()
+                lock.unlock()
             })
-                .catch((ex) => {
-                    t.fail(ex);
-                });
+            .catch((ex) => {
+                t.fail(ex)
+                lock.unlock()
+            });
         }
-    }, {queue: 'q1'});
+    }, {queue: 'q1'})
 
+    const nc2 = await connect({url: sc.server.nats});
+    const s2 = await nc2.subscribe(subj, () => {}, {queue: 'q1'})
 
-    let nc2 = await connect({url: sc.server.nats});
-    let c2 = 0;
-    let s2 = await nc2.subscribe(subj, () => {
-        c2++;
-    }, {queue: 'q1'});
-
-    await nc1.flush();
+    await nc1.flush()
+    await nc2.flush()
 
     for (let i = 0; i < 10000; i++) {
         nc2.publish(subj);
     }
-    await nc2.flush();
+    await nc2.drain();
+    await lock.latch
 
-    await lock.latch;
-
-    t.is(c1 + c2, 10000 + 100);
-    t.true(c1 >= 1, 's1 got more than one message');
-    t.true(c2 >= 1, 's2 got more than one message');
-    nc2.close();
+    t.is(s1.getReceived() + s2.getReceived(), 10100);
+    t.true(s1.getReceived() >= 1, 's1 got more than one message');
+    t.true(s2.getReceived() >= 1, 's2 got more than one message');
 });
 
 test('publish after drain fails', async (t) => {
@@ -196,8 +170,7 @@ test('publish after drain fails', async (t) => {
     let sc = t.context as SC;
     let subj = createInbox();
     let nc = await connect({url: sc.server.nats});
-    let sub = nc.subscribe(subj, () => {
-    });
+    nc.subscribe(subj, () => {});
     await nc.drain();
     try {
         nc.publish(subj);
@@ -215,7 +188,7 @@ test('reject reqrep during connection drain', async (t) => {
 
     // start a service for replies
     let nc1 = await connect(sc.server.nats);
-    let sub = await nc1.subscribe(subj + 'a', (err, msg) => {
+    await nc1.subscribe(subj + 'a', (err, msg) => {
         if (msg.reply) {
             nc1.publish(msg.reply, 'ok');
         }
@@ -234,7 +207,7 @@ test('reject reqrep during connection drain', async (t) => {
             nc2.drain();
             try {
                 // should fail
-                let rep = await nc2.request(subj + 'a', 1000);
+                await nc2.request(subj + 'a', 1000);
                 t.fail('shouldn\'t have been able to request');
                 lock.unlock();
             } catch (err) {
@@ -261,42 +234,39 @@ test('reject drain on closed', async (t) => {
     }, {code: ErrorCode.CONN_CLOSED});
 });
 
-test('reject drain on draining', async (t) => {
-    t.plan(1);
-    let sc = t.context as SC;
-    let nc1 = await connect(sc.server.nats);
-    nc1.drain();
-    await t.throwsAsync(() => {
-        return nc1.drain();
-    }, {code: ErrorCode.CONN_DRAINING});
-});
-
 test('reject subscribe on draining', async (t) => {
-    t.plan(1);
-    let sc = t.context as SC;
-    let nc1 = await connect(sc.server.nats);
-    nc1.drain();
-    await t.throwsAsync(() => {
-        return nc1.subscribe('foo', () => {});
-    }, {code: ErrorCode.CONN_DRAINING});
-});
+    t.plan(1)
+    let sc = t.context as SC
+    let nc1 = await connect(sc.server.nats)
+    nc1.drain()
+    return nc1.subscribe('foo', () => {})
+        .then(() => {
+            t.fail('subscribe should have failed')
+        })
+        .catch((err) => {
+            t.truthy(err)
+        })
+})
 
-test.skip('reject subscription drain on closed sub', async (t) => {
-    // t.plan(1);
-    // let sc = t.context as SC;
-    // let nc1 = await connect(sc.server.nats);
-    // let sub = await nc1.subscribe('foo', () => {});
-    // await sub.drain();
-    // await t.throwsAsync(() => {
-    //     return sub.drain();
-    // }, {code: ErrorCode.SUB_CLOSED});
+test('drain cancels subs and emits', async (t) => {
+    t.plan(2);
+    const sc = t.context as SC;
+    const nc = await connect(sc.server.nats);
+    const sub = await nc.subscribe('foo', () => {});
+    nc.on('unsubscribe', () => {
+        t.pass()
+    })
+    return sub.drain()
+        .then(() => {
+            t.truthy(sub.isCancelled())
+        })
 });
 
 test('connection is closed after drain', async (t) => {
     t.plan(1);
     let sc = t.context as SC;
     let nc1 = await connect(sc.server.nats);
-    let sub = await nc1.subscribe('foo', () => {});
+    await nc1.subscribe('foo', () => {});
     await nc1.drain();
     t.true(nc1.isClosed());
 });
@@ -330,8 +300,7 @@ test('reject subscription drain on draining sub', async (t) => {
     let sc = t.context as SC;
     let nc1 = await connect(sc.server.nats);
     let subj = createInbox();
-    let done = false;
-    let sub = await nc1.subscribe(subj, async (err, msg) => {
+    let sub = await nc1.subscribe(subj, async () => {
         sub.drain();
         await t.throwsAsync(() => {
             return sub.drain();

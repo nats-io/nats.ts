@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 The NATS Authors
+ * Copyright 2018-2020 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,10 +14,9 @@
  *
  */
 
-import {connect, ErrorCode, NatsError} from '../src/nats';
+import {connect, ErrorCode} from '../src/nats';
 import test from 'ava';
 import {SC, startServer, stopServer} from './helpers/nats_server_control';
-import {Lock, wait} from './helpers/latch';
 
 
 test.before(async (t) => {
@@ -29,44 +28,42 @@ test.after.always((t) => {
     stopServer((t.context as SC).server);
 });
 
-test.skip('token no auth', async (t) => {
-    // t.plan(3);
-    // let lock = new Lock();
-    // let sc = t.context as SC;
-    // let nc = await connect({url: sc.server.nats});
-    // nc.on('error', (err) => {
-    //     t.truthy(err);
-    //     t.regex(err.message, /Authorization/);
-    //     let ne = err as NatsError;
-    //     t.is(ne.code, ErrorCode.AUTHORIZATION_VIOLATION);
-    //     lock.unlock();
-    // });
-    // return lock.latch;
+test('token no auth', async (t) => {
+    t.plan(3);
+    const sc = t.context as SC;
+    return connect({url: sc.server.nats})
+      .then((nc) => {
+          t.fail('should have failed to connect')
+          nc.close()
+      })
+      .catch((err) => {
+          t.truthy(err);
+          t.regex(err.message, /Authorization/);
+          t.is(err?.code, ErrorCode.BAD_AUTHENTICATION);
+      })
 });
 
-test.skip('token bad auth', async (t) => {
-    // t.plan(3);
-    // let lock = new Lock();
-    // let sc = t.context as SC;
-    // let nc = await connect({url: sc.server.nats, token: 'bad'});
-    // nc.on('error', (err) => {
-    //     t.truthy(err);
-    //     t.regex(err.message, /Authorization/);
-    //     let ne = err as NatsError;
-    //     t.is(ne.code, ErrorCode.AUTHORIZATION_VIOLATION);
-    //     lock.unlock();
-    // });
-    // return lock.latch;
+test('token bad auth', async (t) => {
+    t.plan(3);
+    const sc = t.context as SC;
+    return connect({url: sc.server.nats, token: 'bad'})
+      .then((nc) => {
+          t.fail('should have failed to connect')
+          nc.close()
+      })
+      .catch((err) => {
+          t.truthy(err);
+          t.regex(err.message, /Authorization/);
+          t.is(err?.code, ErrorCode.BAD_AUTHENTICATION);
+      })
 });
 
 test('token auth', async (t) => {
-    t.plan(1);
-    let sc = t.context as SC;
-    let nc = await connect({url: sc.server.nats, token: 'tokenxxxx'});
-    nc.on('error', (err) => {
-        t.fail(err);
-    });
-    await wait(500);
-    nc.close();
-    t.pass();
+    t.plan(1)
+    const sc = t.context as SC
+    return connect({url: sc.server.nats, token: 'tokenxxxx'})
+      .then((nc) => {
+          t.pass()
+          nc.close()
+      })
 });

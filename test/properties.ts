@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 The NATS Authors
+ * Copyright 2018-2020 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -15,7 +15,7 @@
  */
 
 import test, {ExecutionContext} from 'ava';
-import {connect, ConnectionOptions, Payload, VERSION, ErrorCode} from '../src/nats';
+import {connect, ConnectionOptions, VERSION, ErrorCode} from '../src/nats';
 import {SC, Server, startServer, stopServer} from './helpers/nats_server_control';
 import {Lock} from './helpers/latch';
 import * as mockserver from './helpers/mock_server';
@@ -54,21 +54,19 @@ test('connect is a function', (t) => {
 });
 
 test('default connect properties', async (t) => {
-    let lock = new Lock();
     let sc = t.context as SC;
-    let c = await connect(sc.server.nats);
-    c.on('connect', () => {
+    return connect(sc.server.nats)
+    .then((nc) => {
         //@ts-ignore
-        let opts = c.protocolHandler.options as ConnectionOptions;
+        let opts = nc.nc.options as ConnectionOptions;
         t.is(opts.verbose, false);
         t.is(opts.pedantic, false);
         t.is(opts.user, undefined);
         t.is(opts.pass, undefined);
         t.is(opts.token, undefined);
         t.is(opts.name, undefined);
-        lock.unlock();
-    });
-    return lock.latch;
+        nc.close()
+    })
 });
 
 test('noEcho', async (t) => {
@@ -79,7 +77,7 @@ test('noEcho', async (t) => {
     let cp = connect({url: sc.server.nats, noEcho: true});
     cp.then(async (nc) => {
         let c2 = 0;
-        let sub2 = nc.subscribe(subj, () => {
+        nc.subscribe(subj, () => {
             c2++;
         });
         nc.publish(subj);
@@ -99,7 +97,6 @@ test('noEcho', async (t) => {
 });
 
 test('noEcho not supported', async (t) => {
-    let lock = new Lock();
     let server = new mockserver.ScriptedServer(0);
     try {
         await server.start();
@@ -107,14 +104,11 @@ test('noEcho not supported', async (t) => {
         t.fail('failed to start the mock server');
         return;
     }
-    t.plan(1);
-
-    let nc = await connect({port: server.port, noEcho: true, reconnect: false} as ConnectionOptions);
-    nc.on('error', (err) => {
-        t.is(err.code, ErrorCode.NO_ECHO_NOT_SUPPORTED);
-        lock.unlock();
-    });
-
-    // test times out if it were to connect
-    await lock.latch;
+    return connect({port: server.port, noEcho: true, reconnect: false} as ConnectionOptions)
+    .then((nc) => {
+        t.fail('should have not connected')
+        nc.close()
+    }).catch((err) => {
+        t.is(err?.code, ErrorCode.NO_ECHO_NOT_SUPPORTED);
+    })
 });

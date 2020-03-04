@@ -40,51 +40,38 @@ function registerServer(s: Server, t: any) {
 
 test('connect with port', async (t) => {
     t.plan(1);
-    let lock = new Lock();
     let sc = t.context as SC;
     let u = new url.URL(sc.server.nats);
     let port = parseInt(u.port, 10);
-
-    let nc = await connect(port);
-    nc.on('connect', (c) => {
-        t.truthy(c);
-        nc.close();
-        lock.unlock();
-    });
-    return lock.latch;
+    return connect(port)
+    .then(nc => {
+        t.pass()
+        nc.close()
+    })
 });
 
 test('connect with url argument', async (t) => {
     t.plan(1);
-    let lock = new Lock();
     let sc = t.context as SC;
-
-    let nc = await connect(sc.server.nats);
-    nc.on('connect', (c) => {
-        t.truthy(c);
-        nc.close();
-        lock.unlock();
-    });
-    return lock.latch;
+    return connect(sc.server.nats)
+    .then((nc) => {
+        t.pass()
+        nc.close()
+    })
 });
 
 test('connect with url in options', async (t) => {
     t.plan(1);
-    let lock = new Lock();
     let sc = t.context as SC;
-
-    let nc = await connect({url: sc.server.nats});
-    nc.on('connect', (c) => {
-        t.truthy(c);
-        nc.close();
-        lock.unlock();
-    });
-    return lock.latch;
+    return connect({url: sc.server.nats})
+    .then((nc) => {
+        t.pass()
+        nc.close()
+    })
 });
 
 test('should receive when some servers are invalid', async (t) => {
     t.plan(1);
-    let lock = new Lock();
     let sc = t.context as SC;
 
     let servers = ['nats://localhost:7', sc.server.nats];
@@ -96,19 +83,16 @@ test('should receive when some servers are invalid', async (t) => {
             t.fail(err.message);
         } else {
             t.pass();
-            nc.close();
-            lock.unlock();
         }
-    });
-
+    })
     nc.publish(subj);
-    return lock.latch;
+    await nc.flush()
+    nc.close()
 });
 
 test('reconnect events', async (t) => {
     t.plan(2);
     let lock = new Lock();
-
     let server = await startServer();
     registerServer(server, t);
 
@@ -116,18 +100,16 @@ test('reconnect events', async (t) => {
         url: server.nats,
         waitOnFirstConnect: true,
         reconnectTimeWait: 100,
-        maxReconnectAttempts: 10
+        maxReconnectAttempts: 5
     });
 
     let reconnecting = 0;
     let stopTime = 0;
-    nc.on('connect', () => {
-        setTimeout(() => {
-            stopServer(server, () => {
-                stopTime = Date.now();
-            });
-        }, 100);
-    });
+    setTimeout(() => {
+        stopServer(server, () => {
+            stopTime = Date.now();
+        });
+    }, 100);
 
     let disconnects = 0;
     nc.on('disconnect', () => {
@@ -143,7 +125,7 @@ test('reconnect events', async (t) => {
     });
 
     nc.on('close', () => {
-        t.is(reconnecting, 10, 'reconnecting count');
+        t.is(reconnecting, 5, 'reconnecting count');
         t.is(disconnects, 1, 'disconnect count');
         lock.unlock();
     });
@@ -163,11 +145,9 @@ test('reconnect not emitted if suppressed', async (t) => {
         reconnect: false
     });
 
-    nc.on('connect', () => {
-        setTimeout(() => {
-            stopServer(server);
-        }, 100);
-    });
+    setTimeout(() => {
+        stopServer(server);
+    }, 100);
 
     let disconnects = 0;
     nc.on('disconnect', () => {
@@ -200,14 +180,12 @@ test('reconnecting after proper delay', async (t) => {
         maxReconnectAttempts: 1
     });
 
-    let serverLastConnect = 0;
-    nc.on('connect', () => {
-        //@ts-ignore
-        serverLastConnect = nc.protocolHandler.servers.getCurrentServer().lastConnect;
-        setTimeout(() => {
-            stopServer(server);
-        }, 100);
-    });
+    //@ts-ignore
+    let serverLastConnect = nc.nc.servers.getCurrent().lastConnect;
+    //@ts-ignore
+    setTimeout(() => {
+        stopServer(server);
+    }, 100);
 
     let disconnect = 0;
     nc.on('disconnect', () => {
@@ -224,59 +202,59 @@ test('reconnecting after proper delay', async (t) => {
 
     return lock.latch;
 });
-
-test('indefinite reconnects', async (t) => {
-    let lock = new Lock();
-    t.plan(3);
-
-    let server: Server | null;
-    server = await startServer();
-    registerServer(server, t);
-
-    let u = new url.URL(server.nats);
-    let port = parseInt(u.port, 10);
-
-    let nc = await connect({
-        url: server.nats,
-        reconnectTimeWait: 100,
-        maxReconnectAttempts: -1
-    });
-
-    nc.on('connect', () => {
-        setTimeout(() => {
-            stopServer(server, () => {
-                server = null;
-            });
-        }, 100);
-    });
-
-    setTimeout(async () => {
-        server = await startServer(['-p', port.toString()]);
-        registerServer(server, t);
-    }, 1000);
-
-
-    let disconnects = 0;
-    nc.on('disconnect', () => {
-        disconnects++;
-    });
-
-    let reconnectings = 0;
-    nc.on('reconnecting', () => {
-        reconnectings++;
-    });
-
-    let reconnects = 0;
-    nc.on('reconnect', () => {
-        reconnects++;
-        nc.flush(() => {
-            nc.close();
-            t.true(reconnectings >= 5);
-            t.is(reconnects, 1);
-            t.is(disconnects, 1);
-            lock.unlock();
-        });
-    });
-
-    return lock.latch;
-});
+//
+// test('indefinite reconnects', async (t) => {
+//     let lock = new Lock();
+//     t.plan(3);
+//
+//     let server: Server | null;
+//     server = await startServer();
+//     registerServer(server, t);
+//
+//     let u = new url.URL(server.nats);
+//     let port = parseInt(u.port, 10);
+//
+//     let nc = await connect({
+//         url: server.nats,
+//         reconnectTimeWait: 100,
+//         maxReconnectAttempts: -1
+//     });
+//
+//     nc.on('connect', () => {
+//         setTimeout(() => {
+//             stopServer(server, () => {
+//                 server = null;
+//             });
+//         }, 100);
+//     });
+//
+//     setTimeout(async () => {
+//         server = await startServer(['-p', port.toString()]);
+//         registerServer(server, t);
+//     }, 1000);
+//
+//
+//     let disconnects = 0;
+//     nc.on('disconnect', () => {
+//         disconnects++;
+//     });
+//
+//     let reconnectings = 0;
+//     nc.on('reconnecting', () => {
+//         reconnectings++;
+//     });
+//
+//     let reconnects = 0;
+//     nc.on('reconnect', () => {
+//         reconnects++;
+//         nc.flush(() => {
+//             nc.close();
+//             t.true(reconnectings >= 5);
+//             t.is(reconnects, 1);
+//             t.is(disconnects, 1);
+//             lock.unlock();
+//         });
+//     });
+//
+//     return lock.latch;
+// });

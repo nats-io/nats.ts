@@ -15,7 +15,7 @@
  */
 
 import test from 'ava';
-import {Client, connect, ConnectionOptions, ErrorCode} from '../src/nats';
+import {Client, connect, ConnectionOptions} from '../src/nats';
 import {Lock} from './helpers/latch';
 import * as net from "net";
 import {SC, startServer, stopServer} from "./helpers/nats_server_control";
@@ -31,7 +31,6 @@ test.after.always((t) => {
     // @ts-ignore
     stopServer(t.context.server);
 });
-
 
 test('timer pings are sent', async (t) => {
     const lock = new Lock();
@@ -50,7 +49,7 @@ test('timer pings are sent', async (t) => {
 test('missed timer pings reconnect', (t) => {
     let conn : Client;
     const lock = new Lock();
-    t.plan(3);
+    t.plan(4);
     const srv = net.createServer((c) => {
         let firstPing = true;
         c.write(`INFO ${JSON.stringify({
@@ -89,19 +88,19 @@ test('missed timer pings reconnect', (t) => {
         connect({
             port: port,
             reconnectTimeWait: 250,
-            pingInterval: 100
+            pingInterval: 100,
+            maxReconnectAttempts: 1
         } as ConnectionOptions).then((nc) => {
             conn = nc;
-            nc.on('error', (err) => {
-                t.is(err.code, ErrorCode.NATS_PROTOCOL_ERR);
-                t.is(err.message, ErrorCode.STALE_CONNECTION_ERR);
-            });
             nc.on('reconnect', () => {
                 t.pass();
                 nc.close();
                 srv.close();
                 lock.unlock();
             });
+            nc.on('pingcount', () => {
+                t.pass()
+            })
         });
         srv.on('error', (err) => {
             t.fail(err.message);

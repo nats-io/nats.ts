@@ -17,7 +17,6 @@
 import {SC, startServer, stopServer} from './helpers/nats_server_control';
 import test, {ExecutionContext} from 'ava';
 import {connect} from '../src/nats';
-import {Lock} from './helpers/latch';
 
 
 test.before(async (t) => {
@@ -48,41 +47,44 @@ test('has multiple servers', async (t) => {
     let nc = await connect({servers: a});
 
     //@ts-ignore
-    let servers = nc.protocolHandler.servers;
+    let servers = nc.nc.servers;
     t.is(servers.length(), a.length);
     nc.close();
 });
 
 test('connects to first valid server', async (t) => {
-    let lock = new Lock();
     let a = getServers(t);
     a.splice(0, 0, 'nats://localhost:7');
-    let nc = await connect({servers: a});
-    nc.on('connect', () => {
-        t.pass();
-        nc.close();
-        lock.unlock();
-    });
-
-    return lock.latch;
+    return connect({servers: a})
+    .then((nc) => {
+        t.pass()
+        nc.close()
+    })
 });
 
 test('reject if no valid server', async (t) => {
     t.plan(1);
     let a = ['nats://localhost:7'];
-    await t.throwsAsync(() => {
-        return connect({servers: a, reconnectTimeWait: 50});
-    }, {code: 'ECONNREFUSED'});
+    return connect({servers: a, reconnectTimeWait: 50})
+    .then(() => {
+        t.fail('should have not connected')
+    })
+    .catch((err) => {
+        t.is(err?.code, 'CONN_ERR')
+    })
 });
 
 test('throws if no valid server', async (t) => {
     t.plan(1);
     let a = ['nats://localhost:7', 'nats://localhost:9'];
-    try {
-        await connect({servers: a, reconnectTimeWait: 50});
-    } catch (ex) {
-        t.is(ex.code, 'ECONNREFUSED');
-    }
+    return connect({servers: a, reconnectTimeWait: 50})
+    .then(() => {
+        t.fail('should have not connected')
+    })
+    .catch((err) => {
+        t.is(err?.code, 'CONN_ERR')
+    })
+
 });
 
 test('random server connections', async (t) => {
@@ -92,7 +94,7 @@ test('random server connections', async (t) => {
     for (let i = 0; i < 100; i++) {
         let nc = await connect({servers: getServers(t)});
         //@ts-ignore
-        let s = nc.protocolHandler.servers.getCurrentServer();
+        let s = nc.nc.servers.getCurrent();
         //@ts-ignore
         if (s.toString() === first) {
             count++;
@@ -113,7 +115,7 @@ test('no random server if noRandomize', async (t) => {
     for (let i = 0; i < 100; i++) {
         let nc = await connect({servers: servers, noRandomize: true});
         //@ts-ignore
-        let s = nc.protocolHandler.currentServer;
+        let s = nc.nc.servers.getCurrent();
         t.is(s.toString(), first.toString());
         nc.close();
     }

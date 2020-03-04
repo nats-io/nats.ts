@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 The NATS Authors
+ * Copyright 2018-2020 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,12 +14,12 @@
  *
  */
 
-import test from 'ava';
-import {connect, ErrorCode, ConnectionOptions, Payload} from '../src/nats';
-import {Lock} from './helpers/latch';
-import {SC, startServer, stopServer} from './helpers/nats_server_control';
-import {next} from 'nuid';
-import {createInbox} from "nats";
+import test from 'ava'
+import {connect, ConnectionOptions, ErrorCode} from '../src/nats'
+import {Lock} from './helpers/latch'
+import {SC, startServer, stopServer} from './helpers/nats_server_control'
+import {next} from 'nuid'
+import {createInbox, Payload} from "nats"
 
 
 test.before(async (t) => {
@@ -37,16 +37,16 @@ test('connect no json propagates options', async (t) => {
     let sc = t.context as SC;
     let nc = await connect({url: sc.server.nats});
     //@ts-ignore
-    t.is(nc.protocolHandler.payload, Payload.STRING, 'default payload');
+    t.is(nc.nc.options.encoding, "utf8");
     nc.close();
 });
 
 test('connect json propagates options', async (t) => {
     t.plan(1);
     let sc = t.context as SC;
-    let nc = await connect({url: sc.server.nats, json: true});
+    let nc = await connect({url: sc.server.nats, payload: Payload.JSON});
     //@ts-ignore
-    t.is(nc.protocolHandler.payload, Payload.JSON);
+    t.is(nc.nc.options.payload, Payload.JSON);
     nc.close();
 });
 
@@ -56,7 +56,7 @@ test('pubsub should fail circular json', async (t) => {
     let o = {};
     //@ts-ignore
     o.a = o;
-    let nc = await connect({url: sc.server.nats, json: true});
+    let nc = await connect({url: sc.server.nats, payload: Payload.JSON});
     t.throws(() => {
         nc.publish(next(), o);
     }, {code: ErrorCode.BAD_JSON});
@@ -69,7 +69,7 @@ test('reqrep should fail circular json', async (t) => {
     let o = {};
     //@ts-ignore
     o.a = o;
-    let nc = await connect({url: sc.server.nats, json: true});
+    let nc = await connect({url: sc.server.nats, payload: Payload.JSON});
     await t.throwsAsync(nc.request(next(), 1000, o), {code: ErrorCode.BAD_JSON});
     nc.close();
 });
@@ -79,7 +79,7 @@ async function pubsub(t: any, input: any): Promise<any> {
     let lock = new Lock();
     try {
         let sc = t.context as SC;
-        let nc = await connect({url: sc.server.nats, json: true});
+        let nc = await connect({url: sc.server.nats, payload: Payload.JSON});
         let subj = next();
         nc.subscribe(subj, (err, msg) => {
             if (err) {
@@ -108,7 +108,7 @@ async function reqrep(t: any, input: any): Promise<any> {
     let lock = new Lock();
     try {
         let sc = t.context as SC;
-        let nc = await connect({url: sc.server.nats, json: true});
+        let nc = await connect({url: sc.server.nats, payload: Payload.JSON});
         let subj = next();
         nc.subscribe(subj, (err, msg) => {
             if (msg.reply) {
@@ -150,7 +150,7 @@ const complex = {
 test('subscribe subject should be in subject ', async (t) => {
     t.plan(2);
     let sc = t.context as SC;
-    let nc = await connect({url: sc.server.nats, payload: Payload.STRING} as ConnectionOptions);
+    let nc = await connect({url: sc.server.nats} as ConnectionOptions);
     let jnc = await connect({url: sc.server.nats, payload: Payload.JSON} as ConnectionOptions);
     let prefix = createInbox();
     let subj = `${prefix}.*`;
