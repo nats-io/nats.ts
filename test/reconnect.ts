@@ -14,194 +14,194 @@
  *
  */
 
-import test from 'ava';
-import {SC, startServer, stopServer, Server} from './helpers/nats_server_control';
-import {connect, createInbox} from '../src/nats';
-import url from 'url';
-import {Lock} from './helpers/latch';
+import test from 'ava'
+import {SC, startServer, stopServer, Server} from './helpers/nats_server_control'
+import {connect, createInbox} from '../src/nats'
+import url from 'url'
+import {Lock} from './helpers/latch'
 
 test.before(async (t) => {
-    let server = await startServer();
-    t.context = {server: server, servers: []};
-});
+  let server = await startServer()
+  t.context = {server: server, servers: []}
+})
 
 test.after.always((t) => {
-    // @ts-ignore
-    stopServer(t.context.server);
-    //@ts-ignore
-    t.context.servers.forEach((s) => {
-        stopServer(s);
-    });
-});
+  // @ts-ignore
+  stopServer(t.context.server)
+  //@ts-ignore
+  t.context.servers.forEach((s) => {
+    stopServer(s)
+  })
+})
 
 function registerServer(s: Server, t: any) {
-    t.context.servers.push(s);
+  t.context.servers.push(s)
 }
 
 test('connect with port', async (t) => {
-    t.plan(1);
-    let sc = t.context as SC;
-    let u = new url.URL(sc.server.nats);
-    let port = parseInt(u.port, 10);
-    return connect(port)
-    .then(nc => {
-        t.pass()
-        nc.close()
-    })
-});
+  t.plan(1)
+  let sc = t.context as SC
+  let u = new url.URL(sc.server.nats)
+  let port = parseInt(u.port, 10)
+  return connect(port)
+  .then(nc => {
+    t.pass()
+    nc.close()
+  })
+})
 
 test('connect with url argument', async (t) => {
-    t.plan(1);
-    let sc = t.context as SC;
-    return connect(sc.server.nats)
-    .then((nc) => {
-        t.pass()
-        nc.close()
-    })
-});
+  t.plan(1)
+  let sc = t.context as SC
+  return connect(sc.server.nats)
+  .then((nc) => {
+    t.pass()
+    nc.close()
+  })
+})
 
 test('connect with url in options', async (t) => {
-    t.plan(1);
-    let sc = t.context as SC;
-    return connect({url: sc.server.nats})
-    .then((nc) => {
-        t.pass()
-        nc.close()
-    })
-});
+  t.plan(1)
+  let sc = t.context as SC
+  return connect({url: sc.server.nats})
+  .then((nc) => {
+    t.pass()
+    nc.close()
+  })
+})
 
 test('should receive when some servers are invalid', async (t) => {
-    t.plan(1);
-    let sc = t.context as SC;
+  t.plan(1)
+  let sc = t.context as SC
 
-    let servers = ['nats://localhost:7', sc.server.nats];
+  let servers = ['nats://localhost:7', sc.server.nats]
 
-    let nc = await connect({servers: servers, noRandomize: true});
-    let subj = createInbox();
-    await nc.subscribe(subj, (err) => {
-        if (err) {
-            t.fail(err.message);
-        } else {
-            t.pass();
-        }
-    })
-    nc.publish(subj);
-    await nc.flush()
-    nc.close()
-});
+  let nc = await connect({servers: servers, noRandomize: true})
+  let subj = createInbox()
+  await nc.subscribe(subj, (err) => {
+    if (err) {
+      t.fail(err.message)
+    } else {
+      t.pass()
+    }
+  })
+  nc.publish(subj)
+  await nc.flush()
+  nc.close()
+})
 
 test('reconnect events', async (t) => {
-    t.plan(2);
-    let lock = new Lock();
-    let server = await startServer();
-    registerServer(server, t);
+  t.plan(2)
+  let lock = new Lock()
+  let server = await startServer()
+  registerServer(server, t)
 
-    let nc = await connect({
-        url: server.nats,
-        waitOnFirstConnect: true,
-        reconnectTimeWait: 100,
-        maxReconnectAttempts: 5
-    });
+  let nc = await connect({
+    url: server.nats,
+    waitOnFirstConnect: true,
+    reconnectTimeWait: 100,
+    maxReconnectAttempts: 5
+  })
 
-    let reconnecting = 0;
-    let stopTime = 0;
-    setTimeout(() => {
-        stopServer(server, () => {
-            stopTime = Date.now();
-        });
-    }, 100);
+  let reconnecting = 0
+  let stopTime = 0
+  setTimeout(() => {
+    stopServer(server, () => {
+      stopTime = Date.now()
+    })
+  }, 100)
 
-    let disconnects = 0;
-    nc.on('disconnect', () => {
-        disconnects++;
-    });
+  let disconnects = 0
+  nc.on('disconnect', () => {
+    disconnects++
+  })
 
-    nc.on('reconnecting', () => {
-        reconnecting++;
-    });
+  nc.on('reconnecting', () => {
+    reconnecting++
+  })
 
-    nc.on('error', (err) => {
-        t.fail('on error should not have produced error: ' + err);
-    });
+  nc.on('error', (err) => {
+    t.fail('on error should not have produced error: ' + err)
+  })
 
-    nc.on('close', () => {
-        t.is(reconnecting, 5, 'reconnecting count');
-        t.is(disconnects, 1, 'disconnect count');
-        lock.unlock();
-    });
+  nc.on('close', () => {
+    t.is(reconnecting, 5, 'reconnecting count')
+    t.is(disconnects, 1, 'disconnect count')
+    lock.unlock()
+  })
 
-    return lock.latch;
-});
+  return lock.latch
+})
 
 test('reconnect not emitted if suppressed', async (t) => {
-    t.plan(2);
-    let lock = new Lock();
+  t.plan(2)
+  let lock = new Lock()
 
-    let server = await startServer();
-    registerServer(server, t);
+  let server = await startServer()
+  registerServer(server, t)
 
-    let nc = await connect({
-        url: server.nats,
-        reconnect: false
-    });
+  let nc = await connect({
+    url: server.nats,
+    reconnect: false
+  })
 
-    setTimeout(() => {
-        stopServer(server);
-    }, 100);
+  setTimeout(() => {
+    stopServer(server)
+  }, 100)
 
-    let disconnects = 0;
-    nc.on('disconnect', () => {
-        disconnects++;
-    });
+  let disconnects = 0
+  nc.on('disconnect', () => {
+    disconnects++
+  })
 
-    let reconnecting = false;
-    nc.on('reconnecting', () => {
-        reconnecting = true;
-    });
+  let reconnecting = false
+  nc.on('reconnecting', () => {
+    reconnecting = true
+  })
 
-    nc.on('close', () => {
-        t.is(disconnects, 1);
-        t.false(reconnecting);
-        lock.unlock();
-    });
+  nc.on('close', () => {
+    t.is(disconnects, 1)
+    t.false(reconnecting)
+    lock.unlock()
+  })
 
-    return lock.latch;
-});
+  return lock.latch
+})
 
 test('reconnecting after proper delay', async (t) => {
-    t.plan(2);
-    let lock = new Lock();
+  t.plan(2)
+  let lock = new Lock()
 
-    let server = await startServer();
-    registerServer(server, t);
-    let nc = await connect({
-        url: server.nats,
-        reconnectTimeWait: 500,
-        maxReconnectAttempts: 1
-    });
+  let server = await startServer()
+  registerServer(server, t)
+  let nc = await connect({
+    url: server.nats,
+    reconnectTimeWait: 500,
+    maxReconnectAttempts: 1
+  })
 
-    //@ts-ignore
-    let serverLastConnect = nc.nc.servers.getCurrent().lastConnect;
-    //@ts-ignore
-    setTimeout(() => {
-        stopServer(server);
-    }, 100);
+  //@ts-ignore
+  let serverLastConnect = nc.nc.servers.getCurrent().lastConnect
+  //@ts-ignore
+  setTimeout(() => {
+    stopServer(server)
+  }, 100)
 
-    let disconnect = 0;
-    nc.on('disconnect', () => {
-        disconnect = Date.now();
-    });
+  let disconnect = 0
+  nc.on('disconnect', () => {
+    disconnect = Date.now()
+  })
 
-    nc.on('reconnecting', () => {
-        let elapsed = Date.now() - serverLastConnect;
-        t.true(elapsed >= 485);
-        t.true(elapsed <= 600);
-        nc.close();
-        lock.unlock();
-    });
+  nc.on('reconnecting', () => {
+    let elapsed = Date.now() - serverLastConnect
+    t.true(elapsed >= 485)
+    t.true(elapsed <= 600)
+    nc.close()
+    lock.unlock()
+  })
 
-    return lock.latch;
-});
+  return lock.latch
+})
 //
 // test('indefinite reconnects', async (t) => {
 //     let lock = new Lock();

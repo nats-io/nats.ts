@@ -14,36 +14,36 @@
  */
 
 export class Lock {
-    latch: Promise<any>;
-    count: number;
-    unlock!: Function;
+  latch: Promise<any>
+  count: number
+  unlock!: Function
 
-    constructor(count: number = 1) {
-        this.count = count;
-        let lock = this;
-        this.latch = new Promise((resolve) => {
-            this.unlock = function () {
-                lock.count -= 1;
-                if (lock.count === 0) {
-                    resolve();
-                }
-            };
-        });
-    }
+  constructor(count: number = 1) {
+    this.count = count
+    let lock = this
+    this.latch = new Promise((resolve) => {
+      this.unlock = function () {
+        lock.count -= 1
+        if (lock.count === 0) {
+          resolve()
+        }
+      }
+    })
+  }
 }
 
 export function wait(millis: number = 100): Promise<any> {
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            resolve();
-        }, millis);
-    });
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve()
+    }, millis)
+  })
 }
 
 export function sleep(ms: number) {
-    let start = new Date().getTime(),
-        expire = start + ms;
-    while (new Date().getTime() < expire) {
-        // spinning...
-    }
+  let start = new Date().getTime(),
+  expire = start + ms
+  while (new Date().getTime() < expire) {
+    // spinning...
+  }
 }

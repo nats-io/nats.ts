@@ -14,109 +14,109 @@
  *
  */
 
-import {SC, startServer, stopServer} from './helpers/nats_server_control';
-import test, {ExecutionContext} from 'ava';
-import {connect} from '../src/nats';
+import {SC, startServer, stopServer} from './helpers/nats_server_control'
+import test, {ExecutionContext} from 'ava'
+import {connect} from '../src/nats'
 
 
 test.before(async (t) => {
-    let s1 = await startServer();
-    let s2 = await startServer();
-    t.context = {server: s1, servers: [s1, s2]};
-});
+  let s1 = await startServer()
+  let s2 = await startServer()
+  t.context = {server: s1, servers: [s1, s2]}
+})
 
 test.after.always((t) => {
-    (t.context as SC).servers.forEach((s) => {
-        stopServer(s);
-    });
-});
+  (t.context as SC).servers.forEach((s) => {
+    stopServer(s)
+  })
+})
 
 function getServers(t: ExecutionContext<any>): string[] {
-    let a: string[] = [];
-    let servers = (t.context as SC).servers;
-    servers.forEach((s) => {
-        a.push(s.nats);
-    });
-    return a;
+  let a: string[] = []
+  let servers = (t.context as SC).servers
+  servers.forEach((s) => {
+    a.push(s.nats)
+  })
+  return a
 }
 
 test('has multiple servers', async (t) => {
-    t.plan(1);
+  t.plan(1)
 
-    let a = getServers(t);
-    let nc = await connect({servers: a});
+  let a = getServers(t)
+  let nc = await connect({servers: a})
 
-    //@ts-ignore
-    let servers = nc.nc.servers;
-    t.is(servers.length(), a.length);
-    nc.close();
-});
+  //@ts-ignore
+  let servers = nc.nc.servers
+  t.is(servers.length(), a.length)
+  nc.close()
+})
 
 test('connects to first valid server', async (t) => {
-    let a = getServers(t);
-    a.splice(0, 0, 'nats://localhost:7');
-    return connect({servers: a})
-    .then((nc) => {
-        t.pass()
-        nc.close()
-    })
-});
+  let a = getServers(t)
+  a.splice(0, 0, 'nats://localhost:7')
+  return connect({servers: a})
+  .then((nc) => {
+    t.pass()
+    nc.close()
+  })
+})
 
 test('reject if no valid server', async (t) => {
-    t.plan(1);
-    let a = ['nats://localhost:7'];
-    return connect({servers: a, reconnectTimeWait: 50})
-    .then(() => {
-        t.fail('should have not connected')
-    })
-    .catch((err) => {
-        t.is(err?.code, 'CONN_ERR')
-    })
-});
+  t.plan(1)
+  let a = ['nats://localhost:7']
+  return connect({servers: a, reconnectTimeWait: 50})
+  .then(() => {
+    t.fail('should have not connected')
+  })
+  .catch((err) => {
+    t.is(err?.code, 'CONN_ERR')
+  })
+})
 
 test('throws if no valid server', async (t) => {
-    t.plan(1);
-    let a = ['nats://localhost:7', 'nats://localhost:9'];
-    return connect({servers: a, reconnectTimeWait: 50})
-    .then(() => {
-        t.fail('should have not connected')
-    })
-    .catch((err) => {
-        t.is(err?.code, 'CONN_ERR')
-    })
+  t.plan(1)
+  let a = ['nats://localhost:7', 'nats://localhost:9']
+  return connect({servers: a, reconnectTimeWait: 50})
+  .then(() => {
+    t.fail('should have not connected')
+  })
+  .catch((err) => {
+    t.is(err?.code, 'CONN_ERR')
+  })
 
-});
+})
 
 test('random server connections', async (t) => {
-    let first = getServers(t)[0];
-    let count = 0;
-    let other = 0;
-    for (let i = 0; i < 100; i++) {
-        let nc = await connect({servers: getServers(t)});
-        //@ts-ignore
-        let s = nc.nc.servers.getCurrent();
-        //@ts-ignore
-        if (s.toString() === first) {
-            count++;
-        } else {
-            other++;
-        }
-        nc.close();
+  let first = getServers(t)[0]
+  let count = 0
+  let other = 0
+  for (let i = 0; i < 100; i++) {
+    let nc = await connect({servers: getServers(t)})
+    //@ts-ignore
+    let s = nc.nc.servers.getCurrent()
+    //@ts-ignore
+    if (s.toString() === first) {
+      count++
+    } else {
+      other++
     }
+    nc.close()
+  }
 
-    t.is(count + other, 100);
-    t.true(count >= 35);
-    t.true(count <= 65);
-});
+  t.is(count + other, 100)
+  t.true(count >= 35)
+  t.true(count <= 65)
+})
 
 test('no random server if noRandomize', async (t) => {
-    let servers = getServers(t);
-    let first = servers[0].toString();
-    for (let i = 0; i < 100; i++) {
-        let nc = await connect({servers: servers, noRandomize: true});
-        //@ts-ignore
-        let s = nc.nc.servers.getCurrent();
-        t.is(s.toString(), first.toString());
-        nc.close();
-    }
-});
+  let servers = getServers(t)
+  let first = servers[0].toString()
+  for (let i = 0; i < 100; i++) {
+    let nc = await connect({servers: servers, noRandomize: true})
+    //@ts-ignore
+    let s = nc.nc.servers.getCurrent()
+    t.is(s.toString(), first.toString())
+    nc.close()
+  }
+})

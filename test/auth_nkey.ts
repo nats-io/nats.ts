@@ -69,12 +69,12 @@ test('basic nkey authentication', async (t) => {
       return sk.sign(Buffer.from(nonce))
     }
   } as ConnectionOptions)
-    .then((nc) => {
-      t.pass()
-      nc.close()
-    })
-    .catch((err) => {
-      t.log(err)
-      t.fail('error connecting')
-    })
+  .then((nc) => {
+    t.pass()
+    nc.close()
+  })
+  .catch((err) => {
+    t.log(err)
+    t.fail('error connecting')
+  })
 })

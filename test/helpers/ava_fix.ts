@@ -17,7 +17,7 @@ export {}
 
 // new avajs seems to be looking for observable but it is not exported
 declare global {
-    interface SymbolConstructor {
-        readonly observable: symbol
-    }
+  interface SymbolConstructor {
+    readonly observable: symbol
+  }
 }

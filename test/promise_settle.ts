@@ -14,45 +14,45 @@
  *
  */
 
-import {settle} from '../src/util';
-import test from 'ava';
+import {settle} from '../src/util'
+import test from 'ava'
 
 function settleMacro(t: any, input: any[], fails: boolean = false, output?: any[]): Promise<any> {
-    t.plan(1);
-    return settle(input)
-        .then((values) => {
-            if (fails) {
-                t.fail('should not have resolved');
-            } else {
-                output = output || input;
-                t.deepEqual(values, output);
-            }
-        })
-        .catch((ex) => {
-            if (fails) {
-                t.pass();
-            } else {
-                t.fail(ex);
-            }
-        });
+  t.plan(1)
+  return settle(input)
+  .then((values) => {
+    if (fails) {
+      t.fail('should not have resolved')
+    } else {
+      output = output || input
+      t.deepEqual(values, output)
+    }
+  })
+  .catch((ex) => {
+    if (fails) {
+      t.pass()
+    } else {
+      t.fail(ex)
+    }
+  })
 }
 
 function testPromise(value: any, ok: boolean = true): Promise<any> {
-    return new Promise((resolve, reject) => {
-        setTimeout(() => {
-            if (ok) {
-                resolve(value);
-            } else {
-                reject(value);
-            }
-        }, 0);
-    });
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      if (ok) {
+        resolve(value)
+      } else {
+        reject(value)
+      }
+    }, 0)
+  })
 }
 
 //@ts-ignore - "a" shouldn't work - prevent the compiler from failing
-test('requires array', settleMacro, 'a', true);
-test('empty array', settleMacro, []);
-test('values', settleMacro, [1, 'two', true, {a: 'b'}]);
-test('mixed', settleMacro, [testPromise('bad', false), testPromise(2), 3], false, ['bad', 2, 3]);
-test('all resolve', settleMacro, [testPromise('a'), testPromise(2), testPromise(true)], false, ['a', 2, true]);
-test('all reject', settleMacro, [testPromise('a', false), testPromise(2, false), testPromise(true, false)], false, ['a', 2, true]);
+test('requires array', settleMacro, 'a', true)
+test('empty array', settleMacro, [])
+test('values', settleMacro, [1, 'two', true, {a: 'b'}])
+test('mixed', settleMacro, [testPromise('bad', false), testPromise(2), 3], false, ['bad', 2, 3])
+test('all resolve', settleMacro, [testPromise('a'), testPromise(2), testPromise(true)], false, ['a', 2, true])
+test('all reject', settleMacro, [testPromise('a', false), testPromise(2, false), testPromise(true, false)], false, ['a', 2, true])

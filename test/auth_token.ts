@@ -14,56 +14,56 @@
  *
  */
 
-import {connect, ErrorCode} from '../src/nats';
-import test from 'ava';
-import {SC, startServer, stopServer} from './helpers/nats_server_control';
+import {connect, ErrorCode} from '../src/nats'
+import test from 'ava'
+import {SC, startServer, stopServer} from './helpers/nats_server_control'
 
 
 test.before(async (t) => {
-    let server = await startServer(['--auth', 'tokenxxxx']);
-    t.context = {server: server};
-});
+  let server = await startServer(['--auth', 'tokenxxxx'])
+  t.context = {server: server}
+})
 
 test.after.always((t) => {
-    stopServer((t.context as SC).server);
-});
+  stopServer((t.context as SC).server)
+})
 
 test('token no auth', async (t) => {
-    t.plan(3);
-    const sc = t.context as SC;
-    return connect({url: sc.server.nats})
-      .then((nc) => {
-          t.fail('should have failed to connect')
-          nc.close()
-      })
-      .catch((err) => {
-          t.truthy(err);
-          t.regex(err.message, /Authorization/);
-          t.is(err?.code, ErrorCode.BAD_AUTHENTICATION);
-      })
-});
+  t.plan(3)
+  const sc = t.context as SC
+  return connect({url: sc.server.nats})
+  .then((nc) => {
+    t.fail('should have failed to connect')
+    nc.close()
+  })
+  .catch((err) => {
+    t.truthy(err)
+    t.regex(err.message, /Authorization/)
+    t.is(err?.code, ErrorCode.BAD_AUTHENTICATION)
+  })
+})
 
 test('token bad auth', async (t) => {
-    t.plan(3);
-    const sc = t.context as SC;
-    return connect({url: sc.server.nats, token: 'bad'})
-      .then((nc) => {
-          t.fail('should have failed to connect')
-          nc.close()
-      })
-      .catch((err) => {
-          t.truthy(err);
-          t.regex(err.message, /Authorization/);
-          t.is(err?.code, ErrorCode.BAD_AUTHENTICATION);
-      })
-});
+  t.plan(3)
+  const sc = t.context as SC
+  return connect({url: sc.server.nats, token: 'bad'})
+  .then((nc) => {
+    t.fail('should have failed to connect')
+    nc.close()
+  })
+  .catch((err) => {
+    t.truthy(err)
+    t.regex(err.message, /Authorization/)
+    t.is(err?.code, ErrorCode.BAD_AUTHENTICATION)
+  })
+})
 
 test('token auth', async (t) => {
-    t.plan(1)
-    const sc = t.context as SC
-    return connect({url: sc.server.nats, token: 'tokenxxxx'})
-      .then((nc) => {
-          t.pass()
-          nc.close()
-      })
-});
+  t.plan(1)
+  const sc = t.context as SC
+  return connect({url: sc.server.nats, token: 'tokenxxxx'})
+  .then((nc) => {
+    t.pass()
+    nc.close()
+  })
+})

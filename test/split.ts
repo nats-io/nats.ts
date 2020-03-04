@@ -14,48 +14,48 @@
  *
  */
 
-import {SC, startServer, stopServer} from './helpers/nats_server_control';
-import test from 'ava';
-import {connect, Payload} from '../src/nats';
-import {randomBytes} from 'crypto';
+import {SC, startServer, stopServer} from './helpers/nats_server_control'
+import test from 'ava'
+import {connect, Payload} from '../src/nats'
+import {randomBytes} from 'crypto'
 import {next} from 'nuid'
-import {ConnectionOptions} from "nats";
+import {ConnectionOptions} from "nats"
 
 
 test.before(async (t) => {
-    let server = await startServer();
-    t.context = {server: server};
-});
+  let server = await startServer()
+  t.context = {server: server}
+})
 
 test.after.always((t) => {
-    stopServer((t.context as SC).server);
-});
+  stopServer((t.context as SC).server)
+})
 
-async function macro(t: any, input: any, encoding: string|Buffer) : Promise<any> {
-    let max = 10000;
-    t.plan(max);
-    let sc = t.context as SC;
-    const opts = { url: sc.server.nats }
-    if (encoding === 'binary') {
-        // @ts-ignore
-        opts.payload = Payload.BINARY
+async function macro(t: any, input: any, encoding: string | Buffer): Promise<any> {
+  let max = 10000
+  t.plan(max)
+  let sc = t.context as SC
+  const opts = {url: sc.server.nats}
+  if (encoding === 'binary') {
+    // @ts-ignore
+    opts.payload = Payload.BINARY
+  }
+  let nc = await connect(opts as ConnectionOptions)
+  let subj = next()
+  nc.subscribe(subj, (err, msg) => {
+    if (err) {
+      t.fail(err.message)
     }
-    let nc = await connect(opts as ConnectionOptions);
-    let subj = next();
-    nc.subscribe(subj, (err, msg) => {
-        if(err) {
-            t.fail(err.message);
-        }
-        t.deepEqual(msg.data, input);
-    }, {max: max});
+    t.deepEqual(msg.data, input)
+  }, {max: max})
 
-    for (let i=0; i < max; i++) {
-        nc.publish(subj, input);
-    }
-    await nc.flush();
-    nc.close();
+  for (let i = 0; i < max; i++) {
+    nc.publish(subj, input)
+  }
+  await nc.flush()
+  nc.close()
 }
 
-test('large # of utf8 messages from split buffers', macro, '½ + ¼ = ¾', 'utf8');
-test('large # of messages from split buffers', macro, 'hello world', 'utf8');
-test('large # of binary messages from split buffers', macro, randomBytes(50), 'binary');
+test('large # of utf8 messages from split buffers', macro, '½ + ¼ = ¾', 'utf8')
+test('large # of messages from split buffers', macro, 'hello world', 'utf8')
+test('large # of binary messages from split buffers', macro, randomBytes(50), 'binary')

@@ -14,97 +14,97 @@
  *
  */
 
-import test from 'ava';
-import {Client, connect, ConnectionOptions} from '../src/nats';
-import {Lock} from './helpers/latch';
-import * as net from "net";
-import {SC, startServer, stopServer} from "./helpers/nats_server_control";
-import url from "url";
+import test from 'ava'
+import {Client, connect, ConnectionOptions} from '../src/nats'
+import {Lock} from './helpers/latch'
+import * as net from "net"
+import {SC, startServer, stopServer} from "./helpers/nats_server_control"
+import url from "url"
 
 
 test.before(async (t) => {
-    let server = await startServer();
-    t.context = {server: server};
-});
+  let server = await startServer()
+  t.context = {server: server}
+})
 
 test.after.always((t) => {
-    // @ts-ignore
-    stopServer(t.context.server);
-});
+  // @ts-ignore
+  stopServer(t.context.server)
+})
 
 test('timer pings are sent', async (t) => {
-    const lock = new Lock();
-    t.plan(1);
-    let sc = t.context as SC;
-    let u = new url.URL(sc.server.nats);
-    let nc = await connect({port: parseInt(u.port, 10), pingInterval: 100} as ConnectionOptions);
-    nc.on('pingtimer', () => {
-        t.pass();
-        nc.close();
-        lock.unlock();
-    });
-    return lock.latch;
-});
+  const lock = new Lock()
+  t.plan(1)
+  let sc = t.context as SC
+  let u = new url.URL(sc.server.nats)
+  let nc = await connect({port: parseInt(u.port, 10), pingInterval: 100} as ConnectionOptions)
+  nc.on('pingtimer', () => {
+    t.pass()
+    nc.close()
+    lock.unlock()
+  })
+  return lock.latch
+})
 
 test('missed timer pings reconnect', (t) => {
-    let conn : Client;
-    const lock = new Lock();
-    t.plan(4);
-    const srv = net.createServer((c) => {
-        let firstPing = true;
-        c.write(`INFO ${JSON.stringify({
-            server_id: 'TEST',
-            version: '0.0.0',
-            host: '127.0.0.1',
-            // @ts-ignore
-            port: srv.address.port,
-            auth_required: false
-        })}\r\n`);
-        c.on('data', (d) => {
-            const r = d.toString();
-            const lines = r.split('\r\n');
-            lines.forEach((line) => {
-                if (line === '') {
-                    return
-                }
-                if (/^CONNECT\s+/.test(line)) {
-                } else if (/^PING/.test(line)) {
-                    if (firstPing) {
-                        c.write('PONG\r\n');
-                        firstPing = false;
-                    }
-                } else if (/^PONG/.test(line)) {
-                } else if (/^INFO\s+/i.test(line)) {
-                } else {
-                    // unknown
-                }
-            })
-        });
-    });
+  let conn: Client
+  const lock = new Lock()
+  t.plan(4)
+  const srv = net.createServer((c) => {
+    let firstPing = true
+    c.write(`INFO ${JSON.stringify({
+      server_id: 'TEST',
+      version: '0.0.0',
+      host: '127.0.0.1',
+      // @ts-ignore
+      port: srv.address.port,
+      auth_required: false
+    })}\r\n`)
+    c.on('data', (d) => {
+      const r = d.toString()
+      const lines = r.split('\r\n')
+      lines.forEach((line) => {
+        if (line === '') {
+          return
+        }
+        if (/^CONNECT\s+/.test(line)) {
+        } else if (/^PING/.test(line)) {
+          if (firstPing) {
+            c.write('PONG\r\n')
+            firstPing = false
+          }
+        } else if (/^PONG/.test(line)) {
+        } else if (/^INFO\s+/i.test(line)) {
+        } else {
+          // unknown
+        }
+      })
+    })
+  })
 
-    srv.listen(0, () => {
-        // @ts-ignore
-        const {port} = srv.address();
-        connect({
-            port: port,
-            reconnectTimeWait: 250,
-            pingInterval: 100,
-            maxReconnectAttempts: 1
-        } as ConnectionOptions).then((nc) => {
-            conn = nc;
-            nc.on('reconnect', () => {
-                t.pass();
-                nc.close();
-                srv.close();
-                lock.unlock();
-            });
-            nc.on('pingcount', () => {
-                t.pass()
-            })
-        });
-        srv.on('error', (err) => {
-            t.fail(err.message);
-        });
-    });
-    return lock.latch;
-});
+  srv.listen(0, () => {
+    // @ts-ignore
+    const {port} = srv.address()
+    connect({
+      port: port,
+      reconnectTimeWait: 250,
+      pingInterval: 100,
+      maxReconnectAttempts: 1
+    } as ConnectionOptions).then((nc) => {
+      conn = nc
+      nc.on('reconnect', () => {
+        t.pass()
+        nc.close()
+        srv.close()
+        lock.unlock()
+      })
+      nc.on('pingcount', () => {
+        t.pass()
+      })
+    })
+    srv.on('error', (err) => {
+      t.fail(err.message)
+    })
+  })
+  return lock.latch
+})

@@ -13,62 +13,62 @@
  * limitations under the License.
  *
  */
-import * as fs from 'fs';
-import {Client, connect, ConnectionOptions} from '../../src/nats';
+import * as fs from 'fs'
+import {Client, connect, ConnectionOptions} from '../../src/nats'
 
-let count = process.argv.length;
-let port = parseInt(process.argv[count - 1], 10);
-test(port);
+let count = process.argv.length
+let port = parseInt(process.argv[count - 1], 10)
+test(port)
 
 async function test(port: number) {
-    let nc: Client;
-    try {
-        nc = await connect({port: port, name: 'closer test script'} as ConnectionOptions);
-        nc.on('connect', function () {
-            fs.writeFile('/tmp/existing_client.log', 'connected\n', (err) => {
-                if (err) {
-                    console.error(err);
-                }
-            });
-        });
+  let nc: Client
+  try {
+    nc = await connect({port: port, name: 'closer test script'} as ConnectionOptions)
+    nc.on('connect', function () {
+      fs.writeFile('/tmp/existing_client.log', 'connected\n', (err) => {
+        if (err) {
+          console.error(err)
+        }
+      })
+    })
 
 
-        nc.on('error', function (e) {
-            fs.appendFile('/tmp/existing_client.log', 'got error\n' + e, (err) => {
-                if (err) {
-                    console.error(err);
-                }
-            });
-            process.exit(1);
-        });
+    nc.on('error', function (e) {
+      fs.appendFile('/tmp/existing_client.log', 'got error\n' + e, (err) => {
+        if (err) {
+          console.error(err)
+        }
+      })
+      process.exit(1)
+    })
 
-        let sub = nc.subscribe('close', (err, msg) => {
-            fs.appendFile('/tmp/existing_client.log', 'got close\n', (err) => {
-                if (err) {
-                    console.error(err);
-                    process.exit(1);
-                }
-            });
-            if (msg.reply) {
-                nc.publish(msg.reply, 'closing');
-            }
-            nc.flush(function () {
-                nc.close();
-                fs.appendFile('/tmp/existing_client.log', 'closed\n', (err) => {
-                    if (err) {
-                        console.error(err);
-                        process.exit(1);
-                    }
-                });
-                process.exit(0);
-            });
-        });
+    let sub = nc.subscribe('close', (err, msg) => {
+      fs.appendFile('/tmp/existing_client.log', 'got close\n', (err) => {
+        if (err) {
+          console.error(err)
+          process.exit(1)
+        }
+      })
+      if (msg.reply) {
+        nc.publish(msg.reply, 'closing')
+      }
+      nc.flush(function () {
+        nc.close()
+        fs.appendFile('/tmp/existing_client.log', 'closed\n', (err) => {
+          if (err) {
+            console.error(err)
+            process.exit(1)
+          }
+        })
+        process.exit(0)
+      })
+    })
 
-        nc.flush(function () {
-            nc.publish('started');
-        });
-    } catch (ex) {
-        console.error(ex);
-        process.exit(1);
-    }
+    nc.flush(function () {
+      nc.publish('started')
+    })
+  } catch (ex) {
+    console.error(ex)
+    process.exit(1)
+  }
 }

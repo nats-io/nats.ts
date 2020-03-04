@@ -14,101 +14,101 @@
  *
  */
 
-import test, {ExecutionContext} from 'ava';
-import {connect, ConnectionOptions, VERSION, ErrorCode} from '../src/nats';
-import {SC, Server, startServer, stopServer} from './helpers/nats_server_control';
-import {Lock} from './helpers/latch';
-import * as mockserver from './helpers/mock_server';
-import {createInbox} from "nats";
+import test, {ExecutionContext} from 'ava'
+import {connect, ConnectionOptions, VERSION, ErrorCode} from '../src/nats'
+import {SC, Server, startServer, stopServer} from './helpers/nats_server_control'
+import {Lock} from './helpers/latch'
+import * as mockserver from './helpers/mock_server'
+import {createInbox} from "nats"
 
 
 test.before(async (t) => {
-    let server = await startServer();
-    t.context = {server: server, servers: [server]};
-});
+  let server = await startServer()
+  t.context = {server: server, servers: [server]}
+})
 
 test.after.always((t) => {
-    (t.context as SC).servers.forEach((s) => {
-        stopServer(s);
-    });
-});
+  (t.context as SC).servers.forEach((s) => {
+    stopServer(s)
+  })
+})
 
 function registerServer(t: ExecutionContext, s: Server): Server {
-    //@ts-ignore
-    t.context.servers.push(s);
-    return s;
+  //@ts-ignore
+  t.context.servers.push(s)
+  return s
 }
 
 test('VERSION is semver', (t) => {
-    t.regex(VERSION, /[0-9]+\.[0-9]+\.[0-9]+/);
-});
+  t.regex(VERSION, /[0-9]+\.[0-9]+\.[0-9]+/)
+})
 
 test('VERSION matches package.json', (t) => {
-    // we are getting build in lib/test
-    let pkg = require('../../package.json');
-    t.is(pkg.version, VERSION);
-});
+  // we are getting build in lib/test
+  let pkg = require('../../package.json')
+  t.is(pkg.version, VERSION)
+})
 
 test('connect is a function', (t) => {
-    t.is(typeof connect, 'function');
-});
+  t.is(typeof connect, 'function')
+})
 
 test('default connect properties', async (t) => {
-    let sc = t.context as SC;
-    return connect(sc.server.nats)
-    .then((nc) => {
-        //@ts-ignore
-        let opts = nc.nc.options as ConnectionOptions;
-        t.is(opts.verbose, false);
-        t.is(opts.pedantic, false);
-        t.is(opts.user, undefined);
-        t.is(opts.pass, undefined);
-        t.is(opts.token, undefined);
-        t.is(opts.name, undefined);
-        nc.close()
-    })
-});
+  let sc = t.context as SC
+  return connect(sc.server.nats)
+  .then((nc) => {
+    //@ts-ignore
+    let opts = nc.nc.options as ConnectionOptions
+    t.is(opts.verbose, false)
+    t.is(opts.pedantic, false)
+    t.is(opts.user, undefined)
+    t.is(opts.pass, undefined)
+    t.is(opts.token, undefined)
+    t.is(opts.name, undefined)
+    nc.close()
+  })
+})
 
 test('noEcho', async (t) => {
-    t.plan(1);
-    let lock = new Lock();
-    let sc = t.context as SC;
-    let subj = createInbox();
-    let cp = connect({url: sc.server.nats, noEcho: true});
-    cp.then(async (nc) => {
-        let c2 = 0;
-        nc.subscribe(subj, () => {
-            c2++;
-        });
-        nc.publish(subj);
-        await nc.flush();
-        t.is(c2, 0);
-        nc.close();
-        lock.unlock();
-    }).catch((err) => {
-        if (err.code === ErrorCode.NO_ECHO_NOT_SUPPORTED) {
-            t.pass();
-        } else {
-            t.fail(err);
-        }
-        lock.unlock();
-    });
-    await lock.latch;
-});
+  t.plan(1)
+  let lock = new Lock()
+  let sc = t.context as SC
+  let subj = createInbox()
+  let cp = connect({url: sc.server.nats, noEcho: true})
+  cp.then(async (nc) => {
+    let c2 = 0
+    nc.subscribe(subj, () => {
+      c2++
+    })
+    nc.publish(subj)
+    await nc.flush()
+    t.is(c2, 0)
+    nc.close()
+    lock.unlock()
+  }).catch((err) => {
+    if (err.code === ErrorCode.NO_ECHO_NOT_SUPPORTED) {
+      t.pass()
+    } else {
+      t.fail(err)
+    }
+    lock.unlock()
+  })
+  await lock.latch
+})
 
 test('noEcho not supported', async (t) => {
-    let server = new mockserver.ScriptedServer(0);
-    try {
-        await server.start();
-    } catch (ex) {
-        t.fail('failed to start the mock server');
-        return;
-    }
-    return connect({port: server.port, noEcho: true, reconnect: false} as ConnectionOptions)
-    .then((nc) => {
-        t.fail('should have not connected')
-        nc.close()
-    }).catch((err) => {
-        t.is(err?.code, ErrorCode.NO_ECHO_NOT_SUPPORTED);
-    })
-});
+  let server = new mockserver.ScriptedServer(0)
+  try {
+    await server.start()
+  } catch (ex) {
+    t.fail('failed to start the mock server')
+    return
+  }
+  return connect({port: server.port, noEcho: true, reconnect: false} as ConnectionOptions)
+  .then((nc) => {
+    t.fail('should have not connected')
+    nc.close()
+  }).catch((err) => {
+    t.is(err?.code, ErrorCode.NO_ECHO_NOT_SUPPORTED)
+  })
+})

@@ -108,7 +108,8 @@ test('can change auto-unsub to a lesser value', async (t) => {
   let sub: Sub
   return connect({url: sc.server.nats})
   .then((nc) => {
-    return nc.subscribe(subj, () => {}, {max: 16})
+    return nc.subscribe(subj, () => {
+    }, {max: 16})
     .then((s) => {
       sub = s
       sub.unsubscribe(15)
@@ -132,7 +133,8 @@ test('can change auto-unsub to a higher value', async (t) => {
   let sub: Sub
   return connect({url: sc.server.nats})
   .then((nc) => {
-    return nc.subscribe(subj, () => {}, {max: 1})
+    return nc.subscribe(subj, () => {
+    }, {max: 1})
     .then((s) => {
       sub = s
       sub.unsubscribe(5)
@@ -152,8 +154,8 @@ test('can change auto-unsub to a higher value', async (t) => {
 
 test('request receives expected count with multiple helpers', (t) => {
   t.plan(8)
-    const sc = t.context as SC
-    const subj = next()
+  const sc = t.context as SC
+  const subj = next()
   return connect({url: sc.server.nats})
   .then((nc) => {
     for (let i = 0; i < 5; i++) {

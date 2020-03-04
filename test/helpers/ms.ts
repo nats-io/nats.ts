@@ -14,47 +14,47 @@
  *
  */
 
-import * as mockserver from './mock_server';
+import * as mockserver from './mock_server'
 
-let port = 0;
+let port = 0
 if (process.argv.length > 2) {
-    port = parseInt(process.argv[2], 10);
+  port = parseInt(process.argv[2], 10)
 }
 
-let server = new mockserver.ScriptedServer(port);
+let server = new mockserver.ScriptedServer(port)
 server.start().then((p) => {
-    console.log('server running on port ', p);
+  console.log('server running on port ', p)
 }).catch((err) => {
-    console.log('error starting mock server');
-});
+  console.log('error starting mock server')
+})
 server.on('data', (s) => {
-    console.log(s);
-});
+  console.log(s)
+})
 
 server.on('connection', (s) => {
-    console.log('connected: ' + s.address());
-});
+  console.log('connected: ' + s.address())
+})
 
 server.on('close', () => {
-    console.log('close');
-});
+  console.log('close')
+})
 
 server.on('error', () => {
-    console.log('close');
-});
+  console.log('close')
+})
 
 server.on('listening', () => {
-    console.log('listening');
-});
+  console.log('listening')
+})
 
 server.on('warn', (m) => {
-    console.log('warn', m);
-});
+  console.log('warn', m)
+})
 
 server.on('info', (m) => {
-    console.log('info', m);
-});
+  console.log('info', m)
+})
 
 server.on('debug', (m) => {
-    console.log('debug', m);
-});
+  console.log('debug', m)
+})

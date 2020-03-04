@@ -22,49 +22,49 @@ import {next} from 'nuid'
 import {Payload} from 'nats'
 
 test.before(async (t) => {
-    let server = await startServer();
-    t.context = {server: server};
-});
+  let server = await startServer()
+  t.context = {server: server}
+})
 
 test.after.always((t) => {
-    stopServer((t.context as SC).server);
-});
+  stopServer((t.context as SC).server)
+})
 
 test('should yield to other events', async (t) => {
-    t.plan(2);
-    let sc = t.context as SC;
-    let nc = await connect({url: sc.server.nats, payload: Payload.JSON, yieldTime: 5});
-    let lock = new Lock();
-    let last: number = -1;
+  t.plan(2)
+  let sc = t.context as SC
+  let nc = await connect({url: sc.server.nats, payload: Payload.JSON, yieldTime: 5})
+  let lock = new Lock()
+  let last: number = -1
 
-    let yields = 0;
-    nc.on('yield', () => {
-        yields++;
-    });
+  let yields = 0
+  nc.on('yield', () => {
+    yields++
+  })
 
-    let interval = setInterval(() => {
-        if (last > 0) {
-            clearInterval(interval);
-            nc.close();
-            // yielded before the last message
-            t.true(last < 256);
-            // and we also got notifications that yields happen
-            t.truthy(yields);
-            lock.unlock();
-        }
-    }, 10);
-
-    let subj = next();
-    nc.subscribe(subj, (err, msg) => {
-        last = msg.data;
-        // take some time
-        sleep(1);
-    });
-
-    for (let i = 0; i < 256; i++) {
-        nc.publish(subj, i);
+  let interval = setInterval(() => {
+    if (last > 0) {
+      clearInterval(interval)
+      nc.close()
+      // yielded before the last message
+      t.true(last < 256)
+      // and we also got notifications that yields happen
+      t.truthy(yields)
+      lock.unlock()
     }
-    nc.flush();
-    await lock.latch;
-    nc.close();
-});
+  }, 10)
+
+  let subj = next()
+  nc.subscribe(subj, (err, msg) => {
+    last = msg.data
+    // take some time
+    sleep(1)
+  })
+
+  for (let i = 0; i < 256; i++) {
+    nc.publish(subj, i)
+  }
+  nc.flush()
+  await lock.latch
+  nc.close()
+})

@@ -14,278 +14,278 @@
  *
  */
 
-import {ChildProcess, spawn, execSync} from 'child_process';
-import * as net from 'net';
-import {Socket} from 'net';
-import path from 'path';
-import fs from 'fs';
-import {URL} from 'url';
-import Timer = NodeJS.Timer;
+import {ChildProcess, spawn, execSync} from 'child_process'
+import * as net from 'net'
+import {Socket} from 'net'
+import path from 'path'
+import fs from 'fs'
+import {URL} from 'url'
+import Timer = NodeJS.Timer
 
-let SERVER = (process.env.TRAVIS) ? 'nats-server/nats-server' : 'nats-server';
-let PID_DIR = (process.env.TRAVIS) ? process.env.TRAVIS_BUILD_DIR : process.env.TMPDIR;
+let SERVER = (process.env.TRAVIS) ? 'nats-server/nats-server' : 'nats-server'
+let PID_DIR = (process.env.TRAVIS) ? process.env.TRAVIS_BUILD_DIR : process.env.TMPDIR
 
-let SERVER_VERSION: any[];
+let SERVER_VERSION: any[]
 
 // context for tests
 export interface SC {
-    server: Server
-    servers: Server[];
+  server: Server
+  servers: Server[];
 }
 
 export interface Ports {
-    nats: string[];
-    monitoring: string[] | undefined;
-    cluster: string[] | undefined;
-    profile: string[] | undefined;
+  nats: string[];
+  monitoring: string[] | undefined;
+  cluster: string[] | undefined;
+  profile: string[] | undefined;
 }
 
 export interface Server extends ChildProcess {
-    args: string[];
-    nats: string;
-    ports: Ports;
-    port: number;
-    clusterPort: number;
+  args: string[];
+  nats: string;
+  ports: Ports;
+  port: number;
+  clusterPort: number;
 }
 
 export function natsURL(s: Server): string {
-    return s.nats;
+  return s.nats
 }
 
 export function wsURL(s: Server): string {
-    return s.nats;
+  return s.nats
 }
 
 export function getPort(urlString: string): number {
-    let u = new URL(urlString);
-    return parseInt(u.port, 10);
+  let u = new URL(urlString)
+  return parseInt(u.port, 10)
 }
 
 export function addClusterMember(s: Server, opt_flags?: string[]): Promise<Server> {
-    return new Promise((resolve, reject) => {
-        opt_flags = opt_flags || [];
-        if (opt_flags.indexOf('--routes') !== -1) {
-            reject(new Error('addClusterMember doesn\'t take a --routes flag as an option'));
-            return;
-        }
+  return new Promise((resolve, reject) => {
+    opt_flags = opt_flags || []
+    if (opt_flags.indexOf('--routes') !== -1) {
+      reject(new Error('addClusterMember doesn\'t take a --routes flag as an option'))
+      return
+    }
 
-        opt_flags = opt_flags.concat(['--routes', `nats://127.0.0.1:${s.clusterPort}`]);
-        startServer(opt_flags)
-            .then((v) => {
-                resolve(v);
-            })
-            .catch((err) => {
-                reject(err);
-            });
-    });
+    opt_flags = opt_flags.concat(['--routes', `nats://127.0.0.1:${s.clusterPort}`])
+    startServer(opt_flags)
+    .then((v) => {
+      resolve(v)
+    })
+    .catch((err) => {
+      reject(err)
+    })
+  })
 }
 
 export function startServer(opt_flags?: string[]): Promise<Server> {
-    return new Promise((resolve, reject) => {
-        opt_flags = opt_flags || [];
-        let flags: string[] = [];
+  return new Promise((resolve, reject) => {
+    opt_flags = opt_flags || []
+    let flags: string[] = []
 
-        // filter host
-        if (opt_flags.indexOf('-a') === -1) {
-            flags = flags.concat(['-a', '127.0.0.1']);
+    // filter host
+    if (opt_flags.indexOf('-a') === -1) {
+      flags = flags.concat(['-a', '127.0.0.1'])
+    }
+
+    // filter port -p or --port
+    if (opt_flags.indexOf('-p') === -1 && opt_flags.indexOf('--port') === -1) {
+      flags = flags.concat(['-p', '-1'])
+    }
+
+    if (opt_flags.indexOf('--cluster') === -1) {
+      flags = flags.concat(['--cluster', 'nats://127.0.0.1:-1'])
+    }
+
+    if (opt_flags.indexOf('--http_port') === -1 && opt_flags.indexOf('-m') === -1) {
+      flags = flags.concat(['--m', '-1'])
+    }
+
+    flags = flags.concat(['--ports_file_dir', PID_DIR] as string[])
+
+    let port = -1
+
+    if (opt_flags) {
+      flags = flags.concat(opt_flags)
+    }
+
+    if (process.env.PRINT_LAUNCH_CMD) {
+      console.log(flags.join(' '))
+    }
+
+    let server = spawn(SERVER, flags) as Server
+    // server.stderr.on('data', function (data) {
+    //     let lines = data.toString().split('\n');
+    //     lines.forEach((m) => {
+    //         console.log(m);
+    //     });
+    // });
+
+    server.args = flags
+
+    let start = Date.now()
+    let wait: number = 0
+    let maxWait = 5 * 1000 // 5 secs
+    let delta = 250
+    let socket: Socket | null
+    let timer: Timer | null
+
+    function resetSocket() {
+      if (socket) {
+        socket.removeAllListeners()
+        socket.destroy()
+        socket = null
+      }
+    }
+
+    function finish(err?: Error) {
+      resetSocket()
+      if (timer) {
+        clearInterval(timer)
+        timer = null
+      }
+      if (err === undefined) {
+        // return where the ws is running
+        resolve(server)
+        return
+      }
+      reject(err)
+    }
+
+    let count = 50
+    new Promise<any>((rslv, rjct) => {
+      let t = setInterval(() => {
+        --count
+        if (count === 0) {
+          clearInterval(t)
+          rjct('Unable to find the pid')
+        }
+        //@ts-ignore
+        let portsFile = path.join(PID_DIR, `nats-server_${server.pid}.ports`)
+        if (fs.existsSync(portsFile)) {
+          let data = fs.readFileSync(portsFile).toString()
+          let s = (server as Server)
+          let ports = JSON.parse(data)
+          s.nats = ports.nats[0]
+          s.port = port = getPort(server.nats)
+          s.clusterPort = getPort(ports.cluster[0])
+          s.ports = ports
+          clearInterval(t)
+          rslv()
         }
 
-        // filter port -p or --port
-        if (opt_flags.indexOf('-p') === -1 && opt_flags.indexOf('--port') === -1) {
-            flags = flags.concat(['-p', '-1']);
+      }, 150)
+    }).then(() => {
+      // Test for when socket is bound.
+      timer = <any>setInterval(function () {
+        resetSocket()
+
+        wait = Date.now() - start
+        if (wait > maxWait) {
+          finish(new Error('Can\'t connect to server on port: ' + port))
         }
 
-        if (opt_flags.indexOf('--cluster') === -1) {
-            flags = flags.concat(['--cluster', 'nats://127.0.0.1:-1']);
-        }
+        // Try to connect to the correct port.
+        socket = net.createConnection(port)
 
-        if (opt_flags.indexOf('--http_port') === -1 && opt_flags.indexOf('-m') === -1) {
-            flags = flags.concat(['--m', '-1']);
-        }
-
-        flags = flags.concat(['--ports_file_dir', PID_DIR] as string[]);
-
-        let port = -1;
-
-        if (opt_flags) {
-            flags = flags.concat(opt_flags);
-        }
-
-        if (process.env.PRINT_LAUNCH_CMD) {
-            console.log(flags.join(' '));
-        }
-
-        let server = spawn(SERVER, flags) as Server;
-        // server.stderr.on('data', function (data) {
-        //     let lines = data.toString().split('\n');
-        //     lines.forEach((m) => {
-        //         console.log(m);
-        //     });
-        // });
-
-        server.args = flags;
-
-        let start = Date.now();
-        let wait: number = 0;
-        let maxWait = 5 * 1000; // 5 secs
-        let delta = 250;
-        let socket: Socket | null;
-        let timer: Timer | null;
-
-        function resetSocket() {
-            if (socket) {
-                socket.removeAllListeners();
-                socket.destroy();
-                socket = null;
-            }
-        }
-
-        function finish(err?: Error) {
-            resetSocket();
-            if (timer) {
-                clearInterval(timer);
-                timer = null;
-            }
-            if (err === undefined) {
-                // return where the ws is running
-                resolve(server);
-                return;
-            }
-            reject(err);
-        }
-
-        let count = 50;
-        new Promise<any>((rslv, rjct) => {
-            let t = setInterval(() => {
-                --count;
-                if (count === 0) {
-                    clearInterval(t);
-                    rjct('Unable to find the pid');
-                }
-                //@ts-ignore
-                let portsFile = path.join(PID_DIR, `nats-server_${server.pid}.ports`);
-                if (fs.existsSync(portsFile)) {
-                    let data = fs.readFileSync(portsFile).toString();
-                    let s = (server as Server);
-                    let ports = JSON.parse(data);
-                    s.nats = ports.nats[0];
-                    s.port = port = getPort(server.nats);
-                    s.clusterPort = getPort(ports.cluster[0]);
-                    s.ports = ports;
-                    clearInterval(t);
-                    rslv();
-                }
-
-            }, 150);
-        }).then(() => {
-            // Test for when socket is bound.
-            timer = <any>setInterval(function () {
-                resetSocket();
-
-                wait = Date.now() - start;
-                if (wait > maxWait) {
-                    finish(new Error('Can\'t connect to server on port: ' + port));
-                }
-
-                // Try to connect to the correct port.
-                socket = net.createConnection(port);
-
-                // Success
-                socket.on('connect', function () {
-                    if (server.pid === null) {
-                        // We connected but not to our server..
-                        finish(new Error('Server already running on port: ' + port));
-                    } else {
-                        finish();
-                    }
-                });
-
-                // Wait for next try..
-                socket.on('error', function (error) {
-                    finish(new Error('Problem connecting to server on port: ' + port + ' (' + error + ')'));
-                });
-
-            }, delta);
+        // Success
+        socket.on('connect', function () {
+          if (server.pid === null) {
+            // We connected but not to our server..
+            finish(new Error('Server already running on port: ' + port))
+          } else {
+            finish()
+          }
         })
-            .catch((err) => {
-                reject(err);
-            });
+
+        // Wait for next try..
+        socket.on('error', function (error) {
+          finish(new Error('Problem connecting to server on port: ' + port + ' (' + error + ')'))
+        })
+
+      }, delta)
+    })
+    .catch((err) => {
+      reject(err)
+    })
 
 
-        // Other way to catch another server running.
-        server.on('exit', function (code, signal) {
-            if (code === 1) {
-                finish(new Error('Server exited with bad code, already running? (' + code + ' / ' + signal + ')'));
-            }
-        });
+    // Other way to catch another server running.
+    server.on('exit', function (code, signal) {
+      if (code === 1) {
+        finish(new Error('Server exited with bad code, already running? (' + code + ' / ' + signal + ')'))
+      }
+    })
 
-        // Server does not exist..
-        // @ts-ignore
-        server.stderr.on('data', function (data) {
-            if (/^execvp\(\)/.test(data.toString())) {
-                if (timer) {
-                    clearInterval(timer);
-                }
-                finish(new Error('Can\'t find the ' + SERVER));
-            }
-        });
-    });
+    // Server does not exist..
+    // @ts-ignore
+    server.stderr.on('data', function (data) {
+      if (/^execvp\(\)/.test(data.toString())) {
+        if (timer) {
+          clearInterval(timer)
+        }
+        finish(new Error('Can\'t find the ' + SERVER))
+      }
+    })
+  })
 
 }
 
 function wait(server: Server, done?: Function): void {
-    if (server.killed) {
-        if (done) {
-            done();
-        }
-    } else {
-        setTimeout(function () {
-            wait(server, done);
-        }, 0);
+  if (server.killed) {
+    if (done) {
+      done()
     }
+  } else {
+    setTimeout(function () {
+      wait(server, done)
+    }, 0)
+  }
 }
 
 export function stopServer(server: Server | null, done?: Function): void {
-    if (server && !server.killed) {
-        server.kill();
-        wait(server, done);
-    } else if (done) {
-        done();
-    }
+  if (server && !server.killed) {
+    server.kill()
+    wait(server, done)
+  } else if (done) {
+    done()
+  }
 }
 
 export function serverVersion(): any[] {
-    if (SERVER_VERSION === undefined) {
-        SERVER_VERSION = initServerVersion();
-    }
-    return SERVER_VERSION;
+  if (SERVER_VERSION === undefined) {
+    SERVER_VERSION = initServerVersion()
+  }
+  return SERVER_VERSION
 }
 
 function initServerVersion(): any[] {
-    let v = execSync(SERVER + ' -v', {
-        timeout: 1000
-    }).toString();
-    return normalizeVersion(v);
+  let v = execSync(SERVER + ' -v', {
+    timeout: 1000
+  }).toString()
+  return normalizeVersion(v)
 }
 
 function normalizeVersion(s: string): any[] {
-    s = s.replace('version ', 'v');
-    s = s.replace(':', '');
-    // 1.x formats differently
-    s = s.replace('nats-server ', '');
-    s = s.replace('nats-server', '');
-    s = s.replace('v', '');
-    let i = s.indexOf('-');
-    if (i !== -1) {
-        s = s.substring(0, i);
+  s = s.replace('version ', 'v')
+  s = s.replace(':', '')
+  // 1.x formats differently
+  s = s.replace('nats-server ', '')
+  s = s.replace('nats-server', '')
+  s = s.replace('v', '')
+  let i = s.indexOf('-')
+  if (i !== -1) {
+    s = s.substring(0, i)
+  }
+  let a = s.split('.')
+  a.forEach((v, i) => {
+    let vv = parseInt(v, 10)
+    if (!isNaN(vv)) {
+      //@ts-ignore
+      a[i] = vv
     }
-    let a = s.split('.');
-    a.forEach((v, i) => {
-        let vv = parseInt(v, 10);
-        if (!isNaN(vv)) {
-            //@ts-ignore
-            a[i] = vv;
-        }
-    });
-    return a;
+  })
+  return a
 }

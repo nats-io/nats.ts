@@ -14,98 +14,98 @@
  *
  */
 
-import test from 'ava';
-import * as u from './helpers/nats_conf_utils';
+import test from 'ava'
+import * as u from './helpers/nats_conf_utils'
 
 
 test('test serializing simple', (t) => {
-    let x = {
-        test: 'one'
-    };
-    let y = u.jsonToNatsConf(x);
+  let x = {
+    test: 'one'
+  }
+  let y = u.jsonToNatsConf(x)
 
-    let buf = y.split('\n');
-    buf.forEach(function (e, i) {
-        buf[i] = e.trim();
-    });
+  let buf = y.split('\n')
+  buf.forEach(function (e, i) {
+    buf[i] = e.trim()
+  })
 
-    let z = buf.join(' ');
-    t.is(z, 'test: one');
-});
+  let z = buf.join(' ')
+  t.is(z, 'test: one')
+})
 
 test('test serializing nested', (t) => {
-    let x = {
-        a: 'one',
-        b: {
-            a: 'two'
-        }
-    };
-    let y = u.jsonToNatsConf(x);
+  let x = {
+    a: 'one',
+    b: {
+      a: 'two'
+    }
+  }
+  let y = u.jsonToNatsConf(x)
 
-    let buf = y.split('\n');
-    buf.forEach(function (e, i) {
-        buf[i] = e.trim();
-    });
+  let buf = y.split('\n')
+  buf.forEach(function (e, i) {
+    buf[i] = e.trim()
+  })
 
-    let z = buf.join(' ');
-    t.is(z, 'a: one b { a: two }');
-});
+  let z = buf.join(' ')
+  t.is(z, 'a: one b { a: two }')
+})
 
 test('test serializing array', (t) => {
-    let x = {
-        a: 'one',
-        b: ['a', 'b', 'c']
-    };
-    let y = u.jsonToNatsConf(x);
+  let x = {
+    a: 'one',
+    b: ['a', 'b', 'c']
+  }
+  let y = u.jsonToNatsConf(x)
 
-    let buf = y.split('\n');
-    buf.forEach(function (e, i) {
-        buf[i] = e.trim();
-    });
+  let buf = y.split('\n')
+  buf.forEach(function (e, i) {
+    buf[i] = e.trim()
+  })
 
-    let z = buf.join(' ');
-    t.is(z, 'a: one b [ a b c ]');
-});
+  let z = buf.join(' ')
+  t.is(z, 'a: one b [ a b c ]')
+})
 
 test('test serializing array objs', (t) => {
-    let x = {
-        a: 'one',
-        b: [{
-            a: 'a'
-        }, {
-            b: 'b'
-        }, {
-            c: 'c'
-        }]
-    };
-    let y = u.jsonToNatsConf(x);
-    let buf = y.split('\n');
-    buf.forEach(function (e, i) {
-        buf[i] = e.trim();
-    });
+  let x = {
+    a: 'one',
+    b: [{
+      a: 'a'
+    }, {
+      b: 'b'
+    }, {
+      c: 'c'
+    }]
+  }
+  let y = u.jsonToNatsConf(x)
+  let buf = y.split('\n')
+  buf.forEach(function (e, i) {
+    buf[i] = e.trim()
+  })
 
-    let z = buf.join(' ');
-    t.is(z, 'a: one b [ { a: a } { b: b } { c: c } ]');
-});
+  let z = buf.join(' ')
+  t.is(z, 'a: one b [ { a: a } { b: b } { c: c } ]')
+})
 
 test('test serializing array arrays', (t) => {
-    let x = {
-        a: 'one',
-        b: [{
-            a: 'a',
-            b: ['b', 'c']
-        }, {
-            b: 'b'
-        }, {
-            c: 'c'
-        }]
-    };
-    let y = u.jsonToNatsConf(x);
-    let buf = y.split('\n');
-    buf.forEach(function (e, i) {
-        buf[i] = e.trim();
-    });
+  let x = {
+    a: 'one',
+    b: [{
+      a: 'a',
+      b: ['b', 'c']
+    }, {
+      b: 'b'
+    }, {
+      c: 'c'
+    }]
+  }
+  let y = u.jsonToNatsConf(x)
+  let buf = y.split('\n')
+  buf.forEach(function (e, i) {
+    buf[i] = e.trim()
+  })
 
-    let z = buf.join(' ');
-    t.is(z, 'a: one b [ { a: a b [ b c ] } { b: b } { c: c } ]');
-});
+  let z = buf.join(' ')
+  t.is(z, 'a: one b [ { a: a b [ b c ] } { b: b } { c: c } ]')
+})
