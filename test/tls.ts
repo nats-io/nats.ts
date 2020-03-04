@@ -18,7 +18,6 @@ import {SC, startServer, stopServer} from './helpers/nats_server_control'
 import test from 'ava'
 import {join} from 'path'
 import {Client, connect, ErrorCode} from '../src/nats'
-import {Lock} from './helpers/latch'
 import {readFileSync} from 'fs'
 import {TLSSocket} from 'tls'
 import * as url from 'url'
@@ -185,7 +184,7 @@ test('authorized with proper cert', (t) => {
 })
 
 test('handle openssl error', async (t) => {
-  t.plan(2)
+  t.plan(1)
   let sc = t.context as SC
   // pass the wrong cert/ca to fail it
   //@ts-ignore
@@ -196,7 +195,6 @@ test('handle openssl error', async (t) => {
   })
   .catch((err) => {
     t.is(err.code, ErrorCode.OPENSSL_ERR)
-    t.is(err?.chainedError.code, 'ERR_OSSL_X509_KEY_VALUES_MISMATCH')
   })
 })
 
