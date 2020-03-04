@@ -17,9 +17,8 @@
 import test from 'ava'
 import {Lock, sleep} from './helpers/latch'
 import {SC, startServer, stopServer} from './helpers/nats_server_control'
-import {connect} from '../src/nats'
+import {connect, Payload} from '../src/nats'
 import {next} from 'nuid'
-import {Payload} from 'nats'
 
 test.before(async (t) => {
   let server = await startServer()

@@ -16,9 +16,8 @@
 
 import test from 'ava'
 import {SC, startServer, stopServer} from './helpers/nats_server_control'
-import {connect, ConnectionOptions, createInbox, ErrorCode, NatsError, Sub, SubEvent} from '../src/nats'
+import {connect, ConnectionOptions, createInbox, ErrorCode, NatsError, Sub, SubEvent, Payload} from '../src/nats'
 import url from 'url'
-import {Payload} from 'nats'
 
 
 test.before(async (t) => {

@@ -26,11 +26,12 @@ import {
   SubscriptionOptions,
   Sub as sub,
   Msg,
-  SubEvent
+  SubEvent,
+  Payload
 } from "nats"
 
 export {
-  NatsError, ConnectionOptions, ErrorCode, createInbox, MsgCallback, SubscriptionOptions, Msg, SubEvent
+  NatsError, ConnectionOptions, ErrorCode, createInbox, MsgCallback, SubscriptionOptions, Msg, SubEvent, Payload
 } from "nats"
 import {existsSync} from "fs"
 
@@ -65,20 +66,6 @@ export interface ServersChangedEvent {
   added: string[];
   /** Removed server URLs (only added servers are removed). */
   deleted: string[];
-}
-
-/**
- * Payload specifies the type of [[Msg.data]] that will be sent and received by the client.
- * The payload affects all client subscribers and publishers. If using mixed types, either
- * create multiple connections, or select [[Payload.BINARY]] and perform your own decoding.
- */
-export enum Payload {
-  /** Specifies a string payload. This is default [[ConnectionOptions.payload]] setting */
-  STRING = 'string',
-  /** Specifies payloads are JSON. */
-  JSON = 'json',
-  /** Specifies payloads are binary (Buffer) */
-  BINARY = 'binary'
 }
 
 /** Optional callback interface for 'connect' and 'reconnect' events */

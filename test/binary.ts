@@ -15,11 +15,10 @@
  */
 
 import test from 'ava'
-import {connect} from '../src/nats'
+import {connect, Payload} from '../src/nats'
 import {next} from 'nuid'
 import {SC, startServer, stopServer} from './helpers/nats_server_control'
 import {randomBytes} from 'crypto'
-import {Payload} from 'nats'
 
 
 test.before(async (t) => {

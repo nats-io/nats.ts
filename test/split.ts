@@ -16,10 +16,9 @@
 
 import {SC, startServer, stopServer} from './helpers/nats_server_control'
 import test from 'ava'
-import {connect, Payload} from '../src/nats'
+import {connect, Payload, ConnectionOptions} from '../src/nats'
 import {randomBytes} from 'crypto'
 import {next} from 'nuid'
-import {ConnectionOptions} from "nats"
 
 
 test.before(async (t) => {
@@ -38,7 +37,7 @@ async function macro(t: any, input: any, encoding: string | Buffer): Promise<any
   const opts = {url: sc.server.nats}
   if (encoding === 'binary') {
     // @ts-ignore
-    opts.payload = Payload.BINARY
+    opts.payload = Payload.Binary
   }
   let nc = await connect(opts as ConnectionOptions)
   let subj = next()
