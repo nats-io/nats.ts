@@ -62,7 +62,8 @@ async function main() {
         }
     });
 
-    nc.flush(() => {
+    nc.flush()
+    .then(() => {
         console.log(`listening to [${flags.subject}]`);
     });
 }

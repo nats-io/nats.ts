@@ -21,9 +21,8 @@ let port = parseInt(process.argv[count - 1], 10)
 test(port)
 
 async function test(port: number) {
-  let nc: Client
-  try {
-    nc = await connect({port: port, name: 'closer test script'} as ConnectionOptions)
+  await connect({port: port, name: 'closer test script'} as ConnectionOptions)
+  .then((nc) => {
     nc.on('connect', function () {
       fs.writeFile('/tmp/existing_client.log', 'connected\n', (err) => {
         if (err) {
@@ -31,7 +30,6 @@ async function test(port: number) {
         }
       })
     })
-
 
     nc.on('error', function (e) {
       fs.appendFile('/tmp/existing_client.log', 'got error\n' + e, (err) => {
@@ -42,7 +40,7 @@ async function test(port: number) {
       process.exit(1)
     })
 
-    let sub = nc.subscribe('close', (err, msg) => {
+    nc.subscribe('close', (err, msg) => {
       fs.appendFile('/tmp/existing_client.log', 'got close\n', (err) => {
         if (err) {
           console.error(err)
@@ -52,7 +50,8 @@ async function test(port: number) {
       if (msg.reply) {
         nc.publish(msg.reply, 'closing')
       }
-      nc.flush(function () {
+      nc.flush()
+      .then(() => {
         nc.close()
         fs.appendFile('/tmp/existing_client.log', 'closed\n', (err) => {
           if (err) {
@@ -64,11 +63,12 @@ async function test(port: number) {
       })
     })
 
-    nc.flush(function () {
+    nc.flush().then(() => {
       nc.publish('started')
     })
-  } catch (ex) {
-    console.error(ex)
+  })
+  .catch((err) => {
+    console.error(err)
     process.exit(1)
-  }
+  })
 }

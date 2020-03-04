@@ -170,19 +170,15 @@ export class Client implements events.EventEmitter {
 
   /**
    * Flush outbound queue to server and call optional callback when server has processed all data.
-   * @param cb is optional. Flush is completed when promise resolves.
    * @return Promise<any>
    */
-  flush(cb?: FlushCallback): Promise<any> {
+  flush(): Promise<any> {
     return new Promise((resolve, reject) => {
       this.nc?.flush((err) => {
         if (!err) {
           resolve()
         } else {
           reject(err)
-        }
-        if (cb) {
-          cb(err)
         }
       })
     })

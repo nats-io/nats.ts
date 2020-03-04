@@ -48,9 +48,10 @@ async function main() {
         nc.publish(flags.subject, flags.payload);
         console.log(`[#${i + 1}] published ${flags.subject} ${flags.payload || ""}`);
     }
-    nc.flush(() => {
-        nc.close();
-    });
+    nc.flush()
+    .then(() => {
+        nc.close()
+    })
 }
 
 main();

@@ -16,8 +16,7 @@
 
 import test from 'ava'
 import {SC, startServer, stopServer} from './helpers/nats_server_control'
-import {connect, ConnectionOptions, createInbox, ErrorCode, NatsError, SubEvent, Subscription} from '../src/nats'
-import {Lock} from './helpers/latch'
+import {connect, ConnectionOptions, createInbox, ErrorCode, NatsError, Sub, SubEvent} from '../src/nats'
 import url from 'url'
 import {Payload} from 'nats'
 
@@ -42,7 +41,8 @@ test('connect with port', async (t) => {
   let u = new url.URL(sc.server.nats)
   return connect({port: parseInt(u.port, 10)} as ConnectionOptions)
   .then((nc) => {
-    return nc.flush(() => {
+    return nc.flush()
+    .then(() => {
       nc.close()
       t.pass()
     })
@@ -144,7 +144,7 @@ test('subscription message', async (t) => {
   const subj = createInbox()
   const payload = 'Hello World'
   const reply = createInbox()
-  let sub: Subscription
+  let sub: Sub
   let sid: number
   return connect(sc.server.nats)
   .then((nc) => {
@@ -297,7 +297,7 @@ test('wildcard subscriptions', async (t) => {
   nc.close()
 })
 
-test('flush can be a promise', async (t) => {
+test('flush is a promise', async (t) => {
   t.plan(1)
   let sc = t.context as SC
   let nc = await connect(sc.server.nats)
@@ -305,21 +305,6 @@ test('flush can be a promise', async (t) => {
   //@ts-ignore
   t.truthy(p.then)
   await p
-  nc.close()
-})
-
-test('flush can be a callback', async (t) => {
-  t.plan(2)
-  let lock = new Lock()
-  let sc = t.context as SC
-  let nc = await connect(sc.server.nats)
-  let p = nc.flush(() => {
-    t.pass()
-    lock.unlock()
-  })
-  t.truthy(p)
-  await lock.latch
-
   nc.close()
 })
 
@@ -424,17 +409,13 @@ test('unsubscribe unsubscribes', async (t) => {
 })
 
 test('flush cb calls error on close', async (t) => {
-  t.plan(3)
+  t.plan(1)
   let sc = t.context as SC
   let nc = await connect(sc.server.nats)
   nc.close()
-  nc.flush((err) => {
-    t.pass()
-    if (err) {
-      t.is(err.code, ErrorCode.CONN_CLOSED)
-    } else {
-      t.fail("expected error")
-    }
+  return nc.flush()
+  .then(() => {
+    t.fail('should have not been able to flush')
   }).catch((err) => {
     t.is(err?.code, ErrorCode.CONN_CLOSED)
   })

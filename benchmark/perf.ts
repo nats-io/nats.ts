@@ -104,7 +104,17 @@ async function subTest() {
             process.stdout.write('=');
         }
     }, {max: loop});
-    nc.flush((_) => {
+
+    nc.on('unsubscribe', () => {
+        let millis = Date.now() - start;
+        let mps = Math.round((loop / (millis / 1000)));
+        console.log('\nReceived at ' + mps + ' msgs/sec');
+        log('metrics.csv', 'sub', loop, millis, tag);
+        nc.close();
+    });
+
+    nc.flush()
+    .then(() => {
         console.log('Waiting for', loop, 'messages');
         try {
             let process = spawn('nats-bench', ['-s', pargs.server || "", '-n', count.toString(), '-ns', '0', '-np', '1', "-ms", size.toString(), "test"]);
@@ -120,18 +130,10 @@ async function subTest() {
                     console.log(m);
                 });
             });
-        } catch(ex) {
+        } catch (ex) {
             console.log(ex);
         }
-    });
-
-    nc.on('unsubscribe', () => {
-        let millis = Date.now() - start;
-        let mps = Math.round((loop / (millis / 1000)));
-        console.log('\nReceived at ' + mps + ' msgs/sec');
-        log('metrics.csv', 'sub', loop, millis, tag);
-        nc.close();
-    });
+    })
 }
 
 async function pubTest() {
