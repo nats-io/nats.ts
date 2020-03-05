@@ -15,6 +15,9 @@ ts-nats is a typescript nats library for node that supports Promises and async/a
 
 ```bash
 npm install ts-nats
+
+# to install current dev version
+npm install ts-nats@next
 ```
 
 ## Basic Usage
