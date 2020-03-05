@@ -460,29 +460,30 @@ The following is the list of connection options and default values.
 
 | Option                 | Default                   | Description
 |--------                |---------                  |------------
+| `credsFile`            |                           | Path to a properly formatted user credentials file containing the client's JWT and seed key for the client. This property sets a `nonceSigner` and `nkey` automatically.
 | `encoding`             | `"utf8"`                  | Encoding specified by the client to encode/decode data
 | `maxPingOut`           | `2`                       | Max number of pings the client will allow unanswered before rasing a stale connection error
 | `maxReconnectAttempts` | `10`                      | Sets the maximum number of reconnect attempts. The value of `-1` specifies no limit
 | `name`                 |                           | Optional client name (useful for debugging a client on the server output `-DV`)
 | `nkey`                 |                           | The public NKey identifying the client
-| `nkeyCreds`            |                           | Path to a file containing seed nkey for the client. This property sets a `nonceSigner` and `nkey` automatically.
 | `noEcho`               | `false`                   | If set, the client's matching subscriptions won't receive messages published by the client. Requires server support 1.2.0+.
-| `nonceSigner`          |                           | A `NonceSigner` function that signs the server challenge. 
+| `noMuxRequests`        | `false`                   | If set to `true` calls to `request()`  will create an inbox subscription per call.
 | `noRandomize`          | `false`                   | If set, the order of user-specified servers is randomized.
+| `nonceSigner`          |                           | A `NonceSigner` function that signs the server challenge. 
 | `pass`                 |                           | Sets the password for a connection
 | `payload`              | `Payload.STRING`          | Sets the payload type [`Payload.STRING`, `Payload.BINARY`, or `Payload.JSON`].
 | `pedantic`             | `false`                   | Turns on strict subject format checks
 | `pingInterval`         | `120000`                  | Number of milliseconds between client-sent pings
-| `reconnect`            | `true`                    | If false server will not attempt reconnecting
 | `reconnectTimeWait`    | `2000`                    | If disconnected, the client will wait the specified number of milliseconds between reconnect attempts
+| `reconnect`            | `true`                    | If false server will not attempt reconnecting
 | `servers`              |                           | Array of connection `url`s
 | `timeout`              | `0`                       | Number of milliseconds to wait before timing out the initial connection. Must be greater than `0`. Note that `waitOnFirst` must be specified, and `reconnectTimeWait` and `maxReconnectAttempts` must have sensible values supporting the desired timeout.
 | `tls`                  | `undefined`               | This property can be a boolean or an Object. If `true` the client requires a TLS connection. If `false` a non-tls connection is required. `undefined` allows connecting to either secure or non-secured.  The value can also be an object specifying TLS certificate data, which will implicitly require a secured connection. The properties `ca`, `key`, `cert` should contain the certificate file data. `ca` should be provided for self-signed certificates. `key` and `cert` are required for client provided certificates. `rejectUnauthorized` if `true` validates server's credentials
+| `tokenHandler`         |                           | A function returning a `token` used for authentication.
 | `token`                |                           | Sets a authorization token for a connection
 | `url`                  | `"nats://localhost:4222"` | Connection url
-| `user`                 |                           | Sets the username for a connection
-| `userCreds`            |                           | Path to a properly formatted user credentials file containing the client's JWT and seed key for the client. This property sets a `nonceSigner` automatically.
 | `userJWT`              |                           | A string or a `JWTProvider` function which provides a JWT specifying the client's permissions
+| `user`                 |                           | Sets the username for a connection
 | `verbose`              | `false`                   | Turns on `+OK` protocol acknowledgements
 | `waitOnFirstConnect`   | `false`                   | If `true` the server will fall back to a reconnect mode if it fails its first connection attempt.
 | `yieldTime`            |                           | If set and processing exceeds yieldTime, client will yield to IO callbacks before processing additional inbound messages 

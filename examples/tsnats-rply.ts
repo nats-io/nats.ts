@@ -25,7 +25,7 @@ if (flags.options.creds && flags.options.nkey) {
     process.exit(-1);
 }
 if (flags.options.creds) {
-    opts.userCreds = flags.options.creds;
+    opts.credsFile = flags.options.creds;
 }
 if (flags.options.nkey) {
     opts.nkey = flags.options.nkey;

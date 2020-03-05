@@ -8,6 +8,10 @@ While every attempt was made to keep `nats.ts` very close, some changes were req
 
 ## Migration Guide
 
+### connection options
+
+- Option `nkeyCreds` was renamed to `credsFile`
+
 ### `connect()`
 
 The nats.ts library will never emit a `connect`	event, as this event is trapped internally as part of resolving the connection promise. 

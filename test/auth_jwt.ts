@@ -184,7 +184,7 @@ test('connects with creds file', async (t) => {
   //@ts-ignore
   return connect({
     url: sc.server.nats,
-    userCreds: path.join(confdir, 'nkeys', 'test.creds')
+    credsFile: path.join(confdir, 'nkeys', 'test.creds')
   } as ConnectionOptions)
   .then((nc) => {
     t.pass()
@@ -201,7 +201,7 @@ test('fails connects with bad creds file', async (t) => {
   let sc = t.context as SC
   return connect({
     url: sc.server.nats,
-    userCreds: path.join(confdir, 'nkeys', 'test.txt')
+    credsFile: path.join(confdir, 'nkeys', 'test.txt')
   } as ConnectionOptions)
   .then((nc) => {
     t.fail('should have not connected')
