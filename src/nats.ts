@@ -36,10 +36,10 @@ export {
 import {existsSync} from "fs"
 
 // locate our package.json
-let pkgFile = __dirname + './../package.json'
+let pkgFile = __dirname + '/../package.json';
 if (!existsSync(pkgFile)) {
-  // tests will find it here
-  pkgFile = __dirname + './../../package.json'
+    // tests will find it here
+    pkgFile = __dirname + '/../../package.json';
 }
 /** Version of the ts-nats library */
 export const VERSION = require(pkgFile).version

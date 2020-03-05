@@ -30,8 +30,8 @@
   "types": "./",
   "scripts": {
     "build": "npm run clean && tsc && npm run copy",
-    "clean": "rm -Rf lib/ || true && rm -Rf .nyc_output/ || true && rm ./*.d.ts || true && rm -Rf coverage/",
-    "copy": "cp -R ./lib/src ./dist && rm -Rf lib/ && mv dist lib && mv lib/*.d.ts ./",
+    "clean": "rm -Rf lib/ || true && rm -Rf .nyc_output/ || true && rm -Rf coverage/ || true",
+    "copy": "cp -R ./lib/src ./dist && rm -Rf lib/ && mv dist lib",
     "cover:html": "nyc report --reporter=html && open coverage/index.html",
     "cover:coveralls": "nyc report --reporter=lcovonly && cat ./coverage/lcov.info | coveralls",
     "pack": "npm run build && npm pack",
@@ -44,18 +44,18 @@
   },
   "dependencies": {
     "nats": "^2.0.0-20",
-    "nuid": "^1.1.0",
-    "ts-nkeys": "^1.0.14"
+    "nuid": "^1.1.2",
+    "ts-nkeys": "^1.0.16"
   },
   "devDependencies": {
-    "@types/node": "^13.7.0",
-    "acorn": "^7.1.0",
+    "@types/node": "^13.7.7",
+    "acorn": "^7.1.1",
     "ava": "^2.4.0",
-    "coveralls": "^3.0.4",
+    "coveralls": "^3.0.9",
     "nyc": "^15.0.0",
-    "typedoc": "^0.15.0",
+    "typedoc": "^0.15.8",
     "typedoc-plugin-markdown": "^1.2.1",
-    "typescript": "^3.5.3"
+    "typescript": "^3.8.3"
   },
   "typings": "./lib/nats.d.ts",
   "ava": {
