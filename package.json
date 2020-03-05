@@ -1,6 +1,6 @@
 {
   "name": "ts-nats",
-  "version": "1.2.8",
+  "version": "1.2.12",
   "description": "Typescript Node.js client for NATS, a lightweight, high-performance cloud native messaging system",
   "keywords": [
     "nats",
@@ -30,8 +30,8 @@
   "types": "./",
   "scripts": {
     "build": "npm run clean && tsc && npm run copy",
-    "clean": "rm -Rf lib/ || true && rm -Rf .nyc_output/ || true && rm ./*.d.ts || true && rm -Rf coverage/",
-    "copy": "cp -R ./lib/src ./dist && rm -Rf lib/ && mv dist lib && mv lib/*.d.ts ./",
+    "clean": "rm -Rf lib/ || true && rm -Rf .nyc_output/ || true && rm -Rf coverage/ || true",
+    "copy": "cp -R ./lib/src ./dist && rm -Rf lib/ && mv dist lib",
     "cover:html": "nyc report --reporter=html && open coverage/index.html",
     "cover:coveralls": "nyc report --reporter=lcovonly && cat ./coverage/lcov.info | coveralls",
     "pack": "npm run build && npm pack",
