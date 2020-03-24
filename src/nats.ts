@@ -42,7 +42,7 @@ if (!existsSync(pkgFile)) {
     pkgFile = __dirname + '/../../package.json';
 }
 /** Version of the ts-nats library */
-export const VERSION = require(pkgFile).version
+export const VERSION = require(pkgFile).version;
 
 
 /** ServerInfo received from the server */
@@ -125,7 +125,7 @@ export interface NatsConnectionOptions extends ConnectionOptions {
  * NATS server Client object.
  */
 export class Client implements events.EventEmitter {
-  nc!: nats.Client
+  nc!: nats.Client;
 
   /** Returns an unique and properly formatted inbox subject that can be used for replies */
 
@@ -137,19 +137,19 @@ export class Client implements events.EventEmitter {
   /** @hidden */
   static connect(opts?: ConnectionOptions | string | number): Promise<Client> {
     return new Promise((resolve, reject) => {
-      const nc = nats.connect(opts as ConnectionOptions)
-      let rr = false
+      const nc = nats.connect(opts as ConnectionOptions);
+      let rr = false;
       nc.on('error', (err) => {
         if (!rr) {
-          rr = true
-          reject(err)
+          rr = true;
+          reject(err);
         }
-      })
+      });
       nc.once('connect', (nc) => {
-        nc.removeAllListeners()
-        const c = new Client(nc)
-        c.nc = nc
-        rr = true
+        nc.removeAllListeners();
+        const c = new Client(nc);
+        c.nc = nc;
+        rr = true;
         resolve(c)
       })
     })
@@ -163,9 +163,9 @@ export class Client implements events.EventEmitter {
     return new Promise((resolve, reject) => {
       this.nc?.flush((err) => {
         if (!err) {
-          resolve()
+          resolve();
         } else {
-          reject(err)
+          reject(err);
         }
       })
     })
