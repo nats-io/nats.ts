@@ -22,22 +22,22 @@ import {readFileSync} from 'fs'
 import {TLSSocket} from 'tls'
 import * as url from 'url'
 
-let serverCert = join(__dirname, '../../test/helpers/certs/server.pem')
-let serverKey = join(__dirname, '../../test/helpers/certs/key.pem')
-let caCert = join(__dirname, '../../test/helpers/certs/ca.pem')
-let clientCert = join(__dirname, '../../test/helpers/certs/client-cert.pem')
-let clientKey = join(__dirname, '../../test/helpers/certs/client-key.pem')
+const serverCert = join(__dirname, '../../test/helpers/certs/server.pem')
+const serverKey = join(__dirname, '../../test/helpers/certs/key.pem')
+const caCert = join(__dirname, '../../test/helpers/certs/ca.pem')
+const clientCert = join(__dirname, '../../test/helpers/certs/client-cert.pem')
+const clientKey = join(__dirname, '../../test/helpers/certs/client-key.pem')
 
 test.before(async (t) => {
-  //@ts-ignore
-  let server = await startServer()
-  let tls = await startServer(['--tlscert', serverCert, '--tlskey', serverKey, '--tlscacert', caCert])
-  let tlsverify = await startServer(['--tlsverify', '--tlscert', serverCert, '--tlskey', serverKey, '--tlscacert', caCert])
+  // @ts-ignore
+  const server = await startServer()
+  const tls = await startServer(['--tlscert', serverCert, '--tlskey', serverKey, '--tlscacert', caCert])
+  const tlsverify = await startServer(['--tlsverify', '--tlscert', serverCert, '--tlskey', serverKey, '--tlscacert', caCert])
 
   t.context = {
-    server: server,
-    tls: tls,
-    tlsverify: tlsverify,
+    server,
+    tls,
+    tlsverify,
     cacert: readFileSync(caCert),
     clientcert: readFileSync(clientCert),
     clientkey: readFileSync(clientKey)
@@ -45,17 +45,17 @@ test.before(async (t) => {
 })
 
 test.after.always((t) => {
-  let sc = t.context as SC
+  const sc = t.context as SC
   stopServer(sc.server)
-  //@ts-ignore
+  // @ts-ignore
   stopServer(sc.tls)
-  //@ts-ignore
+  // @ts-ignore
   stopServer(sc.tlsverify)
 })
 
 test('error if server does not support TLS', async (t) => {
   t.plan(2)
-  let sc = t.context as SC
+  const sc = t.context as SC
   return connect({url: sc.server.nats, tls: true})
   .then((nc) => {
     t.fail('should have not connected')
@@ -69,11 +69,11 @@ test('error if server does not support TLS', async (t) => {
 
 test('error if server requires TLS', async (t) => {
   t.plan(2)
-  let sc = t.context as SC
+  const sc = t.context as SC
   // tls urls, make tls required, so, make it so it looks like a reg nats server
-  //@ts-ignore
+  // @ts-ignore
   const u = url.parse(sc.tls.nats)
-  //@ts-ignore
+  // @ts-ignore
   return connect({url: `nats://${u.host}`, tls: false})
   .then((nc) => {
     t.fail('should have not connected')
@@ -89,8 +89,8 @@ test.serial('no error if server requires TLS - but tls is undefined', async (t) 
   // this affects all the tests, so this test must be run serially
   process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0"
   t.plan(1)
-  let sc = t.context as SC
-  //@ts-ignore
+  const sc = t.context as SC
+  // @ts-ignore
   return connect({url: sc.tls.nats})
   .then((nc) => {
     t.pass()
@@ -107,8 +107,8 @@ test.serial('no error if server requires TLS - but tls is undefined', async (t) 
 
 test('reject without proper CA', async (t) => {
   t.plan(2)
-  let sc = t.context as SC
-  //@ts-ignore
+  const sc = t.context as SC
+  // @ts-ignore
   return connect({url: sc.tls.nats, tls: true})
   .then((nc) => {
     t.fail('should have not connected')
@@ -122,13 +122,13 @@ test('reject without proper CA', async (t) => {
 
 test('connect if authorized is overridden', async (t) => {
   t.plan(2)
-  let sc = t.context as SC
-  //@ts-ignore
+  const sc = t.context as SC
+  // @ts-ignore
   return connect({url: sc.tls.nats, tls: {rejectUnauthorized: false}})
   .then((nc) => {
-    //@ts-ignore
+    // @ts-ignore
     t.true(nc.nc.stream instanceof TLSSocket)
-    //@ts-ignore
+    // @ts-ignore
     t.false(nc.nc.stream.authorized)
     nc.close()
   })
@@ -140,12 +140,12 @@ test('connect if authorized is overridden', async (t) => {
 test('connect with proper ca and be authorized', async (t) => {
   t.plan(2)
   const sc = t.context as SC
-  //@ts-ignore
+  // @ts-ignore
   return connect({url: sc.tls.nats, tls: {ca: [sc.cacert]}})
   .then((nc) => {
-    //@ts-ignore
+    // @ts-ignore
     t.true(nc.nc.stream instanceof TLSSocket)
-    //@ts-ignore
+    // @ts-ignore
     t.true(nc.nc.stream.authorized)
     nc.close()
   })
@@ -156,8 +156,8 @@ test('connect with proper ca and be authorized', async (t) => {
 
 test('reject without proper cert if required by server', (t) => {
   t.plan(2)
-  let sc = t.context as SC
-  //@ts-ignore
+  const sc = t.context as SC
+  // @ts-ignore
   return connect({url: sc.tlsverify.nats, tls: true})
   .then((nc) => {
     t.fail('should have not connected')
@@ -171,13 +171,13 @@ test('reject without proper cert if required by server', (t) => {
 
 test('authorized with proper cert', (t) => {
   t.plan(2)
-  let sc = t.context as SC
-  //@ts-ignore
+  const sc = t.context as SC
+  // @ts-ignore
   return connect({url: sc.tls.nats, tls: {ca: [sc.cacert], key: [sc.clientkey], cert: [sc.clientcert]}})
   .then((nc: Client) => {
-    //@ts-ignore
+    // @ts-ignore
     t.true(nc.nc.stream instanceof TLSSocket)
-    //@ts-ignore
+    // @ts-ignore
     t.true(nc.nc.stream.authorized)
     nc.close()
   })
@@ -185,9 +185,9 @@ test('authorized with proper cert', (t) => {
 
 test('handle openssl error', async (t) => {
   t.plan(1)
-  let sc = t.context as SC
+  const sc = t.context as SC
   // pass the wrong cert/ca to fail it
-  //@ts-ignore
+  // @ts-ignore
   return connect({url: sc.tls.nats, tls: {key: sc.clientkey, cert: sc.cacert, ca: sc.clientcert}})
   .then((nc) => {
     t.fail('should have failed to connect')

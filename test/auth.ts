@@ -21,11 +21,11 @@ import {jsonToNatsConf, writeFile} from './helpers/nats_conf_utils'
 import {next} from 'nuid'
 import {join} from 'path'
 
-let CONF_DIR = (process.env.TRAVIS) ? process.env.TRAVIS_BUILD_DIR : process.env.TMPDIR
+const CONF_DIR = (process.env.TRAVIS) ? process.env.TRAVIS_BUILD_DIR : process.env.TMPDIR
 
 
 test.before(async (t) => {
-  let conf = {
+  const conf = {
     authorization: {
       users: [{
         user: 'derek',
@@ -38,11 +38,11 @@ test.before(async (t) => {
     }
   }
 
-  //@ts-ignore
-  let fp = join(CONF_DIR, next() + '.conf')
+  // @ts-ignore
+  const fp = join(CONF_DIR, next() + '.conf')
   writeFile(fp, jsonToNatsConf(conf))
-  let server = await startServer(['-c', fp])
-  t.context = {server: server}
+  const server = await startServer(['-c', fp])
+  t.context = {server}
 })
 
 test.after.always((t) => {
@@ -99,7 +99,7 @@ test('auth: urlauth', (t) => {
 
 test('auth: cannot sub to foo - not fatal', (t) => {
   t.plan(2)
-  let sc = t.context as SC
+  const sc = t.context as SC
   return connect({url: sc.server.nats, user: 'derek', pass: 'foobar'} as ConnectionOptions)
   .then((nc) => {
     return nc.subscribe('foo', (err) => {

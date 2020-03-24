@@ -49,7 +49,7 @@ function testPromise(value: any, ok: boolean = true): Promise<any> {
   })
 }
 
-//@ts-ignore - "a" shouldn't work - prevent the compiler from failing
+// @ts-ignore - "a" shouldn't work - prevent the compiler from failing
 test('requires array', settleMacro, 'a', true)
 test('empty array', settleMacro, [])
 test('values', settleMacro, [1, 'two', true, {a: 'b'}])

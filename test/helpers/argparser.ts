@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 The NATS Authors
+ * Copyright 2018-2020 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -21,26 +21,26 @@ export interface Flags {
   options: { [key: string]: string };
 }
 
-export function parseFlags(args: string[], usage: Function, flags: string[]): Flags {
-  let p = new ArgParser(args, usage, flags)
+export function parseFlags(args: string[], usage: ()=>void, flags: string[]): Flags {
+  const p = new ArgParser(args, usage, flags)
   return p.parseFlags()
 }
 
 class ArgParser {
   args: string[]
-  usage: Function
+  usage: () => void
   flags?: string[]
 
-  constructor(args: string[], usage: Function, flags: string[]) {
+  constructor(args: string[], usage: ()=>void, flags: string[]) {
     this.args = args
     this.usage = usage
     this.flags = flags
   }
 
   getOpt(flag: string): string | undefined {
-    let si = this.args.indexOf(flag)
+    const si = this.args.indexOf(flag)
     if (si !== -1) {
-      let v = this.args[si + 1]
+      const v = this.args[si + 1]
       this.args.splice(si, 2)
       return v
     }
@@ -48,13 +48,13 @@ class ArgParser {
   }
 
   parseFlags(): Flags {
-    let opts = {} as Flags
+    const opts = {} as Flags
     opts.server = this.getOpt('-s')
 
     if (this.flags) {
       opts.options = {} as { [key: string]: string }
       this.flags.forEach((f) => {
-        let v = this.getOpt('-' + f)
+        const v = this.getOpt('-' + f)
         if (v) {
           opts.options[f] = v
         }

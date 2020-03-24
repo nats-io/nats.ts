@@ -23,8 +23,8 @@ import {createInbox} from "nats"
 
 
 test.before(async (t) => {
-  let server = await startServer()
-  t.context = {server: server, servers: [server]}
+  const server = await startServer()
+  t.context = {server, servers: [server]}
 })
 
 test.after.always((t) => {
@@ -34,7 +34,7 @@ test.after.always((t) => {
 })
 
 function registerServer(t: ExecutionContext, s: Server): Server {
-  //@ts-ignore
+  // @ts-ignore
   t.context.servers.push(s)
   return s
 }
@@ -45,7 +45,7 @@ test('VERSION is semver', (t) => {
 
 test('VERSION matches package.json', (t) => {
   // we are getting build in lib/test
-  let pkg = require('../../package.json')
+  const pkg = require('../../package.json')
   t.is(pkg.version, VERSION)
 })
 
@@ -54,11 +54,11 @@ test('connect is a function', (t) => {
 })
 
 test('default connect properties', async (t) => {
-  let sc = t.context as SC
+  const sc = t.context as SC
   return connect(sc.server.nats)
   .then((nc) => {
-    //@ts-ignore
-    let opts = nc.nc.options as ConnectionOptions
+    // @ts-ignore
+    const opts = nc.nc.options as ConnectionOptions
     t.is(opts.verbose, false)
     t.is(opts.pedantic, false)
     t.is(opts.user, undefined)
@@ -71,10 +71,10 @@ test('default connect properties', async (t) => {
 
 test('noEcho', async (t) => {
   t.plan(1)
-  let lock = new Lock()
-  let sc = t.context as SC
-  let subj = createInbox()
-  let cp = connect({url: sc.server.nats, noEcho: true})
+  const lock = new Lock()
+  const sc = t.context as SC
+  const subj = createInbox()
+  const cp = connect({url: sc.server.nats, noEcho: true})
   cp.then(async (nc) => {
     let c2 = 0
     nc.subscribe(subj, () => {
@@ -97,7 +97,7 @@ test('noEcho', async (t) => {
 })
 
 test('noEcho not supported', async (t) => {
-  let server = new mockserver.ScriptedServer(0)
+  const server = new mockserver.ScriptedServer(0)
   try {
     await server.start()
   } catch (ex) {

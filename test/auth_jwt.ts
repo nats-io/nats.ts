@@ -37,25 +37,25 @@ test.before(async (t) => {
     return
   }
 
-  let dir = (process.env.TRAVIS) ? process.env.TRAVIS_BUILD_DIR : process.env.TMPDIR
-  //@ts-ignore
-  let operatorJwtPath = path.join(dir, next() + '.jwt')
+  const dir = (process.env.TRAVIS) ? process.env.TRAVIS_BUILD_DIR : process.env.TMPDIR
+  // @ts-ignore
+  const operatorJwtPath = path.join(dir, next() + '.jwt')
   writeFile(operatorJwtPath, opJWT)
 
-  let conf = {
+  const conf = {
     operator: operatorJwtPath,
     resolver: 'MEMORY',
     resolver_preload: {}
   }
-  //@ts-ignore
+  // @ts-ignore
   conf.resolver_preload[accountPK] = accountJWT
 
-  //@ts-ignore
-  let confPath = path.join(dir, next() + '.conf')
+  // @ts-ignore
+  const confPath = path.join(dir, next() + '.conf')
   writeFile(confPath, jsonToNatsConf(conf))
 
-  let server = await startServer(['-c', confPath])
-  t.context = {server: server, confPath: confPath, opJWT: operatorJwtPath}
+  const server = await startServer(['-c', confPath])
+  t.context = {server, confPath, opJWT: operatorJwtPath}
 })
 
 test.after.always((t) => {
@@ -63,9 +63,9 @@ test.after.always((t) => {
     return
   }
   stopServer((t.context as SC).server)
-  //@ts-ignore
+  // @ts-ignore
   unlinkSync(t.context.confPath)
-  //@ts-ignore
+  // @ts-ignore
   unlinkSync(t.context.opJWT)
 })
 
@@ -92,9 +92,9 @@ test('error if nonceSigner is not function', async (t) => {
     return
   }
   t.plan(1)
-  let sc = t.context as SC
-  //@ts-ignore - ts requires function
-  let opts = {url: sc.server.nats, nonceSigner: 'BAD'} as ConnectionOptions
+  const sc = t.context as SC
+  // @ts-ignore - ts requires function
+  const opts = {url: sc.server.nats, nonceSigner: 'BAD'} as ConnectionOptions
   return connect(opts)
   .then((nc) => {
     t.fail('should have failed to connect')
@@ -111,11 +111,11 @@ test('error if no nkey or userJWT', async (t) => {
     return
   }
   t.plan(1)
-  let sc = t.context as SC
-  //@ts-ignore
+  const sc = t.context as SC
+  // @ts-ignore
   return connect({
-    url: sc.server.nats, nonceSigner: function () {
-    }
+    // tslint:disable-next-line:no-empty
+    url: sc.server.nats, nonceSigner: () => {}
   } as ConnectionOptions)
   .then((nc) => {
     t.fail('should have not connected')
@@ -133,12 +133,12 @@ test('connects with userJWT and nonceSigner', (t) => {
   }
 
   t.plan(1)
-  let sc = t.context as SC
+  const sc = t.context as SC
   return connect({
     url: sc.server.nats,
     userJWT: uJWT,
-    nonceSigner: function (nonce: string): Buffer {
-      let sk = fromSeed(Buffer.from(uSeed))
+    nonceSigner: (nonce: string): Buffer => {
+      const sk = fromSeed(Buffer.from(uSeed))
       return sk.sign(Buffer.from(nonce))
     }
   } as ConnectionOptions)
@@ -158,11 +158,11 @@ test('connects with userJWT function', async (t) => {
   const sc = t.context as SC
   return connect({
     url: sc.server.nats,
-    userJWT: function () {
+    userJWT () {
       return uJWT
     },
-    nonceSigner: function (nonce: string): Buffer {
-      let sk = fromSeed(Buffer.from(uSeed))
+    nonceSigner (nonce: string): Buffer {
+      const sk = fromSeed(Buffer.from(uSeed))
       return sk.sign(Buffer.from(nonce))
     }
   } as ConnectionOptions)
@@ -181,7 +181,7 @@ test('connects with creds file', async (t) => {
 
   t.plan(1)
   const sc = t.context as SC
-  //@ts-ignore
+  // @ts-ignore
   return connect({
     url: sc.server.nats,
     credsFile: path.join(confdir, 'nkeys', 'test.creds')
@@ -198,7 +198,7 @@ test('fails connects with bad creds file', async (t) => {
     return
   }
   t.plan(1)
-  let sc = t.context as SC
+  const sc = t.context as SC
   return connect({
     url: sc.server.nats,
     credsFile: path.join(confdir, 'nkeys', 'test.txt')

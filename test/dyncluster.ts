@@ -31,20 +31,20 @@ test.after.always((t) => {
 })
 
 function registerServer(t: ExecutionContext, s: Server): Server {
-  //@ts-ignore
+  // @ts-ignore
   t.context.servers.push(s)
   return s
 }
 
 async function addClusterServer(t: ExecutionContext, server: Server): Promise<Server> {
-  let s = await addClusterMember(server)
+  const s = await addClusterMember(server)
   return registerServer(t, s)
 }
 
 function countImplicit(nc: Client): number {
   let count = 0
-  //@ts-ignore
-  nc.nc.servers.getAll().forEach(function (s) {
+  // @ts-ignore
+  nc.nc.servers.getAll().forEach((s) => {
     if (s.implicit) {
       count++
     }
@@ -54,12 +54,12 @@ function countImplicit(nc: Client): number {
 
 
 test('updates add', async (t) => {
-  let s1 = registerServer(t, await startServer())
+  const s1 = registerServer(t, await startServer())
   t.plan(4)
-  let lock = new Lock()
-  let nc = await connect(s1.nats)
-  //@ts-ignore
-  let servers = nc.nc.servers
+  const lock = new Lock()
+  const nc = await connect(s1.nats)
+  // @ts-ignore
+  const servers = nc.nc.servers
   t.is(servers.length(), 1)
   nc.on('serversChanged', (change) => {
     t.is(servers.length(), 2)
@@ -73,9 +73,9 @@ test('updates add', async (t) => {
 
 test('updates remove', async (t) => {
   t.plan(2)
-  let s1 = registerServer(t, await startServer())
+  const s1 = registerServer(t, await startServer())
   let s2: Server
-  let lock = new Lock()
+  const lock = new Lock()
 
   let changes = 0
   const nc = await connect(s1.nats)
@@ -84,8 +84,8 @@ test('updates remove', async (t) => {
       t.pass()
       changes += sc.added.length
       setTimeout(() => {
-        stopServer(s2, () => {
-        })
+        // tslint:disable-next-line:no-empty
+        stopServer(s2, () => {})
       }, 600)
     }
     if (sc.deleted.length) {
@@ -107,13 +107,13 @@ test('updates remove', async (t) => {
 
 test('reconnects to gossiped server', async (t) => {
   t.plan(1)
-  let s1 = registerServer(t, await startServer())
-  let s2 = await addClusterServer(t, s1)
+  const s1 = registerServer(t, await startServer())
+  const s2 = await addClusterServer(t, s1)
 
-  let lock = new Lock()
-  let nc = await connect(s2.nats)
-  //@ts-ignore
-  let servers = nc.nc.servers
+  const lock = new Lock()
+  const nc = await connect(s2.nats)
+  // @ts-ignore
+  const servers = nc.nc.servers
 
   setTimeout(() => {
     stopServer(s2)
@@ -129,13 +129,13 @@ test('reconnects to gossiped server', async (t) => {
 
 test('fails after maxReconnectAttempts when servers killed', async (t) => {
   t.plan(4)
-  let s1 = registerServer(t, await startServer())
-  let s2 = await addClusterServer(t, s1)
+  const s1 = registerServer(t, await startServer())
+  const s2 = await addClusterServer(t, s1)
   await delay(100)
 
-  let lock = new Lock()
-  let nc = await connect({url: s2.nats, maxReconnectAttempts: 10, reconnectTimeWait: 50})
-  //@ts-ignore
+  const lock = new Lock()
+  const nc = await connect({url: s2.nats, maxReconnectAttempts: 10, reconnectTimeWait: 50})
+  // @ts-ignore
   t.is(nc.nc.servers.getCurrent().toString(), s2.nats)
 
   process.nextTick(() => {

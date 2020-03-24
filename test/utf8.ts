@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 The NATS Authors
+ * Copyright 2018-2020 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -20,8 +20,8 @@ import {connect, ConnectionOptions} from '../src/nats'
 import {createInbox, NatsError} from 'nats'
 
 test.before(async (t) => {
-  let server = await startServer()
-  t.context = {server: server}
+  const server = await startServer()
+  t.context = {server}
 })
 
 test.after.always((t) => {
@@ -31,16 +31,16 @@ test.after.always((t) => {
 
 test('pub sub with utf8 payloads by default', async (t) => {
   t.plan(5)
-  let sc = t.context as SC
-  let nc = await connect(sc.server.nats)
+  const sc = t.context as SC
+  const nc = await connect(sc.server.nats)
 
   // ½ + ¼ = ¾: 9 characters, 12 bytes
-  let data = '\u00bd + \u00bc = \u00be'
+  const data = '\u00bd + \u00bc = \u00be'
   t.is(data.length, 9)
   t.is(Buffer.byteLength(data), 12)
 
-  let subj = createInbox()
-  let sub = nc.subscribe(subj, (err, msg) => {
+  const subj = createInbox()
+  const sub = nc.subscribe(subj, (err, msg) => {
     t.is(msg.data.length, 9)
     t.is(Buffer.byteLength(msg.data), 12)
     t.is(msg.data, data)
@@ -51,39 +51,39 @@ test('pub sub with utf8 payloads by default', async (t) => {
 
 test('override encoding', async (t) => {
   t.plan(5)
-  let sc = t.context as SC
-  let opts = {url: sc.server.nats, encoding: 'ascii'} as ConnectionOptions
-  let nc = await connect(opts)
+  const sc = t.context as SC
+  const opts = {url: sc.server.nats, encoding: 'ascii'} as ConnectionOptions
+  const nc = await connect(opts)
 
   // ½ + ¼ = ¾: 9 characters, 12 bytes
-  let data = '\u00bd + \u00bc = \u00be'
-  let plain_data = 'Hello World'
+  const data = '\u00bd + \u00bc = \u00be'
+  const plainData = 'Hello World'
 
   t.is(data.length, 9)
   t.is(Buffer.byteLength(data), 12)
 
-  let subj1 = createInbox()
-  let sub1 = nc.subscribe(subj1, (err, msg) => {
+  const subj1 = createInbox()
+  const sub1 = nc.subscribe(subj1, (err, msg) => {
     t.is(msg.data.length, 12)
     t.not(msg.data, data)
   }, {max: 1})
   nc.publish(subj1, data)
 
-  let subj2 = createInbox()
-  let sub2 = nc.subscribe(subj2, (err, msg) => {
-    t.is(msg.data, plain_data)
+  const subj2 = createInbox()
+  const sub2 = nc.subscribe(subj2, (err, msg) => {
+    t.is(msg.data, plainData)
   }, {max: 1})
-  nc.publish(subj2, plain_data)
+  nc.publish(subj2, plainData)
 
   await nc.flush()
 })
 
 test('unsupported encoding', async (t) => {
   t.plan(1)
-  let sc = t.context as SC
-  //@ts-ignore
-  let opts = {url: sc.server.nats, encoding: 'foobar'} as ConnectionOptions
-  let error = connect(opts)
+  const sc = t.context as SC
+  // @ts-ignore
+  const opts = {url: sc.server.nats, encoding: 'foobar'} as ConnectionOptions
+  const error = connect(opts)
   await t.throwsAsync(error, {instanceOf: NatsError, code: 'INVALID_ENCODING'})
 })
 

@@ -19,9 +19,8 @@
  * @hidden
  */
 export function extend(a: any, ...b: any[]): any {
-  for (let i = 0; i < b.length; i++) {
-    let o = b[i]
-    Object.keys(o).forEach(function (k) {
+  for (const o of b) {
+    Object.keys(o).forEach((k) => {
       a[k] = o[k]
     })
   }

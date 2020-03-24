@@ -36,9 +36,10 @@
     "cover:coveralls": "nyc report --reporter=lcovonly && cat ./coverage/lcov.info | coveralls",
     "pack": "npm run build && npm pack",
     "debugtest": "tsc && node node_modules/.bin/ava --verbose -T 6500000 --match",
-    "test": "tsc && nyc ava --verbose -T 15000",
+    "test": "npm run lint && tsc && nyc ava --verbose -T 15000",
     "doc": "node_modules/.bin/typedoc --options ./typedocconfig.ts && touch ./docs/.nojekyll",
-    "lint": "tslint -c tslint.json 'src/**/*.ts'"
+    "lint": "tslint -c tslint.json 'src/**/*.ts' 'test/**/*.ts' 'examples/**/*.ts'",
+    "fixlint": "tslint -c tslint.json --fix 'src/**/*.ts' 'test/**/*.ts' 'examples/**/*.ts' -t verbose"
   },
   "engines": {
     "node": ">= 8.17.0"

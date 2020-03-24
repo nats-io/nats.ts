@@ -21,8 +21,8 @@ import {Lock} from './helpers/latch'
 import {createInbox} from "nats"
 
 test.before(async (t) => {
-  let server = await startServer()
-  t.context = {server: server}
+  const server = await startServer()
+  t.context = {server}
 })
 
 test.after.always((t) => {
@@ -32,8 +32,8 @@ test.after.always((t) => {
 
 test('connection drains and closes when no subs', async (t) => {
   t.plan(2)
-  let sc = t.context as SC
-  let nc = await connect({url: sc.server.nats})
+  const sc = t.context as SC
+  const nc = await connect({url: sc.server.nats})
   return nc.drain()
   .then((err) => {
     t.falsy(err)
@@ -43,12 +43,12 @@ test('connection drains and closes when no subs', async (t) => {
 
 test('connection drain', async (t) => {
   t.plan(4)
-  let sc = t.context as SC
-  let subj = createInbox()
+  const sc = t.context as SC
+  const subj = createInbox()
 
-  let nc1 = await connect({url: sc.server.nats})
+  const nc1 = await connect({url: sc.server.nats})
   let drained = false
-  let s1 = await nc1.subscribe(subj, () => {
+  const s1 = await nc1.subscribe(subj, () => {
     if (!drained) {
       t.pass()
       drained = true
@@ -56,9 +56,9 @@ test('connection drain', async (t) => {
     }
   }, {queue: 'q1'})
 
-  let nc2 = await connect({url: sc.server.nats})
-  let s2 = await nc2.subscribe(subj, () => {
-  }, {queue: 'q1'})
+  const nc2 = await connect({url: sc.server.nats})
+  // tslint:disable-next-line:no-empty
+  const s2 = await nc2.subscribe(subj, () => {}, {queue: 'q1'})
 
   await nc1.flush()
   await nc2.flush()
@@ -81,13 +81,13 @@ test('connection drain', async (t) => {
 
 test('subscription drain', async (t) => {
   t.plan(6)
-  let lock = new Lock()
-  let sc = t.context as SC
-  let nc = await connect(sc.server.nats)
+  const lock = new Lock()
+  const sc = t.context as SC
+  const nc = await connect(sc.server.nats)
 
-  let subj = createInbox()
+  const subj = createInbox()
   let c1 = 0
-  let s1 = await nc.subscribe(subj, () => {
+  const s1 = await nc.subscribe(subj, () => {
     c1++
     if (!s1.isDraining()) {
       // resolve when done
@@ -130,9 +130,9 @@ test('subscription drain', async (t) => {
 
 test('publisher drain', async (t) => {
   t.plan(4)
-  let lock = new Lock()
-  let sc = t.context as SC
-  let subj = createInbox()
+  const lock = new Lock()
+  const sc = t.context as SC
+  const subj = createInbox()
 
   const nc1 = await connect({url: sc.server.nats})
   const s1 = await nc1.subscribe(subj, () => {
@@ -152,8 +152,8 @@ test('publisher drain', async (t) => {
   }, {queue: 'q1'})
 
   const nc2 = await connect({url: sc.server.nats})
-  const s2 = await nc2.subscribe(subj, () => {
-  }, {queue: 'q1'})
+  // tslint:disable-next-line:no-empty
+  const s2 = await nc2.subscribe(subj, () => {}, {queue: 'q1'})
 
   await nc1.flush()
   await nc2.flush()
@@ -171,11 +171,11 @@ test('publisher drain', async (t) => {
 
 test('publish after drain fails', async (t) => {
   t.plan(1)
-  let sc = t.context as SC
-  let subj = createInbox()
-  let nc = await connect({url: sc.server.nats})
-  nc.subscribe(subj, () => {
-  })
+  const sc = t.context as SC
+  const subj = createInbox()
+  const nc = await connect({url: sc.server.nats})
+  // tslint:disable-next-line:no-empty
+  nc.subscribe(subj, () => {})
   await nc.drain()
   try {
     nc.publish(subj)
@@ -187,12 +187,12 @@ test('publish after drain fails', async (t) => {
 
 test('reject reqrep during connection drain', async (t) => {
   t.plan(1)
-  let lock = new Lock()
-  let sc = t.context as SC
-  let subj = 'xxxx'
+  const lock = new Lock()
+  const sc = t.context as SC
+  const subj = 'xxxx'
 
   // start a service for replies
-  let nc1 = await connect(sc.server.nats)
+  const nc1 = await connect(sc.server.nats)
   await nc1.subscribe(subj + 'a', (err, msg) => {
     if (msg.reply) {
       nc1.publish(msg.reply, 'ok')
@@ -201,7 +201,7 @@ test('reject reqrep during connection drain', async (t) => {
   nc1.flush()
 
   // start a client, and initialize requests
-  let nc2 = await connect(sc.server.nats)
+  const nc2 = await connect(sc.server.nats)
   // start a mux subscription
   await nc2.request(subj + 'a', 1000, 'initialize the request')
 
@@ -231,8 +231,8 @@ test('reject reqrep during connection drain', async (t) => {
 
 test('reject drain on closed', async (t) => {
   t.plan(1)
-  let sc = t.context as SC
-  let nc1 = await connect(sc.server.nats)
+  const sc = t.context as SC
+  const nc1 = await connect(sc.server.nats)
   nc1.close()
   await t.throwsAsync(() => {
     return nc1.drain()
@@ -241,11 +241,11 @@ test('reject drain on closed', async (t) => {
 
 test('reject subscribe on draining', async (t) => {
   t.plan(1)
-  let sc = t.context as SC
-  let nc1 = await connect(sc.server.nats)
+  const sc = t.context as SC
+  const nc1 = await connect(sc.server.nats)
   nc1.drain()
-  return nc1.subscribe('foo', () => {
-  })
+  // tslint:disable-next-line:no-empty
+  return nc1.subscribe('foo', () => {})
   .then(() => {
     t.fail('subscribe should have failed')
   })
@@ -258,8 +258,8 @@ test('drain cancels subs and emits', async (t) => {
   t.plan(2)
   const sc = t.context as SC
   const nc = await connect(sc.server.nats)
-  const sub = await nc.subscribe('foo', () => {
-  })
+  // tslint:disable-next-line:no-empty
+  const sub = await nc.subscribe('foo', () => {})
   nc.on('unsubscribe', () => {
     t.pass()
   })
@@ -271,19 +271,19 @@ test('drain cancels subs and emits', async (t) => {
 
 test('connection is closed after drain', async (t) => {
   t.plan(1)
-  let sc = t.context as SC
-  let nc1 = await connect(sc.server.nats)
-  await nc1.subscribe('foo', () => {
-  })
+  const sc = t.context as SC
+  const nc1 = await connect(sc.server.nats)
+  // tslint:disable-next-line:no-empty
+  await nc1.subscribe('foo', () => {})
   await nc1.drain()
   t.true(nc1.isClosed())
 })
 
 test('closed is fired after drain', async (t) => {
   t.plan(1)
-  let lock = new Lock()
-  let sc = t.context as SC
-  let nc1 = await connect(sc.server.nats)
+  const lock = new Lock()
+  const sc = t.context as SC
+  const nc1 = await connect(sc.server.nats)
   nc1.on('close', () => {
     lock.unlock()
     t.pass()
@@ -294,10 +294,10 @@ test('closed is fired after drain', async (t) => {
 
 test('reject subscription drain on closed', async (t) => {
   t.plan(1)
-  let sc = t.context as SC
-  let nc1 = await connect(sc.server.nats)
-  let sub = await nc1.subscribe('foo', () => {
-  })
+  const sc = t.context as SC
+  const nc1 = await connect(sc.server.nats)
+  // tslint:disable-next-line:no-empty
+  const sub = await nc1.subscribe('foo', () => {})
   nc1.close()
   await t.throwsAsync(() => {
     return sub.drain()
@@ -306,10 +306,10 @@ test('reject subscription drain on closed', async (t) => {
 
 test('reject subscription drain on draining sub', async (t) => {
   t.plan(1)
-  let sc = t.context as SC
-  let nc1 = await connect(sc.server.nats)
-  let subj = createInbox()
-  let sub = await nc1.subscribe(subj, async () => {
+  const sc = t.context as SC
+  const nc1 = await connect(sc.server.nats)
+  const subj = createInbox()
+  const sub = await nc1.subscribe(subj, async () => {
     sub.drain()
     await t.throwsAsync(() => {
       return sub.drain()

@@ -23,20 +23,20 @@ import {Payload} from 'nats'
 
 
 test.before(async (t) => {
-  let server = await startServer()
-  t.context = {server: server}
+  const server = await startServer()
+  t.context = {server}
 })
 
 test.after.always((t) => {
-  //@ts-ignore
+  // @ts-ignore
   stopServer(t.context.server)
 })
 
 test('json types', async (t) => {
   t.plan(2)
-  let sc = t.context as SC
-  let nc = await connect({url: sc.server.nats, payload: Payload.JSON})
-  let subj = next()
+  const sc = t.context as SC
+  const nc = await connect({url: sc.server.nats, payload: Payload.JSON})
+  const subj = next()
   nc.subscribe(subj, (err, msg) => {
     if (err) {
       t.fail(err.message)
@@ -52,10 +52,10 @@ test('json types', async (t) => {
 
 test('string types', async (t) => {
   t.plan(2)
-  let lock = new Lock()
-  let sc = t.context as SC
-  let nc = await connect({url: sc.server.nats})
-  let subj = next()
+  const lock = new Lock()
+  const sc = t.context as SC
+  const nc = await connect({url: sc.server.nats})
+  const subj = next()
   nc.subscribe(subj, (err, msg: Msg) => {
     t.is(typeof msg.data, 'string')
     t.is(msg.data, 'hello world')
@@ -69,9 +69,9 @@ test('string types', async (t) => {
 
 test('binary types', async (t) => {
   t.plan(2)
-  let sc = t.context as SC
-  let nc = await connect({url: sc.server.nats, payload: Payload.Binary})
-  let subj = next()
+  const sc = t.context as SC
+  const nc = await connect({url: sc.server.nats, payload: Payload.Binary})
+  const subj = next()
   nc.subscribe(subj, (err, msg) => {
     t.truthy(Buffer.isBuffer(msg.data))
     t.is(msg.data.toString(), 'hello world')
@@ -84,10 +84,10 @@ test('binary types', async (t) => {
 
 test('binary encoded per client', async (t) => {
   t.plan(4)
-  let sc = t.context as SC
-  let nc1 = await connect({url: sc.server.nats, payload: Payload.Binary})
-  let nc2 = await connect({url: sc.server.nats, payload: Payload.String})
-  let subj = next()
+  const sc = t.context as SC
+  const nc1 = await connect({url: sc.server.nats, payload: Payload.Binary})
+  const nc2 = await connect({url: sc.server.nats, payload: Payload.String})
+  const subj = next()
   nc1.subscribe(subj, (err, msg) => {
     if (err) {
       t.fail(err.message)
@@ -116,9 +116,9 @@ test('binary encoded per client', async (t) => {
 test('binary client gets binary', async (t) => {
   t.plan(2)
 
-  let sc = t.context as SC
-  let nc = await connect({url: sc.server.nats, payload: Payload.Binary})
-  let subj = next()
+  const sc = t.context as SC
+  const nc = await connect({url: sc.server.nats, payload: Payload.Binary})
+  const subj = next()
   nc.subscribe(subj, (err, msg) => {
     t.truthy(Buffer.isBuffer(msg.data))
     t.is(msg.data.toString(), 'hello world')

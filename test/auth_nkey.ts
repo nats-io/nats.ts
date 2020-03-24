@@ -29,7 +29,7 @@ test.before(async (t) => {
   if (serverVersion()[0] < 2) {
     return
   }
-  let conf = {
+  const conf = {
     authorization: {
       users: [
         {nkey: uPub}
@@ -37,13 +37,13 @@ test.before(async (t) => {
     }
   }
 
-  let confDir = (process.env.TRAVIS) ? process.env.TRAVIS_BUILD_DIR : process.env.TMPDIR
-  //@ts-ignore
-  let fp = path.join(confDir, next() + '.conf')
+  const confDir = (process.env.TRAVIS) ? process.env.TRAVIS_BUILD_DIR : process.env.TMPDIR
+  // @ts-ignore
+  const fp = path.join(confDir, next() + '.conf')
   writeFile(fp, jsonToNatsConf(conf))
 
-  let server = await startServer(['-c', fp])
-  t.context = {server: server}
+  const server = await startServer(['-c', fp])
+  t.context = {server}
 })
 
 test.after.always((t) => {
@@ -59,13 +59,13 @@ test('basic nkey authentication', async (t) => {
     return
   }
   t.plan(1)
-  let sc = t.context as SC
+  const sc = t.context as SC
 
   return connect({
     url: sc.server.nats,
     nkey: uPub,
-    nonceSigner: function (nonce: any): Buffer {
-      let sk = fromSeed(Buffer.from(uSeed))
+    nonceSigner (nonce: any): Buffer {
+      const sk = fromSeed(Buffer.from(uSeed))
       return sk.sign(Buffer.from(nonce))
     }
   } as ConnectionOptions)

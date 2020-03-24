@@ -26,7 +26,7 @@ const CONNECT = /^CONNECT\s+([^\r\n]+)\r\n/i
 
 // default script handles a connect, and initial ping
 function defaultScript(): Script[] {
-  let script = []
+  const script = []
   script.push({
     re: CONNECT,
     h: sendOk,
@@ -46,13 +46,9 @@ export interface Script {
   m: string
 }
 
-export interface handler {
-  (...args: any[]): void;
-}
+export type handler = (...args: any[]) => void;
 
-export interface ScriptHandler {
-  (socket: Socket, match: RegExpExecArray | null): void;
-}
+export type ScriptHandler = (socket: Socket, match: RegExpExecArray | null) => void;
 
 export interface Client extends Socket {
   buffer?: Buffer;
@@ -78,7 +74,7 @@ export class ScriptedServer extends EventEmitter {
   stop(cb?: (err?: Error) => void) {
     this.stream.close(cb)
     if (this.sockets) {
-      this.sockets.forEach(function (socket) {
+      this.sockets.forEach((socket) => {
         if (!socket.destroyed) {
           socket.destroy()
         }
@@ -103,7 +99,7 @@ export class ScriptedServer extends EventEmitter {
 
 
   handleData(server: ScriptedServer, client: Client): handler {
-    return function (data): void {
+    return (data): void => {
       client.emit('debug', data.toString())
       // if we have a buffer append to it or make one
       if (client.buffer) {
@@ -114,15 +110,15 @@ export class ScriptedServer extends EventEmitter {
 
       if (client.buffer) {
         // convert to string like node-nats does so we can test protocol
-        let buf = client.buffer.toString('binary', 0, MAX_CONTROL)
+        const buf = client.buffer.toString('binary', 0, MAX_CONTROL)
         if (client.script.length) {
-          let match = client.script[0].re.exec(buf)
+          const match = client.script[0].re.exec(buf)
           if (match) {
             // if we have a match, execute the handler
             client.script[0].h(client, match)
 
             // prune the buffer without the processed request
-            let len = match[0].length
+            const len = match[0].length
             if (len >= client.buffer.length) {
               delete client.buffer
             } else {
@@ -147,7 +143,7 @@ export class ScriptedServer extends EventEmitter {
       this.stream = net.createServer((socket: Socket) => {
         this.emit('connect_request')
         this.sendInfo(socket)
-        let client: Client = socket as Client
+        const client: Client = socket as Client
         client.script = Array.from(this.script)
         client.on('data', this.handleData(this, client))
       })
@@ -170,14 +166,14 @@ export class ScriptedServer extends EventEmitter {
       this.stream.on('listening', () => {
         this.emit('listening')
         connecting = false
-        //@ts-ignore
+        // @ts-ignore
         this.port = this.stream.address().port
         resolve(this.port)
       })
 
       // if '0' is provided we get a random port
-      this.stream.listen(this.port, () => {
-      })
+      // tslint:disable-next-line:no-empty
+      this.stream.listen(this.port, () => {})
     })
   };
 }

@@ -26,23 +26,23 @@ import {tmpdir} from 'os';
 import {promisify} from 'util';
 
 
-let args = process.argv.slice(3);
+const args = process.argv.slice(3);
 // push the default subject
 args.push('test');
 
 
-let pargs = parseFlags(args , usage, ['count', 'size', 'tag']);
-let tag = pargs.options['tag'] || "";
-let count = pargs.options['count'] || 1000000;
-let loop = parseInt(count.toString(), 10);
-let hash = parseInt((loop / 80).toString(), 10);
-let size = pargs.options['size'] || 2;
+const pargs = parseFlags(args , usage, ['count', 'size', 'tag']);
+const tag = pargs.options.tag || "";
+const count = pargs.options.count || 1000000;
+const loop = parseInt(count.toString(), 10);
+const hash = parseInt((loop / 80).toString(), 10);
+let size = pargs.options.size || 2;
 size = parseInt(size.toString(), 10);
-let payload = randomBytes(size);
+const payload = randomBytes(size);
 pargs.payload = payload;
 
 
-let test = process.argv[2];
+const test = process.argv[2];
 let testFn : Function;
 switch(test) {
     case 'pub':
@@ -74,9 +74,9 @@ start()
 async function start() {
     if(! pargs.server) {
         // create a config file - reqrep needs to have a write_dealine for large volume
-        let mktmp = promisify(mkdtemp);
-        let dir = await mktmp(join(tmpdir(), "nats"));
-        let conf = join(dir, "nats.conf");
+        const mktmp = promisify(mkdtemp);
+        const dir = await mktmp(join(tmpdir(), "nats"));
+        const conf = join(dir, "nats.conf");
         appendFileSync(conf, "write_deadline: \"1000s\"\n");
         server = await startServer(['-c', conf]);
         pargs.server = server.nats;
@@ -95,7 +95,7 @@ async function start() {
 async function subTest() {
     let i = 0;
     let start = 0;
-    let sub = await nc.subscribe(pargs.subject, (err, msg) => {
+    const sub = await nc.subscribe(pargs.subject, (err, msg) => {
         i++;
         if(i === 1) {
             start = Date.now();
@@ -106,8 +106,8 @@ async function subTest() {
     }, {max: loop});
 
     nc.on('unsubscribe', () => {
-        let millis = Date.now() - start;
-        let mps = Math.round((loop / (millis / 1000)));
+        const millis = Date.now() - start;
+        const mps = Math.round((loop / (millis / 1000)));
         console.log('\nReceived at ' + mps + ' msgs/sec');
         log('metrics.csv', 'sub', loop, millis, tag);
         nc.close();
@@ -117,15 +117,15 @@ async function subTest() {
     .then(() => {
         console.log('Waiting for', loop, 'messages');
         try {
-            let process = spawn('nats-bench', ['-s', pargs.server || "", '-n', count.toString(), '-ns', '0', '-np', '1', "-ms", size.toString(), "test"]);
+            const process = spawn('nats-bench', ['-s', pargs.server || "", '-n', count.toString(), '-ns', '0', '-np', '1', "-ms", size.toString(), "test"]);
             process.stderr.on('data', (data) => {
-                let lines = data.toString().split('\n');
+                const lines = data.toString().split('\n');
                 lines.forEach((m: string) => {
                     console.log(m);
                 });
             });
             process.stdout.on('data', (data) => {
-                let lines = data.toString().split('\n');
+                const lines = data.toString().split('\n');
                 lines.forEach((m: string) => {
                     console.log(m);
                 });
@@ -137,7 +137,7 @@ async function subTest() {
 }
 
 async function pubTest() {
-    let start = Date.now();
+    const start = Date.now();
     for(let i=0; i < count; i++) {
         nc.publish(pargs.subject, payload);
         if(i % hash === 0) {
@@ -145,21 +145,21 @@ async function pubTest() {
         }
     }
     await nc.flush();
-    let millis = Date.now() - start;
-    let mps = Math.round((loop / (millis / 1000)));
+    const millis = Date.now() - start;
+    const mps = Math.round((loop / (millis / 1000)));
     console.log('\nPublished at ' + mps + ' msgs/sec');
     log('metrics.csv', 'pub', loop, millis, tag);
     nc.close();
 }
 
 async function pubsubTest() {
-    let nc1 = await connect({url: pargs.server});
+    const nc1 = await connect({url: pargs.server});
     let received = 0;
-    let sub = await nc1.subscribe(pargs.subject, (err, msg) => {
+    const sub = await nc1.subscribe(pargs.subject, (err, msg) => {
         received++;
         if(received === loop) {
-            let millis = Date.now() - start;
-            let mps = Math.round((loop / (millis / 1000)));
+            const millis = Date.now() - start;
+            const mps = Math.round((loop / (millis / 1000)));
             console.log('\npubsub at', mps, 'msgs/sec', '[', loop, "msgs", ']');
             log('metrics.csv', 'pubsub', loop, millis, tag);
             nc1.close();
@@ -171,7 +171,7 @@ async function pubsubTest() {
     await nc1.flush();
     await nc.flush();
 
-    let start = Date.now();
+    const start = Date.now();
     for(let i=0; i < loop; i++) {
         nc.publish(pargs.subject, payload);
         if(i % hash === 0) {
@@ -181,9 +181,9 @@ async function pubsubTest() {
 }
 
 async function reqrepTest() {
-    let nc2 = await connect({url: pargs.server, encoding: 'binary'});
+    const nc2 = await connect({url: pargs.server, encoding: 'binary'});
     let r = 0;
-    let sub = await nc2.subscribe('request.test', (err, msg) => {
+    const sub = await nc2.subscribe('request.test', (err, msg) => {
         if(msg.reply) {
             r++;
             nc2.publish(msg.reply, 'ok');
@@ -193,7 +193,7 @@ async function reqrepTest() {
     await nc2.flush();
 
     let received = 0;
-    let start = Date.now();
+    const start = Date.now();
     for(let i=1; i <= loop; i++) {
         nc.request('request.test', 60000, payload)
             .then((m) => {
@@ -202,11 +202,11 @@ async function reqrepTest() {
                     process.stdout.write('=');
                 }
                 if(received === loop) {
-                    let millis = Date.now() - start;
-                    let rps = Math.round((loop / (millis / 1000)));
+                    const millis = Date.now() - start;
+                    const rps = Math.round((loop / (millis / 1000)));
                     console.log('\n' + rps + ' request-responses/sec');
 
-                    let lat = Math.round((millis * 1000) / (loop * 2)); // Request=2, Reponse=2 RTs
+                    const lat = Math.round((millis * 1000) / (loop * 2)); // Request=2, Reponse=2 RTs
                     console.log('Avg round-trip latency', lat, 'microseconds');
                     log('metrics.csv', 'reqrep', loop, millis, tag);
                     nc2.close();

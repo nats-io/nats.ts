@@ -20,8 +20,8 @@ import {SC, startServer, stopServer} from './helpers/nats_server_control'
 
 
 test.before(async (t) => {
-  let server = await startServer(['--auth', 'tokenxxxx'])
-  t.context = {server: server}
+  const server = await startServer(['--auth', 'tokenxxxx'])
+  t.context = {server}
 })
 
 test.after.always((t) => {

@@ -20,8 +20,8 @@ import {connect} from '../src/nats'
 
 
 test.before(async (t) => {
-  let s1 = await startServer()
-  let s2 = await startServer()
+  const s1 = await startServer()
+  const s2 = await startServer()
   t.context = {server: s1, servers: [s1, s2]}
 })
 
@@ -32,8 +32,8 @@ test.after.always((t) => {
 })
 
 function getServers(t: ExecutionContext<any>): string[] {
-  let a: string[] = []
-  let servers = (t.context as SC).servers
+  const a: string[] = []
+  const servers = (t.context as SC).servers
   servers.forEach((s) => {
     a.push(s.nats)
   })
@@ -43,17 +43,17 @@ function getServers(t: ExecutionContext<any>): string[] {
 test('has multiple servers', async (t) => {
   t.plan(1)
 
-  let a = getServers(t)
-  let nc = await connect({servers: a})
+  const a = getServers(t)
+  const nc = await connect({servers: a})
 
-  //@ts-ignore
-  let servers = nc.nc.servers
+  // @ts-ignore
+  const servers = nc.nc.servers
   t.is(servers.length(), a.length)
   nc.close()
 })
 
 test('connects to first valid server', async (t) => {
-  let a = getServers(t)
+  const a = getServers(t)
   a.splice(0, 0, 'nats://localhost:7')
   return connect({servers: a})
   .then((nc) => {
@@ -64,7 +64,7 @@ test('connects to first valid server', async (t) => {
 
 test('reject if no valid server', async (t) => {
   t.plan(1)
-  let a = ['nats://localhost:7']
+  const a = ['nats://localhost:7']
   return connect({servers: a, reconnectTimeWait: 50})
   .then(() => {
     t.fail('should have not connected')
@@ -76,7 +76,7 @@ test('reject if no valid server', async (t) => {
 
 test('throws if no valid server', async (t) => {
   t.plan(1)
-  let a = ['nats://localhost:7', 'nats://localhost:9']
+  const a = ['nats://localhost:7', 'nats://localhost:9']
   return connect({servers: a, reconnectTimeWait: 50})
   .then(() => {
     t.fail('should have not connected')
@@ -88,14 +88,14 @@ test('throws if no valid server', async (t) => {
 })
 
 test('random server connections', async (t) => {
-  let first = getServers(t)[0]
+  const first = getServers(t)[0]
   let count = 0
   let other = 0
   for (let i = 0; i < 100; i++) {
-    let nc = await connect({servers: getServers(t)})
-    //@ts-ignore
-    let s = nc.nc.servers.getCurrent()
-    //@ts-ignore
+    const nc = await connect({servers: getServers(t)})
+    // @ts-ignore
+    const s = nc.nc.servers.getCurrent()
+    // @ts-ignore
     if (s.toString() === first) {
       count++
     } else {
@@ -110,12 +110,12 @@ test('random server connections', async (t) => {
 })
 
 test('no random server if noRandomize', async (t) => {
-  let servers = getServers(t)
-  let first = servers[0].toString()
+  const servers = getServers(t)
+  const first = servers[0].toString()
   for (let i = 0; i < 100; i++) {
-    let nc = await connect({servers: servers, noRandomize: true})
-    //@ts-ignore
-    let s = nc.nc.servers.getCurrent()
+    const nc = await connect({servers, noRandomize: true})
+    // @ts-ignore
+    const s = nc.nc.servers.getCurrent()
     t.is(s.toString(), first.toString())
     nc.close()
   }

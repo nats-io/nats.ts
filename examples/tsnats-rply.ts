@@ -1,5 +1,6 @@
+/* tslint:disable:no-console */
 /*
- * Copyright 2018-2019 The NATS Authors
+ * Copyright 2018-2020 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -17,8 +18,8 @@
 import {connect, ConnectionOptions} from '../src/nats'
 import {parseFlags} from "../test/helpers/argparser";
 
-let flags = parseFlags(process.argv.slice(2), usage, ["creds", "nkey"]);
-let opts = {} as ConnectionOptions;
+const flags = parseFlags(process.argv.slice(2), usage, ["creds", "nkey"]);
+const opts = {} as ConnectionOptions;
 opts.url = flags.server;
 if (flags.options.creds && flags.options.nkey) {
     console.error("specify one of -creds or -nkey");
@@ -37,7 +38,7 @@ function usage() {
 }
 
 async function main() {
-    let nc = await connect(opts);
+    const nc = await connect(opts);
 
     nc.on('unsubscribe', () => {
         nc.close();

@@ -24,7 +24,6 @@ import {
   createInbox,
   MsgCallback,
   SubscriptionOptions,
-  Sub as sub,
   Msg,
   SubEvent,
   Payload
@@ -34,6 +33,8 @@ export {
   NatsError, ConnectionOptions, ErrorCode, createInbox, MsgCallback, SubscriptionOptions, Msg, SubEvent, Payload
 } from "nats"
 import {existsSync} from "fs"
+import { Sub } from './sub'
+export { Sub } from './sub'
 
 // locate our package.json
 let pkgFile = __dirname + '/../package.json';
@@ -42,6 +43,7 @@ if (!existsSync(pkgFile)) {
     pkgFile = __dirname + '/../../package.json';
 }
 /** Version of the ts-nats library */
+// tslint:disable-next-line:no-var-requires
 export const VERSION = require(pkgFile).version;
 
 
@@ -69,57 +71,32 @@ export interface ServersChangedEvent {
 }
 
 /** Optional callback interface for 'connect' and 'reconnect' events */
-export interface ConnectReconnectCallback {
-  (connection: Client, serverURL: string, info: ServerInfo): void
-}
+export type ConnectReconnectCallback = (connection: Client, serverURL: string, info: ServerInfo) => void
 
 /** Optional callback interface for 'disconnect' and 'reconnecting' events */
-export interface ReconnectingDisconnectCallback {
-  (serverURL: string): void
-}
+export type ReconnectingDisconnectCallback = (serverURL: string) => void
 
 /** Optional callback interface for 'permissionError' events */
-export interface PermissionsErrorCallback {
-  (err: NatsError): void
-}
+export type PermissionsErrorCallback = (err: NatsError) => void
 
 /** Optional callback for 'serversChanged' events */
-export interface ServersChangedCallback {
-  (e: ServersChangedEvent): void;
-}
+export type ServersChangedCallback = (e: ServersChangedEvent) => void;
 
 /** Optional callback for 'subscribe' and 'unsubscribe' events */
-export interface SubscribeUnsubscribeCallback {
-  (e: SubEvent): void
-}
+export type SubscribeUnsubscribeCallback = (e: SubEvent) => void
 
 /** Optional callback for 'yield'events */
-export interface YieldCallback {
-  (): void
-}
+export type YieldCallback = () => void
 
 /** Optional callback argument for [[Client.flush]] */
-export interface FlushCallback {
-  (err: NatsError | null): void;
-}
+export type FlushCallback = (err: NatsError | null) => void;
 
 
 /** Signs a challenge from the server with an NKEY, a function matching this interface must be provided when manually signing nonces via the `nonceSigner` connect option. */
-export interface NonceSigner {
-  (nonce: string): Buffer;
-}
+export type NonceSigner = (nonce: string) => Buffer;
 
 /** Returns an user JWT - can be specified in `userJWT` connect option as a way of dynamically providing a JWT when required. */
-export interface JWTProvider {
-  (): string;
-}
-
-
-/**
- * @deprecated - use ConnectionOptions
- */
-export interface NatsConnectionOptions extends ConnectionOptions {
-}
+export type JWTProvider = () => string;
 
 /**
  * NATS server Client object.
@@ -145,7 +122,7 @@ export class Client implements events.EventEmitter {
           reject(err);
         }
       });
-      nc.once('connect', (nc) => {
+      nc.once('connect', () => {
         nc.removeAllListeners();
         const c = new Client(nc);
         c.nc = nc;
@@ -177,6 +154,7 @@ export class Client implements events.EventEmitter {
    * @param data optional (can be a string, JSON object, or Buffer. Must match [[ConnectionOptions.payload].)
    * @param reply optional
    */
+  // tslint:disable-next-line:no-unnecessary-initializer
   publish(subject: string, data: any = undefined, reply: string = ''): void {
     if (reply) {
       this.nc.publishRequest(subject, reply, data)
@@ -198,16 +176,16 @@ export class Client implements events.EventEmitter {
         reject(new NatsError('requests require a callback', ErrorCode.API_ERROR))
         return
       }
-      const sub = this.nc.subscribe(subject, (err, _) => {
+      const s = this.nc.subscribe(subject, (err) => {
         if (err) {
           reject(err)
         }
       }, opts)
-      if (sub) {
+      if (s) {
         // @ts-ignore
         // swap the callback
-        sub.callback = cb
-        resolve(new Sub(sub))
+        s.callback = cb
+        resolve(new Sub(s))
       }
     })
   }
@@ -245,7 +223,7 @@ export class Client implements events.EventEmitter {
    * @param data optional (can be a string, JSON object, or Buffer. Must match specified Payload option)
    * @return Promise<Msg>
    */
-  request(subject: string, timeout: number = 1000, data: any = undefined): Promise<Msg> {
+  request(subject: string, timeout: number = 1000, data?: any): Promise<Msg> {
     return new Promise<Msg>((resolve, reject) => {
       this.nc.request(subject, (err, m) => {
         if (err) {
@@ -253,7 +231,7 @@ export class Client implements events.EventEmitter {
         } else {
           resolve(m as Msg)
         }
-      }, data, {timeout: timeout})
+      }, data, {timeout})
     })
   };
 
@@ -321,10 +299,12 @@ export class Client implements events.EventEmitter {
     return this.nc.getMaxListeners()
   }
 
+  // tslint:disable-next-line:ban-types
   listeners(event: string | symbol): Function[] {
     return this.nc.listeners(event)
   }
 
+  // tslint:disable-next-line:ban-types
   rawListeners(event: string | symbol): Function[] {
     return this.nc.rawListeners(event)
   }
@@ -347,7 +327,7 @@ export class Client implements events.EventEmitter {
     return this
   }
 
-  eventNames(): Array<string | symbol> {
+  eventNames(): (string | symbol)[] {
     return this.nc.eventNames()
   }
 }
@@ -358,126 +338,7 @@ export class Client implements events.EventEmitter {
  * @param opts
  * @return Promise<Client>
  */
-export function connect(opts?: NatsConnectionOptions | ConnectionOptions | string | number): Promise<Client> {
+export function connect(opts?: ConnectionOptions | string | number): Promise<Client> {
   return Client.connect(opts)
 }
 
-/**
- * Type returned when a subscribe call resolved. Provides methods to manage the subscription.
- */
-export class Sub {
-  sub: sub
-
-  /**
-   * @hidden
-   */
-  constructor(sub: sub) {
-    this.sub = sub
-  }
-
-  /**
-   * Cancels the subscription after the specified number of messages has been received.
-   * If max is not specified, the subscription cancels immediately. A cancelled subscription
-   * will not process messages that are inbound but not yet handled.
-   * @param max
-   * @see [[drain]]
-   */
-  unsubscribe(max?: number): void {
-    this.sub.unsubscribe(max)
-  }
-
-  /**
-   * Draining a subscription is similar to unsubscribe but inbound pending messages are
-   * not discarded. When the last in-flight message is processed, the subscription handler
-   * is removed.
-   * @return a Promise that resolves when the draining a subscription completes
-   * @see [[unsubscribe]]
-   */
-  drain(): Promise<any> {
-    const sub = this.sub
-    return new Promise<any>((resolve, reject) => {
-      sub.drain((err) => {
-        if (err) {
-          reject(err)
-        } else {
-          resolve(true)
-        }
-      })
-    })
-  }
-
-  /**
-   * Returns true if the subscription has an associated timeout.
-   */
-  hasTimeout(): boolean {
-    return this.sub.hasTimeout()
-  }
-
-  /**
-   * Cancels a timeout associated with the subscription
-   */
-  cancelTimeout(): void {
-    this.sub.cancelTimeout()
-  }
-
-  /**
-   * Sets a timeout on a subscription. The timeout will fire by calling
-   * the subscription's callback with an error argument if the expected
-   * number of messages (specified via max) has not been received by the
-   * subscription before the timer expires. If max is not specified,
-   * the subscription times out if no messages are received within the timeout
-   * specified.
-   *
-   * Returns `true` if the subscription was found and the timeout was registered.
-   *
-   * @param millis
-   * @param max - max number of messages
-   */
-  setTimeout(millis: number, max?: number): boolean {
-    return this.sub.setTimeout(millis, max)
-  }
-
-  /**
-   * Returns the number of messages received by the subscription.
-   */
-  getReceived(): number {
-    return this.sub.getReceived()
-  }
-
-  /**
-   * Returns the number of messages expected by the subscription.
-   * If `0`, the subscription was not found or was auto-cancelled.
-   * If `-1`, the subscription didn't specify a count for expected messages.
-   */
-  getMax(): number {
-    return this.sub.getMax()
-  }
-
-  /**
-   * @return true if the subscription is not found.
-   */
-  isCancelled(): boolean {
-    return this.sub.isCancelled()
-  }
-
-  /**
-   * @return true if the subscription is draining.
-   * @see [[drain]]
-   */
-  isDraining(): boolean {
-    return this.sub.isDraining()
-  }
-
-  getID(): number {
-    return this.sub.getID()
-  }
-}
-
-/**
- * @deprecated
- */
-export class Subscription extends Sub {
-  constructor(sub: sub) {
-    super(sub)
-  }
-}

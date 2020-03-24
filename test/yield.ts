@@ -21,8 +21,8 @@ import {connect, Payload} from '../src/nats'
 import {next} from 'nuid'
 
 test.before(async (t) => {
-  let server = await startServer()
-  t.context = {server: server}
+  const server = await startServer()
+  t.context = {server}
 })
 
 test.after.always((t) => {
@@ -31,9 +31,9 @@ test.after.always((t) => {
 
 test('should yield to other events', async (t) => {
   t.plan(2)
-  let sc = t.context as SC
-  let nc = await connect({url: sc.server.nats, payload: Payload.JSON, yieldTime: 5})
-  let lock = new Lock()
+  const sc = t.context as SC
+  const nc = await connect({url: sc.server.nats, payload: Payload.JSON, yieldTime: 5})
+  const lock = new Lock()
   let last: number = -1
 
   let yields = 0
@@ -41,7 +41,7 @@ test('should yield to other events', async (t) => {
     yields++
   })
 
-  let interval = setInterval(() => {
+  const interval = setInterval(() => {
     if (last > 0) {
       clearInterval(interval)
       nc.close()
@@ -53,7 +53,7 @@ test('should yield to other events', async (t) => {
     }
   }, 10)
 
-  let subj = next()
+  const subj = next()
   nc.subscribe(subj, (err, msg) => {
     last = msg.data
     // take some time

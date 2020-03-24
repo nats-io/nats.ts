@@ -23,40 +23,40 @@ import {createInbox, Payload} from "nats"
 
 
 test.before(async (t) => {
-  let server = await startServer()
-  t.context = {server: server}
+  const server = await startServer()
+  t.context = {server}
 })
 
 test.after.always((t) => {
-  //@ts-ignore
+  // @ts-ignore
   stopServer(t.context.server)
 })
 
 test('connect no json propagates options', async (t) => {
   t.plan(1)
-  let sc = t.context as SC
-  let nc = await connect({url: sc.server.nats})
-  //@ts-ignore
+  const sc = t.context as SC
+  const nc = await connect({url: sc.server.nats})
+  // @ts-ignore
   t.is(nc.nc.options.encoding, "utf8")
   nc.close()
 })
 
 test('connect json propagates options', async (t) => {
   t.plan(1)
-  let sc = t.context as SC
-  let nc = await connect({url: sc.server.nats, payload: Payload.JSON})
-  //@ts-ignore
+  const sc = t.context as SC
+  const nc = await connect({url: sc.server.nats, payload: Payload.JSON})
+  // @ts-ignore
   t.is(nc.nc.options.payload, Payload.JSON)
   nc.close()
 })
 
 test('pubsub should fail circular json', async (t) => {
   t.plan(1)
-  let sc = t.context as SC
-  let o = {}
-  //@ts-ignore
+  const sc = t.context as SC
+  const o = {}
+  // @ts-ignore
   o.a = o
-  let nc = await connect({url: sc.server.nats, payload: Payload.JSON})
+  const nc = await connect({url: sc.server.nats, payload: Payload.JSON})
   t.throws(() => {
     nc.publish(next(), o)
   }, {code: ErrorCode.BAD_JSON})
@@ -65,22 +65,22 @@ test('pubsub should fail circular json', async (t) => {
 
 test('reqrep should fail circular json', async (t) => {
   t.plan(1)
-  let sc = t.context as SC
-  let o = {}
-  //@ts-ignore
+  const sc = t.context as SC
+  const o = {}
+  // @ts-ignore
   o.a = o
-  let nc = await connect({url: sc.server.nats, payload: Payload.JSON})
+  const nc = await connect({url: sc.server.nats, payload: Payload.JSON})
   await t.throwsAsync(nc.request(next(), 1000, o), {code: ErrorCode.BAD_JSON})
   nc.close()
 })
 
 async function pubsub(t: any, input: any): Promise<any> {
   t.plan(1)
-  let lock = new Lock()
+  const lock = new Lock()
   try {
-    let sc = t.context as SC
-    let nc = await connect({url: sc.server.nats, payload: Payload.JSON})
-    let subj = next()
+    const sc = t.context as SC
+    const nc = await connect({url: sc.server.nats, payload: Payload.JSON})
+    const subj = next()
     nc.subscribe(subj, (err, msg) => {
       if (err) {
         t.fail(err)
@@ -89,7 +89,7 @@ async function pubsub(t: any, input: any): Promise<any> {
       if (input === undefined) {
         input = null
       }
-      //@ts-ignore
+      // @ts-ignore
       t.deepEqual(msg.data, input)
       // t.log([input, '===', msg.data]);
       lock.unlock()
@@ -105,23 +105,23 @@ async function pubsub(t: any, input: any): Promise<any> {
 
 async function reqrep(t: any, input: any): Promise<any> {
   t.plan(1)
-  let lock = new Lock()
+  const lock = new Lock()
   try {
-    let sc = t.context as SC
-    let nc = await connect({url: sc.server.nats, payload: Payload.JSON})
-    let subj = next()
-    nc.subscribe(subj, (err, msg) => {
-      if (msg.reply) {
-        nc.publish(msg.reply, msg.data)
+    const sc = t.context as SC
+    const nc = await connect({url: sc.server.nats, payload: Payload.JSON})
+    const subj = next()
+    nc.subscribe(subj, (err, m) => {
+      if (m.reply) {
+        nc.publish(m.reply, m.data)
       }
     })
 
-    let msg = await nc.request(subj, 500, input)
+    const msg = await nc.request(subj, 500, input)
     // in JSON undefined is translated to null
     if (input === undefined) {
       input = null
     }
-    //@ts-ignore
+    // @ts-ignore
     t.deepEqual(msg.data, input)
     lock.unlock()
   } catch (err) {
@@ -149,11 +149,11 @@ const complex = {
 
 test('subscribe subject should be in subject ', async (t) => {
   t.plan(2)
-  let sc = t.context as SC
-  let nc = await connect({url: sc.server.nats} as ConnectionOptions)
-  let jnc = await connect({url: sc.server.nats, payload: Payload.JSON} as ConnectionOptions)
-  let prefix = createInbox()
-  let subj = `${prefix}.*`
+  const sc = t.context as SC
+  const nc = await connect({url: sc.server.nats} as ConnectionOptions)
+  const jnc = await connect({url: sc.server.nats, payload: Payload.JSON} as ConnectionOptions)
+  const prefix = createInbox()
+  const subj = `${prefix}.*`
   await jnc.subscribe(subj, (err, msg) => {
     t.truthy(err)
     t.is(msg.subject, `${prefix}.foo`)

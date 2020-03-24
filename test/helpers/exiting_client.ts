@@ -1,5 +1,6 @@
+/* tslint:disable:no-console */
 /*
- * Copyright 2018-2019 The NATS Authors
+ * Copyright 2018-2020 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,16 +15,15 @@
  *
  */
 import * as fs from 'fs'
-import {Client, connect, ConnectionOptions} from '../../src/nats'
+import {connect, ConnectionOptions} from '../../src/nats'
 
-let count = process.argv.length
-let port = parseInt(process.argv[count - 1], 10)
-test(port)
+const count = process.argv.length
+test(parseInt(process.argv[count - 1], 10))
 
 async function test(port: number) {
-  await connect({port: port, name: 'closer test script'} as ConnectionOptions)
+  await connect({port, name: 'closer test script'} as ConnectionOptions)
   .then((nc) => {
-    nc.on('connect', function () {
+    nc.on('connect', () => {
       fs.writeFile('/tmp/existing_client.log', 'connected\n', (err) => {
         if (err) {
           console.error(err)
@@ -31,7 +31,7 @@ async function test(port: number) {
       })
     })
 
-    nc.on('error', function (e) {
+    nc.on('error', (e) => {
       fs.appendFile('/tmp/existing_client.log', 'got error\n' + e, (err) => {
         if (err) {
           console.error(err)
@@ -41,9 +41,9 @@ async function test(port: number) {
     })
 
     nc.subscribe('close', (err, msg) => {
-      fs.appendFile('/tmp/existing_client.log', 'got close\n', (err) => {
-        if (err) {
-          console.error(err)
+      fs.appendFile('/tmp/existing_client.log', 'got close\n', (aerr) => {
+        if (aerr) {
+          console.error(aerr)
           process.exit(1)
         }
       })
@@ -53,9 +53,9 @@ async function test(port: number) {
       nc.flush()
       .then(() => {
         nc.close()
-        fs.appendFile('/tmp/existing_client.log', 'closed\n', (err) => {
-          if (err) {
-            console.error(err)
+        fs.appendFile('/tmp/existing_client.log', 'closed\n', (aerr) => {
+          if (aerr) {
+            console.error(aerr)
             process.exit(1)
           }
         })

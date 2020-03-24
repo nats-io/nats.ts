@@ -21,8 +21,8 @@ import url from 'url'
 
 
 test.before(async (t) => {
-  let server = await startServer()
-  t.context = {server: server}
+  const server = await startServer()
+  t.context = {server}
 })
 
 test.after.always((t) => {
@@ -36,8 +36,8 @@ test('fail connect', async (t) => {
 
 test('connect with port', async (t) => {
   t.plan(1)
-  let sc = t.context as SC
-  let u = new url.URL(sc.server.nats)
+  const sc = t.context as SC
+  const u = new url.URL(sc.server.nats)
   return connect({port: parseInt(u.port, 10)} as ConnectionOptions)
   .then((nc) => {
     return nc.flush()
@@ -50,11 +50,11 @@ test('connect with port', async (t) => {
 
 test('pub subject is required', (t) => {
   t.plan(1)
-  let sc = t.context as SC
+  const sc = t.context as SC
   return connect(sc.server.nats)
   .then((nc) => {
     t.throws(() => {
-      //@ts-ignore
+      // @ts-ignore
       nc.publish()
     }, {code: ErrorCode.BAD_SUBJECT})
   })
@@ -62,10 +62,10 @@ test('pub subject is required', (t) => {
 
 test('sub callback is required', async (t) => {
   t.plan(1)
-  let sc = t.context as SC
+  const sc = t.context as SC
   return connect(sc.server.nats)
   .then((nc) => {
-    //@ts-ignore
+    // @ts-ignore
     nc.subscribe(createInbox())
     .catch((ex: NatsError) => {
       t.is(ex.code, ErrorCode.API_ERROR)
@@ -78,12 +78,11 @@ test('sub callback is required', async (t) => {
 
 test('sub subject is required', async (t) => {
   t.plan(1)
-  let sc = t.context as SC
+  const sc = t.context as SC
   return connect(sc.server.nats)
   .then((nc) => {
-    //@ts-ignore
-    nc.subscribe('', () => {
-    })
+    // tslint:disable-next-line:no-empty
+    nc.subscribe('', () => {})
     .catch((err) => {
       t.is(err.code, ErrorCode.BAD_SUBJECT)
     })
@@ -93,12 +92,12 @@ test('sub subject is required', async (t) => {
 
 test('subs require connection', async (t) => {
   t.plan(1)
-  let sc = t.context as SC
+  const sc = t.context as SC
   return connect(sc.server.nats)
   .then((nc) => {
     nc.close()
-    nc.subscribe(createInbox(), () => {
-    })
+    // tslint:disable-next-line:no-empty
+    nc.subscribe(createInbox(), () => {})
     .catch((err) => {
       t.is(err?.code, ErrorCode.CONN_CLOSED)
     })
@@ -108,10 +107,10 @@ test('subs require connection', async (t) => {
 
 test('sub and unsub', async (t) => {
   t.plan(1)
-  let sc = t.context as SC
-  let nc = await connect(sc.server.nats)
-  return nc.subscribe(createInbox(), () => {
-  })
+  const sc = t.context as SC
+  const nc = await connect(sc.server.nats)
+  // tslint:disable-next-line:no-empty
+  return nc.subscribe(createInbox(), () => {})
   .then((sub) => {
     t.truthy(sub)
     sub.unsubscribe()
@@ -124,7 +123,7 @@ test('sub and unsub', async (t) => {
 
 test('basic publish', async (t) => {
   t.plan(1)
-  let sc = t.context as SC
+  const sc = t.context as SC
   return connect(sc.server.nats)
   .then((nc) => {
     nc.publish(createInbox())
@@ -139,7 +138,7 @@ test('basic publish', async (t) => {
 
 test('subscription message', async (t) => {
   t.plan(5)
-  let sc = t.context as SC
+  const sc = t.context as SC
   const subj = createInbox()
   const payload = 'Hello World'
   const reply = createInbox()
@@ -166,15 +165,16 @@ test('subscription message', async (t) => {
 
 test('subscription generates events', async (t) => {
   t.plan(3)
-  let sc = t.context as SC
+  const sc = t.context as SC
   return connect(sc.server.nats)
   .then((nc) => {
-    let subj = createInbox()
+    const subj = createInbox()
     nc.on('subscribe', (se: SubEvent) => {
       t.is(se.subject, subj)
       t.is(se.queue, 'A')
       t.is(se.sid, 1)
     })
+    // tslint:disable-next-line:no-empty
     return nc.subscribe(subj, () => {
     }, {queue: 'A'})
     .then(() => {
@@ -188,15 +188,16 @@ test('subscription generates events', async (t) => {
 
 test('unsubscribe generates events', async (t) => {
   t.plan(3)
-  let sc = t.context as SC
+  const sc = t.context as SC
   return connect(sc.server.nats)
   .then((nc) => {
-    let subj = createInbox()
+    const subj = createInbox()
     nc.on('unsubscribe', (se: SubEvent) => {
       t.is(se.subject, subj)
       t.is(se.queue, 'A')
       t.is(se.sid, 1)
     })
+    // tslint:disable-next-line:no-empty
     return nc.subscribe(subj, () => {
     }, {queue: 'A'})
     .then((sub) => {
@@ -212,10 +213,10 @@ test('unsubscribe generates events', async (t) => {
 
 test('request subject is required', async (t) => {
   t.plan(1)
-  let sc = t.context as SC
+  const sc = t.context as SC
   return connect(sc.server.nats)
   .then((nc) => {
-    //@ts-ignore
+    // @ts-ignore
     return nc.request()
   })
   .catch((err) => {
@@ -225,7 +226,7 @@ test('request subject is required', async (t) => {
 
 test('requests require connection', async (t) => {
   t.plan(1)
-  let sc = t.context as SC
+  const sc = t.context as SC
   return connect(sc.server.nats)
   .then((nc) => {
     nc.close()
@@ -238,37 +239,37 @@ test('requests require connection', async (t) => {
 
 test('request reply', async (t) => {
   t.plan(2)
-  let sc = t.context as SC
-  let nc = await connect(sc.server.nats)
-  let subj = createInbox()
+  const sc = t.context as SC
+  const nc = await connect(sc.server.nats)
+  const subj = createInbox()
   const payload = 'Hello World'
   const response = payload.split('').reverse().join('')
-  await nc.subscribe(subj, (err, msg) => {
-    //@ts-ignore
-    t.is(msg.data, payload)
-    //@ts-ignore
-    nc.publish(msg.reply, response)
+  await nc.subscribe(subj, (err, m) => {
+    // @ts-ignore
+    t.is(m.data, payload)
+    // @ts-ignore
+    nc.publish(m.reply, response)
   }, {})
 
-  let msg = await nc.request(subj, 1000, payload)
+  const msg = await nc.request(subj, 1000, payload)
   t.is(msg.data, response)
   nc.close()
 })
 
 test('wildcard subscriptions', async (t) => {
   t.plan(3)
-  let single = 3
-  let partial = 2
-  let full = 5
+  const single = 3
+  const partial = 2
+  const full = 5
 
   let singleCounter = 0
   let partialCounter = 0
   let fullCounter = 0
 
-  let sc = t.context as SC
-  let nc = await connect(sc.server.nats)
+  const sc = t.context as SC
+  const nc = await connect(sc.server.nats)
 
-  let s = createInbox()
+  const s = createInbox()
   nc.subscribe(`${s}.*`, () => {
     singleCounter++
   })
@@ -298,10 +299,10 @@ test('wildcard subscriptions', async (t) => {
 
 test('flush is a promise', async (t) => {
   t.plan(1)
-  let sc = t.context as SC
-  let nc = await connect(sc.server.nats)
-  let p = nc.flush()
-  //@ts-ignore
+  const sc = t.context as SC
+  const nc = await connect(sc.server.nats)
+  const p = nc.flush()
+  // @ts-ignore
   t.truthy(p.then)
   await p
   nc.close()
@@ -309,10 +310,10 @@ test('flush is a promise', async (t) => {
 
 test('unsubscribe after close', async (t) => {
   t.plan(1)
-  let sc = t.context as SC
-  let nc = await connect(sc.server.nats)
-  let sub = await nc.subscribe(createInbox(), () => {
-  })
+  const sc = t.context as SC
+  const nc = await connect(sc.server.nats)
+  // tslint:disable-next-line:no-empty
+  const sub = await nc.subscribe(createInbox(), () => {})
   nc.close()
   sub.unsubscribe()
   t.pass()
@@ -320,11 +321,11 @@ test('unsubscribe after close', async (t) => {
 
 test('no data after unsubscribe', async (t) => {
   t.plan(1)
-  let sc = t.context as SC
-  let nc = await connect(sc.server.nats)
-  let subj = createInbox()
+  const sc = t.context as SC
+  const nc = await connect(sc.server.nats)
+  const subj = createInbox()
   let received = 0
-  let sub = await nc.subscribe(subj, () => {
+  const sub = await nc.subscribe(subj, () => {
     received++
     sub.unsubscribe()
   })
@@ -338,10 +339,10 @@ test('no data after unsubscribe', async (t) => {
 
 test('JSON messages', async (t) => {
   t.plan(2)
-  let sc = t.context as SC
-  let nc = await connect({url: sc.server.nats, payload: Payload.JSON} as ConnectionOptions)
-  let subj = createInbox()
-  let m = {
+  const sc = t.context as SC
+  const nc = await connect({url: sc.server.nats, payload: Payload.JSON} as ConnectionOptions)
+  const subj = createInbox()
+  const m = {
     boolean: true,
     string: 'CEDILA-Ç'
   }
@@ -358,10 +359,10 @@ test('JSON messages', async (t) => {
 
 test('UTF8 messages', async (t) => {
   t.plan(2)
-  let sc = t.context as SC
-  let nc = await connect({url: sc.server.nats} as ConnectionOptions)
-  let subj = createInbox()
-  let m = 'CEDILA-Ç'
+  const sc = t.context as SC
+  const nc = await connect({url: sc.server.nats} as ConnectionOptions)
+  const subj = createInbox()
+  const m = 'CEDILA-Ç'
 
   nc.subscribe(subj, (err, msg) => {
     t.is(err, null)
@@ -375,32 +376,32 @@ test('UTF8 messages', async (t) => {
 
 test('request removes mux', async (t) => {
   t.plan(4)
-  let sc = t.context as SC
-  let nc = await connect({url: sc.server.nats} as ConnectionOptions)
-  let subj = createInbox()
+  const sc = t.context as SC
+  const nc = await connect({url: sc.server.nats} as ConnectionOptions)
+  const subj = createInbox()
 
   nc.subscribe(subj, (err, msg) => {
     t.falsy(err)
     t.truthy(msg)
-    //@ts-ignore
+    // @ts-ignore
     nc.publish(msg.reply)
   }, {max: 1})
 
-  let r = await nc.request(subj)
+  const r = await nc.request(subj)
   t.truthy(r)
-  //@ts-ignore
+  // @ts-ignore
   t.is(nc.nc.reqs.length, 0)
   nc.close()
 })
 
 test('unsubscribe unsubscribes', async (t) => {
   t.plan(2)
-  let sc = t.context as SC
-  let nc = await connect({url: sc.server.nats} as ConnectionOptions)
-  let subj = createInbox()
+  const sc = t.context as SC
+  const nc = await connect({url: sc.server.nats} as ConnectionOptions)
+  const subj = createInbox()
 
-  let sub = await nc.subscribe(subj, () => {
-  })
+  // tslint:disable-next-line:no-empty
+  const sub = await nc.subscribe(subj, () => {})
   t.is(nc.numSubscriptions(), 1)
   sub.unsubscribe()
   t.is(nc.numSubscriptions(), 0)
@@ -409,8 +410,8 @@ test('unsubscribe unsubscribes', async (t) => {
 
 test('flush cb calls error on close', async (t) => {
   t.plan(1)
-  let sc = t.context as SC
-  let nc = await connect(sc.server.nats)
+  const sc = t.context as SC
+  const nc = await connect(sc.server.nats)
   nc.close()
   return nc.flush()
   .then(() => {
@@ -422,10 +423,10 @@ test('flush cb calls error on close', async (t) => {
 
 test('flush reject on close', async (t) => {
   t.plan(1)
-  let sc = t.context as SC
-  let nc = await connect(sc.server.nats)
+  const sc = t.context as SC
+  const nc = await connect(sc.server.nats)
   nc.close()
-  //@ts-ignore
+  // @ts-ignore
   await t.throwsAsync(() => {
     return nc.flush()
   }, {code: ErrorCode.CONN_CLOSED})
@@ -433,8 +434,8 @@ test('flush reject on close', async (t) => {
 
 test('error if publish after close', async (t) => {
   t.plan(1)
-  let sc = t.context as SC
-  let nc = await connect(sc.server.nats)
+  const sc = t.context as SC
+  const nc = await connect(sc.server.nats)
   nc.close()
   await t.throws(() => {
     nc.publish('foo')
@@ -443,14 +444,14 @@ test('error if publish after close', async (t) => {
 
 test('server info', async (t) => {
   t.plan(3)
-  let sc = t.context as SC
+  const sc = t.context as SC
   return connect(sc.server.nats)
   .then((nc) => {
-    //@ts-ignore
+    // @ts-ignore
     t.truthy(nc.nc.info.client_id > 0)
-    //@ts-ignore
+    // @ts-ignore
     t.truthy(nc.nc.info.max_payload > 0)
-    //@ts-ignore
+    // @ts-ignore
     t.truthy(nc.nc.info.proto > 0)
   })
 })

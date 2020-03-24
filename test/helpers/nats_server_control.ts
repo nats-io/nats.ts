@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 The NATS Authors
+ * Copyright 2018-2020 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -22,10 +22,12 @@ import fs from 'fs'
 import {URL} from 'url'
 import Timer = NodeJS.Timer
 
-let SERVER = (process.env.TRAVIS) ? 'nats-server/nats-server' : 'nats-server'
-let PID_DIR = (process.env.TRAVIS) ? process.env.TRAVIS_BUILD_DIR : process.env.TMPDIR
+const SERVER = (process.env.TRAVIS) ? 'nats-server/nats-server' : 'nats-server'
+const PID_DIR = (process.env.TRAVIS) ? process.env.TRAVIS_BUILD_DIR : process.env.TMPDIR
 
 let SERVER_VERSION: any[]
+
+export type Cb = () => void
 
 // context for tests
 export interface SC {
@@ -57,20 +59,20 @@ export function wsURL(s: Server): string {
 }
 
 export function getPort(urlString: string): number {
-  let u = new URL(urlString)
+  const u = new URL(urlString)
   return parseInt(u.port, 10)
 }
 
-export function addClusterMember(s: Server, opt_flags?: string[]): Promise<Server> {
+export function addClusterMember(s: Server, optFlags?: string[]): Promise<Server> {
   return new Promise((resolve, reject) => {
-    opt_flags = opt_flags || []
-    if (opt_flags.indexOf('--routes') !== -1) {
+    optFlags = optFlags || []
+    if (optFlags.indexOf('--routes') !== -1) {
       reject(new Error('addClusterMember doesn\'t take a --routes flag as an option'))
       return
     }
 
-    opt_flags = opt_flags.concat(['--routes', `nats://127.0.0.1:${s.clusterPort}`])
-    startServer(opt_flags)
+    optFlags = optFlags.concat(['--routes', `nats://127.0.0.1:${s.clusterPort}`])
+    startServer(optFlags)
     .then((v) => {
       resolve(v)
     })
@@ -80,26 +82,26 @@ export function addClusterMember(s: Server, opt_flags?: string[]): Promise<Serve
   })
 }
 
-export function startServer(opt_flags?: string[]): Promise<Server> {
+export function startServer(optFlags?: string[]): Promise<Server> {
   return new Promise((resolve, reject) => {
-    opt_flags = opt_flags || []
+    optFlags = optFlags || []
     let flags: string[] = []
 
     // filter host
-    if (opt_flags.indexOf('-a') === -1) {
+    if (optFlags.indexOf('-a') === -1) {
       flags = flags.concat(['-a', '127.0.0.1'])
     }
 
     // filter port -p or --port
-    if (opt_flags.indexOf('-p') === -1 && opt_flags.indexOf('--port') === -1) {
+    if (optFlags.indexOf('-p') === -1 && optFlags.indexOf('--port') === -1) {
       flags = flags.concat(['-p', '-1'])
     }
 
-    if (opt_flags.indexOf('--cluster') === -1) {
+    if (optFlags.indexOf('--cluster') === -1) {
       flags = flags.concat(['--cluster', 'nats://127.0.0.1:-1'])
     }
 
-    if (opt_flags.indexOf('--http_port') === -1 && opt_flags.indexOf('-m') === -1) {
+    if (optFlags.indexOf('--http_port') === -1 && optFlags.indexOf('-m') === -1) {
       flags = flags.concat(['--m', '-1'])
     }
 
@@ -107,15 +109,16 @@ export function startServer(opt_flags?: string[]): Promise<Server> {
 
     let port = -1
 
-    if (opt_flags) {
-      flags = flags.concat(opt_flags)
+    if (optFlags) {
+      flags = flags.concat(optFlags)
     }
 
     if (process.env.PRINT_LAUNCH_CMD) {
+      // tslint:disable-next-line:no-console
       console.log(flags.join(' '))
     }
 
-    let server = spawn(SERVER, flags) as Server
+    const server = spawn(SERVER, flags) as Server
     // server.stderr.on('data', function (data) {
     //     let lines = data.toString().split('\n');
     //     lines.forEach((m) => {
@@ -125,10 +128,10 @@ export function startServer(opt_flags?: string[]): Promise<Server> {
 
     server.args = flags
 
-    let start = Date.now()
-    let wait: number = 0
-    let maxWait = 5 * 1000 // 5 secs
-    let delta = 250
+    const start = Date.now()
+    let waitTime: number = 0
+    const maxWait = 5 * 1000 // 5 secs
+    const delta = 250
     let socket: Socket | null
     let timer: Timer | null
 
@@ -156,18 +159,18 @@ export function startServer(opt_flags?: string[]): Promise<Server> {
 
     let count = 50
     new Promise<any>((rslv, rjct) => {
-      let t = setInterval(() => {
+      const t = setInterval(() => {
         --count
         if (count === 0) {
           clearInterval(t)
           rjct('Unable to find the pid')
         }
-        //@ts-ignore
-        let portsFile = path.join(PID_DIR, `nats-server_${server.pid}.ports`)
+        // @ts-ignore
+        const portsFile = path.join(PID_DIR, `nats-server_${server.pid}.ports`)
         if (fs.existsSync(portsFile)) {
-          let data = fs.readFileSync(portsFile).toString()
-          let s = (server as Server)
-          let ports = JSON.parse(data)
+          const data = fs.readFileSync(portsFile).toString()
+          const s = (server as Server)
+          const ports = JSON.parse(data)
           s.nats = ports.nats[0]
           s.port = port = getPort(server.nats)
           s.clusterPort = getPort(ports.cluster[0])
@@ -179,11 +182,11 @@ export function startServer(opt_flags?: string[]): Promise<Server> {
       }, 150)
     }).then(() => {
       // Test for when socket is bound.
-      timer = <any>setInterval(function () {
+      timer = (setInterval(() => {
         resetSocket()
 
-        wait = Date.now() - start
-        if (wait > maxWait) {
+        waitTime = Date.now() - start
+        if (waitTime > maxWait) {
           finish(new Error('Can\'t connect to server on port: ' + port))
         }
 
@@ -191,7 +194,7 @@ export function startServer(opt_flags?: string[]): Promise<Server> {
         socket = net.createConnection(port)
 
         // Success
-        socket.on('connect', function () {
+        socket.on('connect', () => {
           if (server.pid === null) {
             // We connected but not to our server..
             finish(new Error('Server already running on port: ' + port))
@@ -201,11 +204,11 @@ export function startServer(opt_flags?: string[]): Promise<Server> {
         })
 
         // Wait for next try..
-        socket.on('error', function (error) {
+        socket.on('error', (error) => {
           finish(new Error('Problem connecting to server on port: ' + port + ' (' + error + ')'))
         })
 
-      }, delta)
+      }, delta) as any)
     })
     .catch((err) => {
       reject(err)
@@ -213,7 +216,7 @@ export function startServer(opt_flags?: string[]): Promise<Server> {
 
 
     // Other way to catch another server running.
-    server.on('exit', function (code, signal) {
+    server.on('exit', (code, signal) => {
       if (code === 1) {
         finish(new Error('Server exited with bad code, already running? (' + code + ' / ' + signal + ')'))
       }
@@ -221,7 +224,7 @@ export function startServer(opt_flags?: string[]): Promise<Server> {
 
     // Server does not exist..
     // @ts-ignore
-    server.stderr.on('data', function (data) {
+    server.stderr.on('data', (data) => {
       if (/^execvp\(\)/.test(data.toString())) {
         if (timer) {
           clearInterval(timer)
@@ -233,19 +236,19 @@ export function startServer(opt_flags?: string[]): Promise<Server> {
 
 }
 
-function wait(server: Server, done?: Function): void {
+function wait(server: Server, done?: Cb): void {
   if (server.killed) {
     if (done) {
       done()
     }
   } else {
-    setTimeout(function () {
+    setTimeout(() => {
       wait(server, done)
     }, 0)
   }
 }
 
-export function stopServer(server: Server | null, done?: Function): void {
+export function stopServer(server: Server | null, done?: Cb): void {
   if (server && !server.killed) {
     server.kill()
     wait(server, done)
@@ -262,7 +265,7 @@ export function serverVersion(): any[] {
 }
 
 function initServerVersion(): any[] {
-  let v = execSync(SERVER + ' -v', {
+  const v = execSync(SERVER + ' -v', {
     timeout: 1000
   }).toString()
   return normalizeVersion(v)
@@ -275,16 +278,16 @@ function normalizeVersion(s: string): any[] {
   s = s.replace('nats-server ', '')
   s = s.replace('nats-server', '')
   s = s.replace('v', '')
-  let i = s.indexOf('-')
+  const i = s.indexOf('-')
   if (i !== -1) {
     s = s.substring(0, i)
   }
-  let a = s.split('.')
-  a.forEach((v, i) => {
-    let vv = parseInt(v, 10)
+  const a = s.split('.')
+  a.forEach((v, idx) => {
+    const vv = parseInt(v, 10)
     if (!isNaN(vv)) {
-      //@ts-ignore
-      a[i] = vv
+      // @ts-ignore
+      a[idx] = vv
     }
   })
   return a

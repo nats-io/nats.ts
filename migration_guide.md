@@ -10,6 +10,7 @@ While every attempt was made to keep `nats.ts` very close, some changes were req
 
 ### connection options
 
+- `NatsConnectionOptions` was renamed to `ConnectionOptions`
 - Option `nkeyCreds` was renamed to `credsFile`
 
 ### `connect()`
@@ -22,4 +23,5 @@ The flush callback used to optionally return a promise if no callback was provid
 
 ### `subscribe()`
 
-The `subscribe` API now returns a Promise<`Sub`>, instead of a `Promise<Subscription>`
+The `Subscription` type has been changed to `Sub`.
+

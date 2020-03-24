@@ -23,8 +23,8 @@ import url from "url"
 
 
 test.before(async (t) => {
-  let server = await startServer()
-  t.context = {server: server}
+  const server = await startServer()
+  t.context = {server}
 })
 
 test.after.always((t) => {
@@ -35,9 +35,9 @@ test.after.always((t) => {
 test('timer pings are sent', async (t) => {
   const lock = new Lock()
   t.plan(1)
-  let sc = t.context as SC
-  let u = new url.URL(sc.server.nats)
-  let nc = await connect({port: parseInt(u.port, 10), pingInterval: 100} as ConnectionOptions)
+  const sc = t.context as SC
+  const u = new url.URL(sc.server.nats)
+  const nc = await connect({port: parseInt(u.port, 10), pingInterval: 100} as ConnectionOptions)
   nc.on('pingtimer', () => {
     t.pass()
     nc.close()
@@ -68,13 +68,16 @@ test('missed timer pings reconnect', (t) => {
           return
         }
         if (/^CONNECT\s+/.test(line)) {
+          // nothing
         } else if (/^PING/.test(line)) {
           if (firstPing) {
             c.write('PONG\r\n')
             firstPing = false
           }
         } else if (/^PONG/.test(line)) {
+          // nothing
         } else if (/^INFO\s+/i.test(line)) {
+          // nothing
         } else {
           // unknown
         }
@@ -86,7 +89,7 @@ test('missed timer pings reconnect', (t) => {
     // @ts-ignore
     const {port} = srv.address()
     connect({
-      port: port,
+      port,
       reconnectTimeWait: 250,
       pingInterval: 100,
       maxReconnectAttempts: 1

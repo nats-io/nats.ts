@@ -22,8 +22,8 @@ import {randomBytes} from 'crypto'
 
 
 test.before(async (t) => {
-  let server = await startServer()
-  t.context = {server: server}
+  const server = await startServer()
+  t.context = {server}
 })
 
 test.after.always((t) => {
@@ -32,8 +32,8 @@ test.after.always((t) => {
 
 async function macro(t: any, input: any): Promise<any> {
   t.plan(2)
-  let sc = t.context as SC
-  let subj = next()
+  const sc = t.context as SC
+  const subj = next()
   return connect({url: sc.server.nats, payload: Payload.Binary})
   .then((nc) => {
     return nc.subscribe(subj, (err, msg) => {
@@ -53,12 +53,12 @@ async function macro(t: any, input: any): Promise<any> {
   })
 }
 
-let invalid2octet = Buffer.from([0xc3, 0x28])
-let invalidsequenceidentifier = Buffer.from([0xa0, 0xa1])
-let invalid3octet = Buffer.from([0xe2, 0x28, 0xa1])
-let invalid4octet = Buffer.from([0xf0, 0x90, 0x28, 0xbc])
-let embeddednull = Buffer.from([0x00, 0xf0, 0x00, 0x28, 0x00, 0x00, 0xf0, 0x9f, 0x92, 0xa9, 0x00])
-let bigBuffer = randomBytes(128 * 1024)
+const invalid2octet = Buffer.from([0xc3, 0x28])
+const invalidsequenceidentifier = Buffer.from([0xa0, 0xa1])
+const invalid3octet = Buffer.from([0xe2, 0x28, 0xa1])
+const invalid4octet = Buffer.from([0xf0, 0x90, 0x28, 0xbc])
+const embeddednull = Buffer.from([0x00, 0xf0, 0x00, 0x28, 0x00, 0x00, 0xf0, 0x9f, 0x92, 0xa9, 0x00])
+const bigBuffer = randomBytes(128 * 1024)
 
 test('invalid2octet', macro, invalid2octet)
 test('invalidsequenceidentifier', macro, invalidsequenceidentifier)
@@ -68,13 +68,13 @@ test('embeddednull', macro, embeddednull)
 test('bigbuffer', macro, bigBuffer)
 
 test('no control characters on chunk processing', (t) => {
-  let count = 25
+  const count = 25
   t.plan(count)
   const sc = t.context as SC
   const subj = next()
   return connect({url: sc.server.nats, payload: Payload.Binary})
   .then((nc) => {
-    let data = randomBytes(1032)
+    const data = randomBytes(1032)
     return nc.subscribe(subj, (err, msg) => {
       t.deepEqual(msg.data, data)
     }, {max: count})

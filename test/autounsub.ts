@@ -21,8 +21,8 @@ import {next} from 'nuid'
 
 
 test.before(async (t) => {
-  let server = await startServer()
-  t.context = {server: server}
+  const server = await startServer()
+  t.context = {server}
 })
 
 test.after.always((t) => {
@@ -36,6 +36,7 @@ test('auto unsub from max from options', async (t) => {
   let sub: Sub
   return connect({url: sc.server.nats} as ConnectionOptions)
   .then((nc) => {
+    // tslint:disable-next-line:no-empty
     return nc.subscribe(subj, () => {
     }, {max: 10})
     .then((s) => {
@@ -56,11 +57,12 @@ test('auto unsub from max from options', async (t) => {
 
 test('auto unsub from unsubscribe', (t) => {
   t.plan(1)
-  let subj = next()
+  const subj = next()
   let sub: Sub
   const sc = t.context as SC
   return connect({url: sc.server.nats})
   .then((nc) => {
+    // tslint:disable-next-line:no-empty
     return nc.subscribe(subj, () => {
     }, {max: 10})
     .then((s) => {
@@ -84,6 +86,7 @@ test('can unsub from auto-unsubscribed', async (t) => {
   const subj = next()
   return connect({url: sc.server.nats})
   .then((nc) => {
+    // tslint:disable-next-line:no-empty
     return nc.subscribe(subj, () => {
     }, {max: 1})
     .then((sub) => {
@@ -108,6 +111,7 @@ test('can change auto-unsub to a lesser value', async (t) => {
   let sub: Sub
   return connect({url: sc.server.nats})
   .then((nc) => {
+    // tslint:disable-next-line:no-empty
     return nc.subscribe(subj, () => {
     }, {max: 16})
     .then((s) => {
@@ -133,6 +137,7 @@ test('can change auto-unsub to a higher value', async (t) => {
   let sub: Sub
   return connect({url: sc.server.nats})
   .then((nc) => {
+    // tslint:disable-next-line:no-empty
     return nc.subscribe(subj, () => {
     }, {max: 1})
     .then((s) => {
@@ -168,7 +173,7 @@ test('request receives expected count with multiple helpers', (t) => {
     .then((m) => {
       t.is(m?.data, 'hello world')
       t.is(nc.numSubscriptions(), 1)
-      //@ts-ignore
+      // @ts-ignore
       t.is(nc.nc.reqs.length, 0)
       nc.close()
     })
@@ -186,7 +191,7 @@ test('check cancelled requests leaks', (t) => {
       t.is(err?.code, ErrorCode.REQ_TIMEOUT)
     })
     .then(() => {
-      //@ts-ignore
+      // @ts-ignore
       t.is(nc.nc.reqs.length, 0)
       nc.close()
     })

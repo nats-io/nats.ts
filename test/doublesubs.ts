@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 The NATS Authors
+ * Copyright 2018-2020 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -19,8 +19,8 @@ import {SC, startServer, stopServer} from './helpers/nats_server_control'
 import {connect} from '../src/nats'
 
 test.before(async (t) => {
-  let server = await startServer(['-DV'])
-  t.context = {server: server}
+  const server = await startServer(['-DV'])
+  t.context = {server}
 })
 
 test.after.always((t) => {
@@ -30,13 +30,13 @@ test.after.always((t) => {
 test('should not send multiple subscriptions on startup', async (t) => {
   let subsSeen = 0
   // server seems to be adding a space after sid
-  let subRe = /(\[SUB foo \d\s*\])+/g
+  const subRe = /(\[SUB foo \d\s*\])+/g
 
   // Capture log output from nats-server and check for double SUB protos.
-  let sc = t.context as SC
-  //@ts-ignore
-  sc.server.stderr.on('data', function (data) {
-    let lines = data.toString().split('\n')
+  const sc = t.context as SC
+  // @ts-ignore
+  sc.server.stderr.on('data', (data) => {
+    const lines = data.toString().split('\n')
     lines.forEach((s: string) => {
       // t.log(s);
       if (subRe.test(s)) {
@@ -45,9 +45,9 @@ test('should not send multiple subscriptions on startup', async (t) => {
     })
   })
 
-  let nc = await connect(sc.server.nats)
-  nc.subscribe('foo', () => {
-  })
+  const nc = await connect(sc.server.nats)
+  // tslint:disable-next-line:no-empty
+  nc.subscribe('foo', () => {})
   await nc.flush()
   await nc.flush()
   nc.close()

@@ -22,8 +22,8 @@ import {next} from 'nuid'
 
 
 test.before(async (t) => {
-  let server = await startServer()
-  t.context = {server: server}
+  const server = await startServer()
+  t.context = {server}
 })
 
 test.after.always((t) => {
@@ -31,22 +31,22 @@ test.after.always((t) => {
 })
 
 async function macro(t: any, input: any, encoding: string | Buffer): Promise<any> {
-  let max = 10000
+  const max = 10000
   t.plan(max)
-  let sc = t.context as SC
+  const sc = t.context as SC
   const opts = {url: sc.server.nats}
   if (encoding === 'binary') {
     // @ts-ignore
     opts.payload = Payload.Binary
   }
-  let nc = await connect(opts as ConnectionOptions)
-  let subj = next()
+  const nc = await connect(opts as ConnectionOptions)
+  const subj = next()
   nc.subscribe(subj, (err, msg) => {
     if (err) {
       t.fail(err.message)
     }
     t.deepEqual(msg.data, input)
-  }, {max: max})
+  }, {max})
 
   for (let i = 0; i < max; i++) {
     nc.publish(subj, input)

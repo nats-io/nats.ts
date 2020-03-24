@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 The NATS Authors
+ * Copyright 2018-2020 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -22,8 +22,8 @@ import {connect} from '../src/nats'
 import {Lock} from './helpers/latch'
 
 test.before(async (t) => {
-  let server = await startServer()
-  t.context = {server: server}
+  const server = await startServer()
+  t.context = {server}
 })
 
 test.after.always((t) => {
@@ -33,23 +33,23 @@ test.after.always((t) => {
 
 test('close quickly', async (t) => {
   t.plan(1)
-  let lock = new Lock()
-  let sc = t.context as SC
-  let u = new url.URL(sc.server.nats)
-  let port = u.port
+  const lock = new Lock()
+  const sc = t.context as SC
+  const u = new url.URL(sc.server.nats)
+  const port = u.port
 
-  let nc = await connect({url: sc.server.nats, name: 'closer'})
+  const nc = await connect({url: sc.server.nats, name: 'closer'})
 
-  let sub = nc.subscribe('started', (err, msg) => {
+  const sub = nc.subscribe('started', (err, msg) => {
     nc.publish('close')
   })
 
-  let timer = setTimeout(() => {
+  const timer = setTimeout(() => {
     t.fail('process didn\'t exit quickly')
     lock.unlock()
   }, 10000)
 
-  let child = child_process.execFile(process.argv[0], [__dirname + '/helpers/exiting_client.js', port], (error) => {
+  const child = child_process.execFile(process.argv[0], [__dirname + '/helpers/exiting_client.js', port], (error) => {
     if (error) {
       nc.close()
       t.fail(error.message)

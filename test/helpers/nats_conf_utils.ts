@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 The NATS Authors
+ * Copyright 2013-2020 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -17,25 +17,25 @@ import {PathLike, writeFileSync} from 'fs'
 
 // TODO: add array support
 export function jsonToNatsConf(o: object, indent?: string): string {
-  let pad = arguments[1] !== undefined ? arguments[1] + '  ' : ''
-  let buf = []
-  for (let k in o) {
+  const pad = arguments[1] !== undefined ? arguments[1] + '  ' : ''
+  const buf = []
+  for (const k in o) {
     if (o.hasOwnProperty(k)) {
-      //@ts-ignore
-      let v = o[k]
+      // @ts-ignore
+      const v = o[k]
       if (Array.isArray(v)) {
         buf.push(pad + k + ' [')
         buf.push(jsonToNatsConf(v, pad))
         buf.push(pad + ' ]')
       } else if (typeof v === 'object') {
         // don't print a key if it is an array and it is an index
-        let kn = Array.isArray(o) ? '' : k
+        const kn = Array.isArray(o) ? '' : k
         buf.push(pad + kn + ' {')
         buf.push(jsonToNatsConf(v, pad))
         buf.push(pad + ' }')
       } else {
         if (!Array.isArray(o)) {
-          //@ts-ignore
+          // @ts-ignore
           if (typeof v === 'string' && v.charAt(0) >= '0' && v.charAt(0) <= '9' && isNaN(v)) {
             buf.push(pad + k + ': \"' + v + '\"')
           } else {

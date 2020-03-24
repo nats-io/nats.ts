@@ -21,8 +21,8 @@ import {next} from 'nuid'
 
 
 test.before(async (t) => {
-  let server = await startServer()
-  t.context = {server: server}
+  const server = await startServer()
+  t.context = {server}
 })
 
 test.after.always((t) => {
@@ -31,15 +31,15 @@ test.after.always((t) => {
 
 test('deliver to single queue', async (t) => {
   t.plan(1)
-  let sc = t.context as SC
-  let nc = await connect({url: sc.server.nats})
+  const sc = t.context as SC
+  const nc = await connect({url: sc.server.nats})
 
-  let subj = next()
+  const subj = next()
 
-  let subs = []
+  const subs = []
   let count = 0
   for (let i = 0; i < 5; i++) {
-    let s = nc.subscribe(subj, () => {
+    const s = nc.subscribe(subj, () => {
       count++
     }, {queue: 'a'})
     subs.push(s)
@@ -55,15 +55,15 @@ test('deliver to single queue', async (t) => {
 
 test('deliver to multiple queues', async (t) => {
   t.plan(2)
-  let sc = t.context as SC
-  let nc = await connect({url: sc.server.nats})
+  const sc = t.context as SC
+  const nc = await connect({url: sc.server.nats})
 
-  let subj = next()
+  const subj = next()
 
-  let subs = []
+  const subs = []
   let queue1 = 0
   for (let i = 0; i < 5; i++) {
-    let s = nc.subscribe(subj, () => {
+    const s = nc.subscribe(subj, () => {
       queue1++
     }, {queue: 'a'})
     subs.push(s)
@@ -71,7 +71,7 @@ test('deliver to multiple queues', async (t) => {
 
   let queue2 = 0
   for (let i = 0; i < 5; i++) {
-    let s = nc.subscribe(subj, () => {
+    const s = nc.subscribe(subj, () => {
       queue2++
     }, {queue: 'b'})
     subs.push(s)
@@ -88,15 +88,15 @@ test('deliver to multiple queues', async (t) => {
 
 test('queues and subs independent', async (t) => {
   t.plan(2)
-  let sc = t.context as SC
-  let nc = await connect({url: sc.server.nats})
+  const sc = t.context as SC
+  const nc = await connect({url: sc.server.nats})
 
-  let subj = next()
+  const subj = next()
 
-  let subs = []
+  const subs = []
   let queueCount = 0
   for (let i = 0; i < 5; i++) {
-    let s = nc.subscribe(subj, () => {
+    const s = nc.subscribe(subj, () => {
       queueCount++
     }, {queue: 'a'})
     subs.push(s)
@@ -118,10 +118,10 @@ test('queues and subs independent', async (t) => {
 
 test('delivers single queue subscriber regardless of wildcards', async (t) => {
   t.plan(1)
-  let sc = t.context as SC
-  let nc = await connect({url: sc.server.nats})
+  const sc = t.context as SC
+  const nc = await connect({url: sc.server.nats})
 
-  let base = next()
+  const base = next()
   let count = 0
   nc.subscribe(base + '.bar', () => {
     count++

@@ -1,5 +1,6 @@
+/* tslint:disable:no-console */
 /*
- * Copyright 2018-2019 The NATS Authors
+ * Copyright 2018-2020 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -21,7 +22,7 @@ if (process.argv.length > 2) {
   port = parseInt(process.argv[2], 10)
 }
 
-let server = new mockserver.ScriptedServer(port)
+const server = new mockserver.ScriptedServer(port)
 server.start().then((p) => {
   console.log('server running on port ', p)
 }).catch((err) => {

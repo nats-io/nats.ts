@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 The NATS Authors
+ * Copyright 2018-2020 The NATS Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -19,56 +19,56 @@ import * as u from './helpers/nats_conf_utils'
 
 
 test('test serializing simple', (t) => {
-  let x = {
+  const x = {
     test: 'one'
   }
-  let y = u.jsonToNatsConf(x)
+  const y = u.jsonToNatsConf(x)
 
-  let buf = y.split('\n')
-  buf.forEach(function (e, i) {
+  const buf = y.split('\n')
+  buf.forEach((e, i) => {
     buf[i] = e.trim()
   })
 
-  let z = buf.join(' ')
+  const z = buf.join(' ')
   t.is(z, 'test: one')
 })
 
 test('test serializing nested', (t) => {
-  let x = {
+  const x = {
     a: 'one',
     b: {
       a: 'two'
     }
   }
-  let y = u.jsonToNatsConf(x)
+  const y = u.jsonToNatsConf(x)
 
-  let buf = y.split('\n')
-  buf.forEach(function (e, i) {
+  const buf = y.split('\n')
+  buf.forEach((e, i) => {
     buf[i] = e.trim()
   })
 
-  let z = buf.join(' ')
+  const z = buf.join(' ')
   t.is(z, 'a: one b { a: two }')
 })
 
 test('test serializing array', (t) => {
-  let x = {
+  const x = {
     a: 'one',
     b: ['a', 'b', 'c']
   }
-  let y = u.jsonToNatsConf(x)
+  const y = u.jsonToNatsConf(x)
 
-  let buf = y.split('\n')
-  buf.forEach(function (e, i) {
+  const buf = y.split('\n')
+  buf.forEach((e, i) => {
     buf[i] = e.trim()
   })
 
-  let z = buf.join(' ')
+  const z = buf.join(' ')
   t.is(z, 'a: one b [ a b c ]')
 })
 
 test('test serializing array objs', (t) => {
-  let x = {
+  const x = {
     a: 'one',
     b: [{
       a: 'a'
@@ -78,18 +78,18 @@ test('test serializing array objs', (t) => {
       c: 'c'
     }]
   }
-  let y = u.jsonToNatsConf(x)
-  let buf = y.split('\n')
-  buf.forEach(function (e, i) {
+  const y = u.jsonToNatsConf(x)
+  const buf = y.split('\n')
+  buf.forEach((e, i) => {
     buf[i] = e.trim()
   })
 
-  let z = buf.join(' ')
+  const z = buf.join(' ')
   t.is(z, 'a: one b [ { a: a } { b: b } { c: c } ]')
 })
 
 test('test serializing array arrays', (t) => {
-  let x = {
+  const x = {
     a: 'one',
     b: [{
       a: 'a',
@@ -100,12 +100,12 @@ test('test serializing array arrays', (t) => {
       c: 'c'
     }]
   }
-  let y = u.jsonToNatsConf(x)
-  let buf = y.split('\n')
-  buf.forEach(function (e, i) {
+  const y = u.jsonToNatsConf(x)
+  const buf = y.split('\n')
+  buf.forEach((e, i) => {
     buf[i] = e.trim()
   })
 
-  let z = buf.join(' ')
+  const z = buf.join(' ')
   t.is(z, 'a: one b [ { a: a b [ b c ] } { b: b } { c: c } ]')
 })

@@ -5,7 +5,6 @@
     ],
     "jsRules": {},
     "rules": {
-        "no-unexpected-multiline": {}
     },
     "rulesDirectory": []
 }

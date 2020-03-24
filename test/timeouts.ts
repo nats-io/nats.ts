@@ -22,8 +22,8 @@ import * as net from "net"
 import {ConnectionOptions, createInbox} from "nats"
 
 test.before(async (t) => {
-  let server = await startServer()
-  t.context = {server: server}
+  const server = await startServer()
+  t.context = {server}
 })
 
 test.after.always((t) => {
@@ -32,19 +32,19 @@ test.after.always((t) => {
 
 test('subscription timeouts', async (t) => {
   t.plan(2)
-  let sc = t.context as SC
-  let nc = await connect(sc.server.nats)
-  let lock = new Lock()
+  const sc = t.context as SC
+  const nc = await connect(sc.server.nats)
+  const lock = new Lock()
 
-  let sub = await nc.subscribe(createInbox(), (err) => {
-    //@ts-ignore
+  const sub = await nc.subscribe(createInbox(), (err) => {
+    // @ts-ignore
     t.is(err.code, ErrorCode.TIMEOUT_ERR)
-    let elapsed = Date.now() - start
+    const elapsed = Date.now() - start
     t.true(elapsed >= 45 && elapsed <= 100)
     nc.close()
     lock.unlock()
   })
-  let start = Date.now()
+  const start = Date.now()
   sub.setTimeout(50)
 
   return lock.latch
@@ -52,10 +52,10 @@ test('subscription timeouts', async (t) => {
 
 test('sub cancel timeout, cancels timeout', async (t) => {
   t.plan(2)
-  let sc = t.context as SC
-  let nc = await connect(sc.server.nats)
-  let subj = createInbox()
-  let sub = await nc.subscribe(subj, (err) => {
+  const sc = t.context as SC
+  const nc = await connect(sc.server.nats)
+  const subj = createInbox()
+  const sub = await nc.subscribe(subj, (err) => {
     if (err) {
       t.fail()
     }
@@ -70,10 +70,10 @@ test('sub cancel timeout, cancels timeout', async (t) => {
 
 test('cancel timeout', async (t) => {
   t.plan(2)
-  let sc = t.context as SC
-  let nc = await connect(sc.server.nats)
-  let subj = createInbox()
-  let sub = await nc.subscribe(subj, (err) => {
+  const sc = t.context as SC
+  const nc = await connect(sc.server.nats)
+  const subj = createInbox()
+  const sub = await nc.subscribe(subj, (err) => {
     if (err) {
       t.fail()
     }
@@ -88,11 +88,11 @@ test('cancel timeout', async (t) => {
 
 test('message cancels subscription timeout', async (t) => {
   t.plan(2)
-  let sc = t.context as SC
-  let nc = await connect(sc.server.nats)
-  let subj = createInbox()
+  const sc = t.context as SC
+  const nc = await connect(sc.server.nats)
+  const subj = createInbox()
   let count = 0
-  let sub = await nc.subscribe(subj, (err) => {
+  const sub = await nc.subscribe(subj, (err) => {
     if (err) {
       t.fail('no timeout expected')
     } else {
@@ -110,12 +110,12 @@ test('message cancels subscription timeout', async (t) => {
 
 test('max message cancels subscription timeout', async (t) => {
   t.plan(3)
-  let sc = t.context as SC
-  let nc = await connect(sc.server.nats)
-  let lock = new Lock()
-  let subj = createInbox()
+  const sc = t.context as SC
+  const nc = await connect(sc.server.nats)
+  const lock = new Lock()
+  const subj = createInbox()
   let count = 0
-  let sub = await nc.subscribe(subj, (err) => {
+  const sub = await nc.subscribe(subj, (err) => {
     if (err) {
       t.fail()
     } else {
@@ -138,13 +138,13 @@ test('max message cancels subscription timeout', async (t) => {
 
 test('timeout if expected is not received', async (t) => {
   t.plan(2)
-  let sc = t.context as SC
-  let nc = await connect(sc.server.nats)
-  let lock = new Lock()
+  const sc = t.context as SC
+  const nc = await connect(sc.server.nats)
+  const lock = new Lock()
 
-  let subj = createInbox()
+  const subj = createInbox()
   let count = 0
-  let sub = await nc.subscribe(subj, (err) => {
+  const sub = await nc.subscribe(subj, (err) => {
     if (err) {
       t.is(err.code, ErrorCode.TIMEOUT_ERR)
       t.is(sub.getReceived(), 1)
@@ -162,12 +162,12 @@ test('timeout if expected is not received', async (t) => {
 
 test('no timeout if unsubscribed', async (t) => {
   t.plan(1)
-  let sc = t.context as SC
-  let nc = await connect(sc.server.nats)
-  let lock = new Lock()
+  const sc = t.context as SC
+  const nc = await connect(sc.server.nats)
+  const lock = new Lock()
 
-  let subj = createInbox()
-  let sub = await nc.subscribe(subj, () => {
+  const subj = createInbox()
+  const sub = await nc.subscribe(subj, () => {
     sub.unsubscribe()
   })
   sub.unsubscribe(10)
@@ -185,11 +185,11 @@ test('no timeout if unsubscribed', async (t) => {
 
 test('sub timeout returns false if no sub', async (t) => {
   t.plan(1)
-  let sc = t.context as SC
-  let nc = await connect(sc.server.nats)
+  const sc = t.context as SC
+  const nc = await connect(sc.server.nats)
 
-  let sub = await nc.subscribe(createInbox(), () => {
-  })
+  // tslint:disable-next-line:no-empty
+  const sub = await nc.subscribe(createInbox(), () => {})
   sub.unsubscribe()
   t.false(sub.setTimeout(10))
   nc.close()
@@ -198,13 +198,13 @@ test('sub timeout returns false if no sub', async (t) => {
 
 test('timeout unsubscribes', async (t) => {
   t.plan(1)
-  let sc = t.context as SC
-  let nc = await connect(sc.server.nats)
-  let lock = new Lock()
+  const sc = t.context as SC
+  const nc = await connect(sc.server.nats)
+  const lock = new Lock()
 
-  let subj = createInbox()
+  const subj = createInbox()
   let count = 0
-  let sub = await nc.subscribe(subj, (err) => {
+  const sub = await nc.subscribe(subj, (err) => {
     if (err) {
       process.nextTick(() => {
         nc.publish(subj)
@@ -238,14 +238,14 @@ test('connectTimeout is honored', async (t) => {
 })
 
 test('connection timeout - socket timeout', (t) => {
-  const srv = net.createServer(() => {
-  })
-  let lock = new Lock()
+  // tslint:disable-next-line:no-empty
+  const srv = net.createServer(() => {})
+  const lock = new Lock()
   t.plan(2)
   srv.listen(0, async () => {
     // @ts-ignore
     const {port} = srv.address()
-    return connect({port: port, timeout: 500} as ConnectionOptions)
+    return connect({port, timeout: 500} as ConnectionOptions)
     .then((nc) => {
       nc.close()
       t.fail('should have not connected')
@@ -263,12 +263,12 @@ test('connection timeout - socket timeout', (t) => {
 
 test('subscription timers are cleared', async (t) => {
   t.plan(1)
-  let sc = t.context as SC
-  let nc = await connect(sc.server.nats)
-  let lock = new Lock()
+  const sc = t.context as SC
+  const nc = await connect(sc.server.nats)
+  const lock = new Lock()
 
-  let subj = createInbox()
-  let sub = await nc.subscribe(subj, () => {
+  const subj = createInbox()
+  const sub = await nc.subscribe(subj, () => {
     t.fail("shouldn't have been called")
   })
   sub.setTimeout(100)
@@ -283,11 +283,11 @@ test('subscription timers are cleared', async (t) => {
 
 test('request timers are cleared', async (t) => {
   t.plan(1)
-  let sc = t.context as SC
-  let nc = await connect(sc.server.nats)
-  let lock = new Lock()
+  const sc = t.context as SC
+  const nc = await connect(sc.server.nats)
+  const lock = new Lock()
 
-  let subj = createInbox()
+  const subj = createInbox()
   nc.request(subj, 100)
   setTimeout(() => {
     lock.unlock()
