@@ -29,6 +29,7 @@
   "main": "./index.js",
   "types": "./",
   "scripts": {
+    "prepare": "npm run build",
     "build": "npm run clean && tsc && npm run copy",
     "clean": "rm -Rf lib/ || true && rm -Rf .nyc_output/ || true && rm -Rf coverage/ || true",
     "copy": "cp -R ./lib/src ./dist && rm -Rf lib/ && mv dist lib",
