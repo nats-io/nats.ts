@@ -9,7 +9,6 @@ bin/*
 coverage
 coverage/*
 docs/*
-examples/
 lib/benchmark/*
 lib/examples/*
 lib/src/*

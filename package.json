@@ -88,5 +88,11 @@
     ],
     "sourceMap": true,
     "all": true
+  },
+  "bin": {
+    "tsnats-pub": "examples/tsnats-pub.ts",
+    "tsnats-sub": "examples/tsnats-sub.ts",
+    "tsnats-req": "examples/tsnats-req.ts",
+    "tsnats-rply": "examples/tsnats-rply.ts"
   }
 }
