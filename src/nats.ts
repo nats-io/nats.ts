@@ -34,14 +34,8 @@ import {existsSync} from "fs";
 
 export {ErrorCode, NatsError}
 
-// locate our package.json
-let pkgFile = __dirname + '/../package.json';
-if (!existsSync(pkgFile)) {
-    // tests will find it here
-    pkgFile = __dirname + '/../../package.json';
-}
 /** Version of the ts-nats library */
-export const VERSION = require(pkgFile).version;
+export const VERSION = process.env.npm_package_version ?? require('../package.json').version;
 
 /**
  * @hidden
