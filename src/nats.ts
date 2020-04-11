@@ -35,7 +35,7 @@ import {existsSync} from "fs";
 export {ErrorCode, NatsError}
 
 /** Version of the ts-nats library */
-export const VERSION = process.env.npm_package_version ?? require('../package.json').version;
+export const VERSION = require('../package.json').version;
 
 /**
  * @hidden
