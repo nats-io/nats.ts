@@ -35,8 +35,8 @@
     "cover:html": "nyc report --reporter=html && open coverage/index.html",
     "cover:coveralls": "nyc report --reporter=lcovonly && cat ./coverage/lcov.info | coveralls",
     "pack": "npm run build && npm pack",
-    "debugtest": "tsc && node node_modules/.bin/ava --verbose -T 6500000 --match",
-    "test": "tsc && nyc ava --verbose -T 15000",
+    "debugtest": "tsc && cp package.json lib/package.json && node node_modules/.bin/ava --verbose -T 6500000 --match",
+    "test": "tsc && cp package.json lib/package.json && nyc ava --verbose -T 15000",
     "doc": "node_modules/.bin/typedoc --options ./typedocconfig.ts && touch ./docs/.nojekyll"
   },
   "engines": {
