@@ -32,19 +32,12 @@ import {
 export {
   NatsError, ConnectionOptions, ErrorCode, createInbox, MsgCallback, SubscriptionOptions, Msg, SubEvent, Payload
 } from "nats"
-import {existsSync} from "fs"
 import { Sub } from './sub'
 export { Sub } from './sub'
 
-// locate our package.json
-let pkgFile = __dirname + '/../package.json';
-if (!existsSync(pkgFile)) {
-    // tests will find it here
-    pkgFile = __dirname + '/../../package.json';
-}
 /** Version of the ts-nats library */
 // tslint:disable-next-line:no-var-requires
-export const VERSION = require(pkgFile).version;
+export const VERSION = require('../package.json').version;
 
 
 /** ServerInfo received from the server */
