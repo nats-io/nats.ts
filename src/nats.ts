@@ -30,7 +30,7 @@ import {
 } from "nats"
 
 export {
-  NatsError, ConnectionOptions, ErrorCode, createInbox, MsgCallback, SubscriptionOptions, Msg, SubEvent, Payload
+  NatsError, ConnectionOptions, ErrorCode, createInbox, MsgCallback, SubscriptionOptions, Msg, SubEvent, Payload,
 } from "nats"
 import { Sub } from './sub'
 export { Sub } from './sub'
@@ -63,33 +63,6 @@ export interface ServersChangedEvent {
   deleted: string[];
 }
 
-/** Optional callback interface for 'connect' and 'reconnect' events */
-export type ConnectReconnectCallback = (connection: Client, serverURL: string, info: ServerInfo) => void
-
-/** Optional callback interface for 'disconnect' and 'reconnecting' events */
-export type ReconnectingDisconnectCallback = (serverURL: string) => void
-
-/** Optional callback interface for 'permissionError' events */
-export type PermissionsErrorCallback = (err: NatsError) => void
-
-/** Optional callback for 'serversChanged' events */
-export type ServersChangedCallback = (e: ServersChangedEvent) => void;
-
-/** Optional callback for 'subscribe' and 'unsubscribe' events */
-export type SubscribeUnsubscribeCallback = (e: SubEvent) => void
-
-/** Optional callback for 'yield'events */
-export type YieldCallback = () => void
-
-/** Optional callback argument for [[Client.flush]] */
-export type FlushCallback = (err: NatsError | null) => void;
-
-
-/** Signs a challenge from the server with an NKEY, a function matching this interface must be provided when manually signing nonces via the `nonceSigner` connect option. */
-export type NonceSigner = (nonce: string) => Buffer;
-
-/** Returns an user JWT - can be specified in `userJWT` connect option as a way of dynamically providing a JWT when required. */
-export type JWTProvider = () => string;
 
 /**
  * NATS server Client object.

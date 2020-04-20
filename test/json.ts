@@ -15,11 +15,10 @@
  */
 
 import test from 'ava'
-import {connect, ConnectionOptions, ErrorCode} from '../src/nats'
+import {connect, ErrorCode, Payload, ConnectionOptions, createInbox} from '../src/nats'
 import {Lock} from './helpers/latch'
 import {SC, startServer, stopServer} from './helpers/nats_server_control'
 import {next} from 'nuid'
-import {createInbox, Payload} from "nats"
 
 
 test.before(async (t) => {
@@ -62,6 +61,27 @@ test('pubsub should fail circular json', async (t) => {
   }, {code: ErrorCode.BAD_JSON})
   nc.close()
 })
+
+test('bad json error in callback', async (t) => {
+    t.plan(1);
+    const sc = t.context as SC;
+    const o = {};
+    // @ts-ignore
+    o.a = o;
+    const jc = await connect({url: sc.server.nats, payload: Payload.JSON});
+    jc.subscribe("bad_json", (err) => {
+        t.is(err?.code, ErrorCode.BAD_JSON)
+    })
+    await jc.flush()
+
+    const nc = await connect({url: sc.server.nats})
+    nc.publish("bad_json", "")
+    await nc.flush()
+    await jc.flush()
+
+    jc.close()
+    nc.close()
+});
 
 test('reqrep should fail circular json', async (t) => {
   t.plan(1)
