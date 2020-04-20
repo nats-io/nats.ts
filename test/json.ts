@@ -63,6 +63,27 @@ test('pubsub should fail circular json', async (t) => {
     nc.close();
 });
 
+test('bad json error in callback', async (t) => {
+    t.plan(1);
+    let sc = t.context as SC;
+    let o = {};
+    //@ts-ignore
+    o.a = o;
+    let jc = await connect({url: sc.server.nats, payload: Payload.JSON});
+    jc.subscribe("bad_json", (err) => {
+        t.is(err?.code, ErrorCode.BAD_JSON)
+    })
+    await jc.flush()
+
+    let nc = await connect({url: sc.server.nats})
+    nc.publish("bad_json", "")
+    await nc.flush()
+    await jc.flush()
+
+    jc.close()
+    nc.close()
+});
+
 test('reqrep should fail circular json', async (t) => {
     t.plan(1);
     let sc = t.context as SC;
