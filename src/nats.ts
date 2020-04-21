@@ -30,12 +30,11 @@ import {
 } from './const';
 import {next} from 'nuid';
 import Timer = NodeJS.Timer;
-import {existsSync} from "fs";
 
 export {ErrorCode, NatsError}
 
 /** Version of the ts-nats library */
-export const VERSION = require('../package.json').version;
+export const VERSION = process.env.npm_package_version;
 
 /**
  * @hidden
