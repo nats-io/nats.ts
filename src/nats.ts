@@ -34,7 +34,7 @@ import Timer = NodeJS.Timer;
 export {ErrorCode, NatsError}
 
 /** Version of the ts-nats library */
-export const VERSION = process.env.npm_package_version;
+export const VERSION = require('../package.json').version;
 
 /**
  * @hidden
