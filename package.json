@@ -1,6 +1,6 @@
 {
   "name": "ts-nats",
-  "version": "2.0.0-1",
+  "version": "2.0.0-2",
   "description": "Typescript Node.js client for NATS, a lightweight, high-performance cloud native messaging system",
   "keywords": [
     "nats",
