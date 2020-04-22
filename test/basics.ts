@@ -651,3 +651,23 @@ test('reconnect sends unsubs', (t) => {
     });
     return lock.latch;
 });
+
+test('should handle hostports', async (t) => {
+    t.plan(1);
+    let sc = t.context as SC;
+    let u = new url.URL(sc.server.nats);
+    let nc = await connect({url: `${u.host}` } as NatsConnectionOptions);
+    await nc.flush();
+    t.pass()
+    nc.close();
+})
+
+test('should handle hostports - servers', async (t) => {
+    t.plan(1);
+    let sc = t.context as SC;
+    let u = new url.URL(sc.server.nats);
+    let nc = await connect({servers: [`${u.host}`] } as NatsConnectionOptions);
+    await nc.flush();
+    t.pass()
+    nc.close();
+})
