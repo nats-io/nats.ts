@@ -139,7 +139,7 @@ export class Client implements events.EventEmitter {
   subscribe(subject: string, cb: MsgCallback, opts: SubscriptionOptions = {}): Promise<Sub> {
     return new Promise<Sub>((resolve, reject) => {
       if (typeof cb !== 'function') {
-        reject(new NatsError('requests require a callback', ErrorCode.API_ERROR))
+        reject(new NatsError('subscriptions require a callback', ErrorCode.API_ERROR))
         return
       }
       const s = this.nc.subscribe(subject, (err) => {
