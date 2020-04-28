@@ -29,8 +29,6 @@ import {
     DEFAULT_URI
 } from './const';
 import {next} from 'nuid';
-import Timer = NodeJS.Timer;
-import {existsSync} from "fs";
 
 export {ErrorCode, NatsError}
 
@@ -38,19 +36,19 @@ export {ErrorCode, NatsError}
 export const VERSION = require('../package.json').version;
 
 /**
- * @hidden
+ * @internal
  */
 export interface Base {
     subject: string;
     callback: MsgCallback;
     received: number;
-    timeout?: Timer;
+    timeout?: NodeJS.Timer;
     max?: number | undefined;
     draining?: boolean;
 }
 
 /**
- * @hidden
+ * @internal
  */
 export function defaultSub(): Sub {
     return {sid: 0, subject: '', received: 0} as Sub;
@@ -90,7 +88,7 @@ export interface ServersChangedEvent {
 }
 
 /**
- * @hidden
+ * @internal
  */
 export interface Sub extends Base {
     sid: number;
@@ -98,7 +96,7 @@ export interface Sub extends Base {
 }
 
 /**
- * @hidden
+ * @internal
  */
 export interface Req extends Base {
     token: string;
@@ -256,7 +254,7 @@ export interface NatsConnectionOptions {
     timeout?:number
 }
 
-/** @hidden */
+/** @internal */
 function defaultReq(): Req {
     return {token: '', subject: '', received: 0, max: 1} as Req;
 }
@@ -269,7 +267,7 @@ export class Client extends events.EventEmitter {
     createInbox = createInbox;
     private protocolHandler!: ProtocolHandler;
 
-    /** @hidden */
+    /** @internal */
     constructor() {
         super();
         events.EventEmitter.call(this);
@@ -306,7 +304,7 @@ export class Client extends events.EventEmitter {
     //     });
     // }
 
-    /** @hidden */
+    /** @internal */
     static connect(opts?: NatsConnectionOptions | string | number): Promise<Client> {
         return new Promise((resolve, reject) => {
             let options = Client.parseOptions(opts);
@@ -322,7 +320,7 @@ export class Client extends events.EventEmitter {
     }
 
     /**
-     * @hidden
+     * @internal
      */
     private static defaultOptions(): ConnectionOptions {
         return {
@@ -341,7 +339,7 @@ export class Client extends events.EventEmitter {
     }
 
     /**
-     * @hidden
+     * @internal
      */
     private static parseOptions(args?: string | number | NatsConnectionOptions): NatsConnectionOptions {
         if (args === undefined || args === null) {

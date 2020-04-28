@@ -1,0 +1,13 @@
+{
+    "tsconfig": "./tsdocconfig.json",
+    "mode": "file",
+    "readme": "none",
+    "excludePrivate": true,
+    "excludeProtected": true,
+    "excludeExternals": true,
+    "excludeNotExported": true,
+    "stripInternal": true,
+    "theme": "minimal",
+    "out": "/tmp/out_docs"
+}
+

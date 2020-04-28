@@ -54,11 +54,14 @@ export enum ErrorCode {
 }
 
 // Error templates
+/** @internal **/
 export const REQ_TIMEOUT_MSG_PREFIX = 'The request timed out for subscription id: ';
+/** @internal **/
 export const INVALID_ENCODING_MSG_PREFIX = 'Invalid Encoding:';
+/** @internal **/
 export const CONN_ERR_PREFIX = 'Could not connect to server: ';
 
-
+/** @internal **/
 export class Messages {
     static messages = new Messages();
     messages: { [key: string]: string } = {};
@@ -121,6 +124,7 @@ export class NatsError implements Error {
      * @constructor
      *
      * @api private
+     * @internal
      */
     constructor(message: string, code: string, chainedError?: Error) {
         Error.captureStackTrace(this, this.constructor);
@@ -132,6 +136,12 @@ export class NatsError implements Error {
         util.inherits(NatsError, Error);
     }
 
+    /**
+     * @param code
+     * @param chainedError
+     * @api private
+     * @internal
+     */
     static errorForCode(code: string, chainedError?: Error): NatsError {
         let m = Messages.getMessage(code);
         return new NatsError(m, code, chainedError);
