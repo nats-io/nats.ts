@@ -3,7 +3,7 @@
 <head>
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<title>ts-nats | ts-nats</title>
+	<title>NatsConnectionOptions | ts-nats</title>
 	<meta name="description" content="Documentation for ts-nats">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<style type="text/css">/*! normalize.css v1.1.3 | MIT License | git.io/normalize */
@@ -2692,7 +2692,7 @@ img {
 		<div class="container">
 			<div class="table-wrap">
 				<div class="table-cell">
-					<strong><a href="index.html">ts-nats</a></strong>
+					<strong><a href="../index.html">ts-nats</a></strong>
 				</div>
 				<div class="table-cell" id="tsd-widgets">
 					<div id="tsd-filter">
@@ -2721,181 +2721,577 @@ img {
 <nav class="tsd-navigation secondary">
 	<ul>
 		<li class=" tsd-kind-enum">
-			<a href="enums/errorcode.html" class="tsd-kind-icon">Error<wbr>Code</a>
+			<a href="../enums/errorcode.html" class="tsd-kind-icon">Error<wbr>Code</a>
 		</li>
 		<li class=" tsd-kind-enum">
-			<a href="enums/payload.html" class="tsd-kind-icon">Payload</a>
+			<a href="../enums/payload.html" class="tsd-kind-icon">Payload</a>
 		</li>
 		<li class=" tsd-kind-class">
-			<a href="classes/client.html" class="tsd-kind-icon">Client</a>
+			<a href="../classes/client.html" class="tsd-kind-icon">Client</a>
 		</li>
 		<li class=" tsd-kind-class">
-			<a href="classes/natserror.html" class="tsd-kind-icon">Nats<wbr>Error</a>
+			<a href="../classes/natserror.html" class="tsd-kind-icon">Nats<wbr>Error</a>
 		</li>
 		<li class=" tsd-kind-class">
-			<a href="classes/subscription.html" class="tsd-kind-icon">Subscription</a>
+			<a href="../classes/subscription.html" class="tsd-kind-icon">Subscription</a>
 		</li>
 		<li class=" tsd-kind-interface">
-			<a href="interfaces/connectreconnectcallback.html" class="tsd-kind-icon">Connect<wbr>Reconnect<wbr>Callback</a>
+			<a href="connectreconnectcallback.html" class="tsd-kind-icon">Connect<wbr>Reconnect<wbr>Callback</a>
 		</li>
 		<li class=" tsd-kind-interface">
-			<a href="interfaces/flushcallback.html" class="tsd-kind-icon">Flush<wbr>Callback</a>
+			<a href="flushcallback.html" class="tsd-kind-icon">Flush<wbr>Callback</a>
 		</li>
 		<li class=" tsd-kind-interface">
-			<a href="interfaces/jwtprovider.html" class="tsd-kind-icon">JWTProvider</a>
+			<a href="jwtprovider.html" class="tsd-kind-icon">JWTProvider</a>
 		</li>
 		<li class=" tsd-kind-interface">
-			<a href="interfaces/msg.html" class="tsd-kind-icon">Msg</a>
+			<a href="msg.html" class="tsd-kind-icon">Msg</a>
 		</li>
 		<li class=" tsd-kind-interface">
-			<a href="interfaces/msgcallback.html" class="tsd-kind-icon">Msg<wbr>Callback</a>
+			<a href="msgcallback.html" class="tsd-kind-icon">Msg<wbr>Callback</a>
+		</li>
+		<li class="current tsd-kind-interface">
+			<a href="natsconnectionoptions.html" class="tsd-kind-icon">Nats<wbr>Connection<wbr>Options</a>
+			<ul>
+				<li class=" tsd-kind-property tsd-parent-kind-interface">
+					<a href="natsconnectionoptions.html#encoding" class="tsd-kind-icon">encoding</a>
+				</li>
+				<li class=" tsd-kind-property tsd-parent-kind-interface">
+					<a href="natsconnectionoptions.html#maxpingout" class="tsd-kind-icon">max<wbr>Ping<wbr>Out</a>
+				</li>
+				<li class=" tsd-kind-property tsd-parent-kind-interface">
+					<a href="natsconnectionoptions.html#maxreconnectattempts" class="tsd-kind-icon">max<wbr>Reconnect<wbr>Attempts</a>
+				</li>
+				<li class=" tsd-kind-property tsd-parent-kind-interface">
+					<a href="natsconnectionoptions.html#name" class="tsd-kind-icon">name</a>
+				</li>
+				<li class=" tsd-kind-property tsd-parent-kind-interface">
+					<a href="natsconnectionoptions.html#nkey" class="tsd-kind-icon">nkey</a>
+				</li>
+				<li class=" tsd-kind-property tsd-parent-kind-interface">
+					<a href="natsconnectionoptions.html#nkeycreds" class="tsd-kind-icon">nkey<wbr>Creds</a>
+				</li>
+				<li class=" tsd-kind-property tsd-parent-kind-interface">
+					<a href="natsconnectionoptions.html#noecho" class="tsd-kind-icon">no<wbr>Echo</a>
+				</li>
+				<li class=" tsd-kind-property tsd-parent-kind-interface">
+					<a href="natsconnectionoptions.html#norandomize" class="tsd-kind-icon">no<wbr>Randomize</a>
+				</li>
+				<li class=" tsd-kind-property tsd-parent-kind-interface">
+					<a href="natsconnectionoptions.html#noncesigner" class="tsd-kind-icon">nonce<wbr>Signer</a>
+				</li>
+				<li class=" tsd-kind-property tsd-parent-kind-interface">
+					<a href="natsconnectionoptions.html#pass" class="tsd-kind-icon">pass</a>
+				</li>
+				<li class=" tsd-kind-property tsd-parent-kind-interface">
+					<a href="natsconnectionoptions.html#payload" class="tsd-kind-icon">payload</a>
+				</li>
+				<li class=" tsd-kind-property tsd-parent-kind-interface">
+					<a href="natsconnectionoptions.html#pinginterval" class="tsd-kind-icon">ping<wbr>Interval</a>
+				</li>
+				<li class=" tsd-kind-property tsd-parent-kind-interface">
+					<a href="natsconnectionoptions.html#port" class="tsd-kind-icon">port</a>
+				</li>
+				<li class=" tsd-kind-property tsd-parent-kind-interface">
+					<a href="natsconnectionoptions.html#reconnect" class="tsd-kind-icon">reconnect</a>
+				</li>
+				<li class=" tsd-kind-property tsd-parent-kind-interface">
+					<a href="natsconnectionoptions.html#reconnecttimewait" class="tsd-kind-icon">reconnect<wbr>Time<wbr>Wait</a>
+				</li>
+				<li class=" tsd-kind-property tsd-parent-kind-interface">
+					<a href="natsconnectionoptions.html#servers" class="tsd-kind-icon">servers</a>
+				</li>
+				<li class=" tsd-kind-property tsd-parent-kind-interface">
+					<a href="natsconnectionoptions.html#timeout" class="tsd-kind-icon">timeout</a>
+				</li>
+				<li class=" tsd-kind-property tsd-parent-kind-interface">
+					<a href="natsconnectionoptions.html#tls" class="tsd-kind-icon">tls</a>
+				</li>
+				<li class=" tsd-kind-property tsd-parent-kind-interface">
+					<a href="natsconnectionoptions.html#token" class="tsd-kind-icon">token</a>
+				</li>
+				<li class=" tsd-kind-property tsd-parent-kind-interface">
+					<a href="natsconnectionoptions.html#url" class="tsd-kind-icon">url</a>
+				</li>
+				<li class=" tsd-kind-property tsd-parent-kind-interface">
+					<a href="natsconnectionoptions.html#user" class="tsd-kind-icon">user</a>
+				</li>
+				<li class=" tsd-kind-property tsd-parent-kind-interface">
+					<a href="natsconnectionoptions.html#usercreds" class="tsd-kind-icon">user<wbr>Creds</a>
+				</li>
+				<li class=" tsd-kind-property tsd-parent-kind-interface">
+					<a href="natsconnectionoptions.html#userjwt" class="tsd-kind-icon">userJWT</a>
+				</li>
+				<li class=" tsd-kind-property tsd-parent-kind-interface">
+					<a href="natsconnectionoptions.html#waitonfirstconnect" class="tsd-kind-icon">wait<wbr>OnFirst<wbr>Connect</a>
+				</li>
+				<li class=" tsd-kind-property tsd-parent-kind-interface">
+					<a href="natsconnectionoptions.html#yieldtime" class="tsd-kind-icon">yield<wbr>Time</a>
+				</li>
+			</ul>
 		</li>
 		<li class=" tsd-kind-interface">
-			<a href="interfaces/natsconnectionoptions.html" class="tsd-kind-icon">Nats<wbr>Connection<wbr>Options</a>
+			<a href="noncesigner.html" class="tsd-kind-icon">Nonce<wbr>Signer</a>
 		</li>
 		<li class=" tsd-kind-interface">
-			<a href="interfaces/noncesigner.html" class="tsd-kind-icon">Nonce<wbr>Signer</a>
+			<a href="permissionserrorcallback.html" class="tsd-kind-icon">Permissions<wbr>Error<wbr>Callback</a>
 		</li>
 		<li class=" tsd-kind-interface">
-			<a href="interfaces/permissionserrorcallback.html" class="tsd-kind-icon">Permissions<wbr>Error<wbr>Callback</a>
+			<a href="reconnectingdisconnectcallback.html" class="tsd-kind-icon">Reconnecting<wbr>Disconnect<wbr>Callback</a>
 		</li>
 		<li class=" tsd-kind-interface">
-			<a href="interfaces/reconnectingdisconnectcallback.html" class="tsd-kind-icon">Reconnecting<wbr>Disconnect<wbr>Callback</a>
+			<a href="serverinfo.html" class="tsd-kind-icon">Server<wbr>Info</a>
 		</li>
 		<li class=" tsd-kind-interface">
-			<a href="interfaces/serverinfo.html" class="tsd-kind-icon">Server<wbr>Info</a>
+			<a href="serverschangedcallback.html" class="tsd-kind-icon">Servers<wbr>Changed<wbr>Callback</a>
 		</li>
 		<li class=" tsd-kind-interface">
-			<a href="interfaces/serverschangedcallback.html" class="tsd-kind-icon">Servers<wbr>Changed<wbr>Callback</a>
+			<a href="serverschangedevent.html" class="tsd-kind-icon">Servers<wbr>Changed<wbr>Event</a>
 		</li>
 		<li class=" tsd-kind-interface">
-			<a href="interfaces/serverschangedevent.html" class="tsd-kind-icon">Servers<wbr>Changed<wbr>Event</a>
+			<a href="subevent.html" class="tsd-kind-icon">Sub<wbr>Event</a>
 		</li>
 		<li class=" tsd-kind-interface">
-			<a href="interfaces/subevent.html" class="tsd-kind-icon">Sub<wbr>Event</a>
+			<a href="subscribeunsubscribecallback.html" class="tsd-kind-icon">Subscribe<wbr>Unsubscribe<wbr>Callback</a>
 		</li>
 		<li class=" tsd-kind-interface">
-			<a href="interfaces/subscribeunsubscribecallback.html" class="tsd-kind-icon">Subscribe<wbr>Unsubscribe<wbr>Callback</a>
+			<a href="subscriptionoptions.html" class="tsd-kind-icon">Subscription<wbr>Options</a>
 		</li>
 		<li class=" tsd-kind-interface">
-			<a href="interfaces/subscriptionoptions.html" class="tsd-kind-icon">Subscription<wbr>Options</a>
-		</li>
-		<li class=" tsd-kind-interface">
-			<a href="interfaces/yieldcallback.html" class="tsd-kind-icon">Yield<wbr>Callback</a>
+			<a href="yieldcallback.html" class="tsd-kind-icon">Yield<wbr>Callback</a>
 		</li>
 		<li class=" tsd-kind-variable">
-			<a href="index.html#version" class="tsd-kind-icon">VERSION</a>
+			<a href="../index.html#version" class="tsd-kind-icon">VERSION</a>
 		</li>
 		<li class=" tsd-kind-function">
-			<a href="index.html#connect" class="tsd-kind-icon">connect</a>
+			<a href="../index.html#connect" class="tsd-kind-icon">connect</a>
 		</li>
 	</ul>
 </nav>
 <div class="container container-main">
 	<div class="content-wrap">
+		<section class="tsd-panel tsd-hierarchy">
+			<h3>Hierarchy</h3>
+			<ul class="tsd-hierarchy">
+				<li>
+					<span class="target">NatsConnectionOptions</span>
+				</li>
+			</ul>
+		</section>
 		<section class="tsd-panel-group tsd-index-group">
 			<h2>Index</h2>
 			<section class="tsd-panel tsd-index-panel">
 				<div class="tsd-index-content">
 					<section class="tsd-index-section ">
-						<h3>Enumerations</h3>
+						<h3>Properties</h3>
 						<ul class="tsd-index-list">
-							<li class="tsd-kind-enum"><a href="enums/errorcode.html" class="tsd-kind-icon">Error<wbr>Code</a></li>
-							<li class="tsd-kind-enum"><a href="enums/payload.html" class="tsd-kind-icon">Payload</a></li>
-						</ul>
-					</section>
-					<section class="tsd-index-section ">
-						<h3>Classes</h3>
-						<ul class="tsd-index-list">
-							<li class="tsd-kind-class"><a href="classes/client.html" class="tsd-kind-icon">Client</a></li>
-							<li class="tsd-kind-class"><a href="classes/natserror.html" class="tsd-kind-icon">Nats<wbr>Error</a></li>
-							<li class="tsd-kind-class"><a href="classes/subscription.html" class="tsd-kind-icon">Subscription</a></li>
-						</ul>
-					</section>
-					<section class="tsd-index-section ">
-						<h3>Interfaces</h3>
-						<ul class="tsd-index-list">
-							<li class="tsd-kind-interface"><a href="interfaces/connectreconnectcallback.html" class="tsd-kind-icon">Connect<wbr>Reconnect<wbr>Callback</a></li>
-							<li class="tsd-kind-interface"><a href="interfaces/flushcallback.html" class="tsd-kind-icon">Flush<wbr>Callback</a></li>
-							<li class="tsd-kind-interface"><a href="interfaces/jwtprovider.html" class="tsd-kind-icon">JWTProvider</a></li>
-							<li class="tsd-kind-interface"><a href="interfaces/msg.html" class="tsd-kind-icon">Msg</a></li>
-							<li class="tsd-kind-interface"><a href="interfaces/msgcallback.html" class="tsd-kind-icon">Msg<wbr>Callback</a></li>
-							<li class="tsd-kind-interface"><a href="interfaces/natsconnectionoptions.html" class="tsd-kind-icon">Nats<wbr>Connection<wbr>Options</a></li>
-							<li class="tsd-kind-interface"><a href="interfaces/noncesigner.html" class="tsd-kind-icon">Nonce<wbr>Signer</a></li>
-							<li class="tsd-kind-interface"><a href="interfaces/permissionserrorcallback.html" class="tsd-kind-icon">Permissions<wbr>Error<wbr>Callback</a></li>
-							<li class="tsd-kind-interface"><a href="interfaces/reconnectingdisconnectcallback.html" class="tsd-kind-icon">Reconnecting<wbr>Disconnect<wbr>Callback</a></li>
-							<li class="tsd-kind-interface"><a href="interfaces/serverinfo.html" class="tsd-kind-icon">Server<wbr>Info</a></li>
-							<li class="tsd-kind-interface"><a href="interfaces/serverschangedcallback.html" class="tsd-kind-icon">Servers<wbr>Changed<wbr>Callback</a></li>
-							<li class="tsd-kind-interface"><a href="interfaces/serverschangedevent.html" class="tsd-kind-icon">Servers<wbr>Changed<wbr>Event</a></li>
-							<li class="tsd-kind-interface"><a href="interfaces/subevent.html" class="tsd-kind-icon">Sub<wbr>Event</a></li>
-							<li class="tsd-kind-interface"><a href="interfaces/subscribeunsubscribecallback.html" class="tsd-kind-icon">Subscribe<wbr>Unsubscribe<wbr>Callback</a></li>
-							<li class="tsd-kind-interface"><a href="interfaces/subscriptionoptions.html" class="tsd-kind-icon">Subscription<wbr>Options</a></li>
-							<li class="tsd-kind-interface"><a href="interfaces/yieldcallback.html" class="tsd-kind-icon">Yield<wbr>Callback</a></li>
-						</ul>
-					</section>
-					<section class="tsd-index-section ">
-						<h3>Variables</h3>
-						<ul class="tsd-index-list">
-							<li class="tsd-kind-variable"><a href="index.html#version" class="tsd-kind-icon">VERSION</a></li>
-						</ul>
-					</section>
-					<section class="tsd-index-section ">
-						<h3>Functions</h3>
-						<ul class="tsd-index-list">
-							<li class="tsd-kind-function"><a href="index.html#connect" class="tsd-kind-icon">connect</a></li>
+							<li class="tsd-kind-property tsd-parent-kind-interface"><a href="natsconnectionoptions.html#encoding" class="tsd-kind-icon">encoding</a></li>
+							<li class="tsd-kind-property tsd-parent-kind-interface"><a href="natsconnectionoptions.html#maxpingout" class="tsd-kind-icon">max<wbr>Ping<wbr>Out</a></li>
+							<li class="tsd-kind-property tsd-parent-kind-interface"><a href="natsconnectionoptions.html#maxreconnectattempts" class="tsd-kind-icon">max<wbr>Reconnect<wbr>Attempts</a></li>
+							<li class="tsd-kind-property tsd-parent-kind-interface"><a href="natsconnectionoptions.html#name" class="tsd-kind-icon">name</a></li>
+							<li class="tsd-kind-property tsd-parent-kind-interface"><a href="natsconnectionoptions.html#nkey" class="tsd-kind-icon">nkey</a></li>
+							<li class="tsd-kind-property tsd-parent-kind-interface"><a href="natsconnectionoptions.html#nkeycreds" class="tsd-kind-icon">nkey<wbr>Creds</a></li>
+							<li class="tsd-kind-property tsd-parent-kind-interface"><a href="natsconnectionoptions.html#noecho" class="tsd-kind-icon">no<wbr>Echo</a></li>
+							<li class="tsd-kind-property tsd-parent-kind-interface"><a href="natsconnectionoptions.html#norandomize" class="tsd-kind-icon">no<wbr>Randomize</a></li>
+							<li class="tsd-kind-property tsd-parent-kind-interface"><a href="natsconnectionoptions.html#noncesigner" class="tsd-kind-icon">nonce<wbr>Signer</a></li>
+							<li class="tsd-kind-property tsd-parent-kind-interface"><a href="natsconnectionoptions.html#pass" class="tsd-kind-icon">pass</a></li>
+							<li class="tsd-kind-property tsd-parent-kind-interface"><a href="natsconnectionoptions.html#payload" class="tsd-kind-icon">payload</a></li>
+							<li class="tsd-kind-property tsd-parent-kind-interface"><a href="natsconnectionoptions.html#pinginterval" class="tsd-kind-icon">ping<wbr>Interval</a></li>
+							<li class="tsd-kind-property tsd-parent-kind-interface"><a href="natsconnectionoptions.html#port" class="tsd-kind-icon">port</a></li>
+							<li class="tsd-kind-property tsd-parent-kind-interface"><a href="natsconnectionoptions.html#reconnect" class="tsd-kind-icon">reconnect</a></li>
+							<li class="tsd-kind-property tsd-parent-kind-interface"><a href="natsconnectionoptions.html#reconnecttimewait" class="tsd-kind-icon">reconnect<wbr>Time<wbr>Wait</a></li>
+							<li class="tsd-kind-property tsd-parent-kind-interface"><a href="natsconnectionoptions.html#servers" class="tsd-kind-icon">servers</a></li>
+							<li class="tsd-kind-property tsd-parent-kind-interface"><a href="natsconnectionoptions.html#timeout" class="tsd-kind-icon">timeout</a></li>
+							<li class="tsd-kind-property tsd-parent-kind-interface"><a href="natsconnectionoptions.html#tls" class="tsd-kind-icon">tls</a></li>
+							<li class="tsd-kind-property tsd-parent-kind-interface"><a href="natsconnectionoptions.html#token" class="tsd-kind-icon">token</a></li>
+							<li class="tsd-kind-property tsd-parent-kind-interface"><a href="natsconnectionoptions.html#url" class="tsd-kind-icon">url</a></li>
+							<li class="tsd-kind-property tsd-parent-kind-interface"><a href="natsconnectionoptions.html#user" class="tsd-kind-icon">user</a></li>
+							<li class="tsd-kind-property tsd-parent-kind-interface"><a href="natsconnectionoptions.html#usercreds" class="tsd-kind-icon">user<wbr>Creds</a></li>
+							<li class="tsd-kind-property tsd-parent-kind-interface"><a href="natsconnectionoptions.html#userjwt" class="tsd-kind-icon">userJWT</a></li>
+							<li class="tsd-kind-property tsd-parent-kind-interface"><a href="natsconnectionoptions.html#waitonfirstconnect" class="tsd-kind-icon">wait<wbr>OnFirst<wbr>Connect</a></li>
+							<li class="tsd-kind-property tsd-parent-kind-interface"><a href="natsconnectionoptions.html#yieldtime" class="tsd-kind-icon">yield<wbr>Time</a></li>
 						</ul>
 					</section>
 				</div>
 			</section>
 		</section>
 		<section class="tsd-panel-group tsd-member-group ">
-			<h2>Variables</h2>
-			<section class="tsd-panel tsd-member tsd-kind-variable">
-				<a name="version" class="tsd-anchor"></a>
-				<h3><span class="tsd-flag ts-flagConst">Const</span> VERSION</h3>
-				<div class="tsd-signature tsd-kind-icon">VERSION<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">any</span><span class="tsd-signature-symbol"> = require(&#x27;../package.json&#x27;).version</span></div>
+			<h2>Properties</h2>
+			<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+				<a name="encoding" class="tsd-anchor"></a>
+				<h3><span class="tsd-flag ts-flagOptional">Optional</span> encoding</h3>
+				<div class="tsd-signature tsd-kind-icon">encoding<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">BufferEncoding</span></div>
 				<aside class="tsd-sources">
 					<ul>
-						<li>Defined in src/nats.ts:36</li>
+						<li>Defined in src/nats.ts:204</li>
 					</ul>
 				</aside>
 				<div class="tsd-comment tsd-typography">
 					<div class="lead">
-						<p>Version of the ts-nats library</p>
+						<p>Sets the encoding type used when dealing with <a href="../enums/payload.html#string">Payload.STRING</a> messages. Only node-supported encoding allowed.</p>
 					</div>
 				</div>
 			</section>
-		</section>
-		<section class="tsd-panel-group tsd-member-group ">
-			<h2>Functions</h2>
-			<section class="tsd-panel tsd-member tsd-kind-function">
-				<a name="connect" class="tsd-anchor"></a>
-				<h3>connect</h3>
-				<ul class="tsd-signatures tsd-kind-function">
-					<li class="tsd-signature tsd-kind-icon">connect<span class="tsd-signature-symbol">(</span>opts<span class="tsd-signature-symbol">?: </span><a href="interfaces/natsconnectionoptions.html" class="tsd-signature-type">NatsConnectionOptions</a><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="classes/client.html" class="tsd-signature-type">Client</a><span class="tsd-signature-symbol">&gt;</span></li>
-				</ul>
-				<ul class="tsd-descriptions">
-					<li class="tsd-description">
-						<aside class="tsd-sources">
-							<ul>
-								<li>Defined in src/nats.ts:531</li>
-							</ul>
-						</aside>
-						<div class="tsd-comment tsd-typography">
-							<div class="lead">
-								<p>Creates a NATS <a href="classes/client.html">Client</a> by connecting to the specified server, port or using the specified <a href="interfaces/natsconnectionoptions.html">NatsConnectionOptions</a>.</p>
-							</div>
-						</div>
-						<h4 class="tsd-parameters-title">Parameters</h4>
-						<ul class="tsd-parameters">
-							<li>
-								<h5><span class="tsd-flag ts-flagOptional">Optional</span> opts: <a href="interfaces/natsconnectionoptions.html" class="tsd-signature-type">NatsConnectionOptions</a><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">number</span></h5>
-							</li>
-						</ul>
-						<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="classes/client.html" class="tsd-signature-type">Client</a><span class="tsd-signature-symbol">&gt;</span></h4>
-						<p>Promise<Client></p>
-					</li>
-				</ul>
+			<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+				<a name="maxpingout" class="tsd-anchor"></a>
+				<h3><span class="tsd-flag ts-flagOptional">Optional</span> max<wbr>Ping<wbr>Out</h3>
+				<div class="tsd-signature tsd-kind-icon">max<wbr>Ping<wbr>Out<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">number</span></div>
+				<aside class="tsd-sources">
+					<ul>
+						<li>Defined in src/nats.ts:206</li>
+					</ul>
+				</aside>
+				<div class="tsd-comment tsd-typography">
+					<div class="lead">
+						<p>Maximum number of client PINGs that can be outstanding before the connection is considered stale.</p>
+					</div>
+				</div>
+			</section>
+			<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+				<a name="maxreconnectattempts" class="tsd-anchor"></a>
+				<h3><span class="tsd-flag ts-flagOptional">Optional</span> max<wbr>Reconnect<wbr>Attempts</h3>
+				<div class="tsd-signature tsd-kind-icon">max<wbr>Reconnect<wbr>Attempts<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">number</span></div>
+				<aside class="tsd-sources">
+					<ul>
+						<li>Defined in src/nats.ts:208</li>
+					</ul>
+				</aside>
+				<div class="tsd-comment tsd-typography">
+					<div class="lead">
+						<p>Maximum number of consecutive reconnect attempts before the client closes the connection. Specify <code>-1</code> to retry forever.</p>
+					</div>
+				</div>
+			</section>
+			<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+				<a name="name" class="tsd-anchor"></a>
+				<h3><span class="tsd-flag ts-flagOptional">Optional</span> name</h3>
+				<div class="tsd-signature tsd-kind-icon">name<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">string</span></div>
+				<aside class="tsd-sources">
+					<ul>
+						<li>Defined in src/nats.ts:210</li>
+					</ul>
+				</aside>
+				<div class="tsd-comment tsd-typography">
+					<div class="lead">
+						<p>A name for the client. Useful for identifying a client on the server monitoring and logs.</p>
+					</div>
+				</div>
+			</section>
+			<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+				<a name="nkey" class="tsd-anchor"></a>
+				<h3><span class="tsd-flag ts-flagOptional">Optional</span> nkey</h3>
+				<div class="tsd-signature tsd-kind-icon">nkey<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">string</span></div>
+				<aside class="tsd-sources">
+					<ul>
+						<li>Defined in src/nats.ts:246</li>
+					</ul>
+				</aside>
+				<div class="tsd-comment tsd-typography">
+					<div class="lead">
+						<p>Public NKey Identifying the user.</p>
+					</div>
+				</div>
+			</section>
+			<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+				<a name="nkeycreds" class="tsd-anchor"></a>
+				<h3><span class="tsd-flag ts-flagOptional">Optional</span> nkey<wbr>Creds</h3>
+				<div class="tsd-signature tsd-kind-icon">nkey<wbr>Creds<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">string</span></div>
+				<aside class="tsd-sources">
+					<ul>
+						<li>Defined in src/nats.ts:252</li>
+					</ul>
+				</aside>
+				<div class="tsd-comment tsd-typography">
+					<div class="lead">
+						<p>nkey file path - will automatically setup an <code>nkey</code> and <code>nonceSigner</code> that references the specified nkey seed file.</p>
+					</div>
+				</div>
+			</section>
+			<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+				<a name="noecho" class="tsd-anchor"></a>
+				<h3><span class="tsd-flag ts-flagOptional">Optional</span> no<wbr>Echo</h3>
+				<div class="tsd-signature tsd-kind-icon">no<wbr>Echo<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">false</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">true</span></div>
+				<aside class="tsd-sources">
+					<ul>
+						<li>Defined in src/nats.ts:202</li>
+					</ul>
+				</aside>
+				<div class="tsd-comment tsd-typography">
+					<div class="lead">
+						<p>Requires server support 1.2.0+. When set to <code>true</code>, the server will not forward messages published by the client
+						to the client&#39;s subscriptions. By default value is ignored unless it is set to <code>true</code> explicitly</p>
+					</div>
+				</div>
+			</section>
+			<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+				<a name="norandomize" class="tsd-anchor"></a>
+				<h3><span class="tsd-flag ts-flagOptional">Optional</span> no<wbr>Randomize</h3>
+				<div class="tsd-signature tsd-kind-icon">no<wbr>Randomize<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">false</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">true</span></div>
+				<aside class="tsd-sources">
+					<ul>
+						<li>Defined in src/nats.ts:212</li>
+					</ul>
+				</aside>
+				<div class="tsd-comment tsd-typography">
+					<div class="lead">
+						<p>When <code>true</code> does not randomize the order of servers provided to connect.</p>
+					</div>
+				</div>
+			</section>
+			<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+				<a name="noncesigner" class="tsd-anchor"></a>
+				<h3><span class="tsd-flag ts-flagOptional">Optional</span> nonce<wbr>Signer</h3>
+				<div class="tsd-signature tsd-kind-icon">nonce<wbr>Signer<span class="tsd-signature-symbol">:</span> <a href="noncesigner.html" class="tsd-signature-type">NonceSigner</a></div>
+				<aside class="tsd-sources">
+					<ul>
+						<li>Defined in src/nats.ts:244</li>
+					</ul>
+				</aside>
+				<div class="tsd-comment tsd-typography">
+					<div class="lead">
+						<p>Nonce signer - a function that signs the nonce challenge sent by the server.</p>
+					</div>
+				</div>
+			</section>
+			<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+				<a name="pass" class="tsd-anchor"></a>
+				<h3><span class="tsd-flag ts-flagOptional">Optional</span> pass</h3>
+				<div class="tsd-signature tsd-kind-icon">pass<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">string</span></div>
+				<aside class="tsd-sources">
+					<ul>
+						<li>Defined in src/nats.ts:214</li>
+					</ul>
+				</aside>
+				<div class="tsd-comment tsd-typography">
+					<div class="lead">
+						<p>User password.</p>
+					</div>
+				</div>
+			</section>
+			<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+				<a name="payload" class="tsd-anchor"></a>
+				<h3><span class="tsd-flag ts-flagOptional">Optional</span> payload</h3>
+				<div class="tsd-signature tsd-kind-icon">payload<span class="tsd-signature-symbol">:</span> <a href="../enums/payload.html" class="tsd-signature-type">Payload</a></div>
+				<aside class="tsd-sources">
+					<ul>
+						<li>Defined in src/nats.ts:216</li>
+					</ul>
+				</aside>
+				<div class="tsd-comment tsd-typography">
+					<div class="lead">
+						<p>Specifies the payload type of the message. See <a href="../enums/payload.html">Payload</a>. Payload determines <a href="msg.html#data">Msg.data</a> types and types published.</p>
+					</div>
+				</div>
+			</section>
+			<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+				<a name="pinginterval" class="tsd-anchor"></a>
+				<h3><span class="tsd-flag ts-flagOptional">Optional</span> ping<wbr>Interval</h3>
+				<div class="tsd-signature tsd-kind-icon">ping<wbr>Interval<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">number</span></div>
+				<aside class="tsd-sources">
+					<ul>
+						<li>Defined in src/nats.ts:220</li>
+					</ul>
+				</aside>
+				<div class="tsd-comment tsd-typography">
+					<div class="lead">
+						<p>Interval in milliseconds that the client will send PINGs to the server. See <a href="natsconnectionoptions.html#maxpingout">NatsConnectionOptions.maxPingOut</a></p>
+					</div>
+				</div>
+			</section>
+			<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+				<a name="port" class="tsd-anchor"></a>
+				<h3><span class="tsd-flag ts-flagOptional">Optional</span> port</h3>
+				<div class="tsd-signature tsd-kind-icon">port<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">number</span></div>
+				<aside class="tsd-sources">
+					<ul>
+						<li>Defined in src/nats.ts:222</li>
+					</ul>
+				</aside>
+				<div class="tsd-comment tsd-typography">
+					<div class="lead">
+						<p>Specifies the port on the localhost to make a connection.</p>
+					</div>
+				</div>
+			</section>
+			<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+				<a name="reconnect" class="tsd-anchor"></a>
+				<h3><span class="tsd-flag ts-flagOptional">Optional</span> reconnect</h3>
+				<div class="tsd-signature tsd-kind-icon">reconnect<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">false</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">true</span></div>
+				<aside class="tsd-sources">
+					<ul>
+						<li>Defined in src/nats.ts:224</li>
+					</ul>
+				</aside>
+				<div class="tsd-comment tsd-typography">
+					<div class="lead">
+						<p>Specifies whether the client should attempt reconnects.</p>
+					</div>
+				</div>
+			</section>
+			<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+				<a name="reconnecttimewait" class="tsd-anchor"></a>
+				<h3><span class="tsd-flag ts-flagOptional">Optional</span> reconnect<wbr>Time<wbr>Wait</h3>
+				<div class="tsd-signature tsd-kind-icon">reconnect<wbr>Time<wbr>Wait<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">number</span></div>
+				<aside class="tsd-sources">
+					<ul>
+						<li>Defined in src/nats.ts:226</li>
+					</ul>
+				</aside>
+				<div class="tsd-comment tsd-typography">
+					<div class="lead">
+						<p>Specifies the interval in milliseconds between reconnect attempts.</p>
+					</div>
+				</div>
+			</section>
+			<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+				<a name="servers" class="tsd-anchor"></a>
+				<h3><span class="tsd-flag ts-flagOptional">Optional</span> servers</h3>
+				<div class="tsd-signature tsd-kind-icon">servers<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Array</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">&gt;</span></div>
+				<aside class="tsd-sources">
+					<ul>
+						<li>Defined in src/nats.ts:228</li>
+					</ul>
+				</aside>
+				<div class="tsd-comment tsd-typography">
+					<div class="lead">
+						<p>A list of server URLs where the client should attempt a connection.</p>
+					</div>
+				</div>
+			</section>
+			<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+				<a name="timeout" class="tsd-anchor"></a>
+				<h3><span class="tsd-flag ts-flagOptional">Optional</span> timeout</h3>
+				<div class="tsd-signature tsd-kind-icon">timeout<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">number</span></div>
+				<aside class="tsd-sources">
+					<ul>
+						<li>Defined in src/nats.ts:254</li>
+					</ul>
+				</aside>
+				<div class="tsd-comment tsd-typography">
+					<div class="lead">
+						<p>number of milliseconds when making a connection to wait for the connection to succeed. Must be greater than zero.</p>
+					</div>
+				</div>
+			</section>
+			<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+				<a name="tls" class="tsd-anchor"></a>
+				<h3><span class="tsd-flag ts-flagOptional">Optional</span> tls</h3>
+				<div class="tsd-signature tsd-kind-icon">tls<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">TlsOptions</span></div>
+				<aside class="tsd-sources">
+					<ul>
+						<li>Defined in src/nats.ts:230</li>
+					</ul>
+				</aside>
+				<div class="tsd-comment tsd-typography">
+					<div class="lead">
+						<p>If true, or set as a tls.TlsOption object, requires the connection to be secure. Fine grain tls settings, such as certificates can be specified by using a tls.TlsOptions object.</p>
+					</div>
+				</div>
+			</section>
+			<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+				<a name="token" class="tsd-anchor"></a>
+				<h3><span class="tsd-flag ts-flagOptional">Optional</span> token</h3>
+				<div class="tsd-signature tsd-kind-icon">token<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">string</span></div>
+				<aside class="tsd-sources">
+					<ul>
+						<li>Defined in src/nats.ts:232</li>
+					</ul>
+				</aside>
+				<div class="tsd-comment tsd-typography">
+					<div class="lead">
+						<p>Token to use for authentication.</p>
+					</div>
+				</div>
+			</section>
+			<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+				<a name="url" class="tsd-anchor"></a>
+				<h3><span class="tsd-flag ts-flagOptional">Optional</span> url</h3>
+				<div class="tsd-signature tsd-kind-icon">url<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">string</span></div>
+				<aside class="tsd-sources">
+					<ul>
+						<li>Defined in src/nats.ts:234</li>
+					</ul>
+				</aside>
+				<div class="tsd-comment tsd-typography">
+					<div class="lead">
+						<p>Server URL where the client should attempt a connection</p>
+					</div>
+				</div>
+			</section>
+			<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+				<a name="user" class="tsd-anchor"></a>
+				<h3><span class="tsd-flag ts-flagOptional">Optional</span> user</h3>
+				<div class="tsd-signature tsd-kind-icon">user<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">string</span></div>
+				<aside class="tsd-sources">
+					<ul>
+						<li>Defined in src/nats.ts:236</li>
+					</ul>
+				</aside>
+				<div class="tsd-comment tsd-typography">
+					<div class="lead">
+						<p>NATS username.</p>
+					</div>
+				</div>
+			</section>
+			<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+				<a name="usercreds" class="tsd-anchor"></a>
+				<h3><span class="tsd-flag ts-flagOptional">Optional</span> user<wbr>Creds</h3>
+				<div class="tsd-signature tsd-kind-icon">user<wbr>Creds<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">string</span></div>
+				<aside class="tsd-sources">
+					<ul>
+						<li>Defined in src/nats.ts:250</li>
+					</ul>
+				</aside>
+				<div class="tsd-comment tsd-typography">
+					<div class="lead">
+						<p>Credentials file path - will automatically setup an <code>nkey</code> and <code>nonceSigner</code> that references the specified credentials file.</p>
+					</div>
+				</div>
+			</section>
+			<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+				<a name="userjwt" class="tsd-anchor"></a>
+				<h3><span class="tsd-flag ts-flagOptional">Optional</span> userJWT</h3>
+				<div class="tsd-signature tsd-kind-icon">userJWT<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><a href="jwtprovider.html" class="tsd-signature-type">JWTProvider</a></div>
+				<aside class="tsd-sources">
+					<ul>
+						<li>Defined in src/nats.ts:248</li>
+					</ul>
+				</aside>
+				<div class="tsd-comment tsd-typography">
+					<div class="lead">
+						<p>A JWT identifying the user. Can be a static JWT string, or a function that returns a JWT when called.</p>
+					</div>
+				</div>
+			</section>
+			<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+				<a name="waitonfirstconnect" class="tsd-anchor"></a>
+				<h3><span class="tsd-flag ts-flagOptional">Optional</span> wait<wbr>OnFirst<wbr>Connect</h3>
+				<div class="tsd-signature tsd-kind-icon">wait<wbr>OnFirst<wbr>Connect<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">false</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">true</span></div>
+				<aside class="tsd-sources">
+					<ul>
+						<li>Defined in src/nats.ts:240</li>
+					</ul>
+				</aside>
+				<div class="tsd-comment tsd-typography">
+					<div class="lead">
+						<p>If true, the client will perform reconnect logic if it fails to connect when first started. Normal behaviour is for the client to try the supplied list of servers and close if none succeed.</p>
+					</div>
+				</div>
+			</section>
+			<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+				<a name="yieldtime" class="tsd-anchor"></a>
+				<h3><span class="tsd-flag ts-flagOptional">Optional</span> yield<wbr>Time</h3>
+				<div class="tsd-signature tsd-kind-icon">yield<wbr>Time<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">number</span></div>
+				<aside class="tsd-sources">
+					<ul>
+						<li>Defined in src/nats.ts:242</li>
+					</ul>
+				</aside>
+				<div class="tsd-comment tsd-typography">
+					<div class="lead">
+						<p>Specifies the max amount of time the client is allowed to process inbound messages before yielding for other IO tasks. When exceeded the client will yield.</p>
+					</div>
+				</div>
 			</section>
 		</section>
 		<footer class="with-border-bottom">
