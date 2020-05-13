@@ -32,11 +32,12 @@ export enum ErrorCode {
     CONN_TIMEOUT = 'CONN_TIMEOUT',
     INVALID_ENCODING = 'INVALID_ENCODING',
     NKEY_OR_JWT_REQ = 'NKEY_OR_JWT_REQ',
-    NONCE_SIGNER_NOTFUNC = 'NONCE_SIGNER_NOT_FUNC',
-    NON_SECURE_CONN_REQ = 'NON_SECURE_CONN_REQ',
     NO_ECHO_NOT_SUPPORTED = 'NO_ECHO_NOT_SUPPORTED',
     NO_SEED_IN_CREDS = 'NO_SEED_IN_CREDS',
     NO_USER_JWT_IN_CREDS = 'NO_USER_JWT_IN_CREDS',
+    NON_SECURE_CONN_REQ = 'NON_SECURE_CONN_REQ',
+    NONCE_SIGNER_NOTFUNC = 'NONCE_SIGNER_NOT_FUNC',
+    RECONNECT_DELAY_NOTFUNC = "RECONNECT_DELAY_NOT_FUNC",
     REQ_TIMEOUT = 'REQ_TIMEOUT',
     SECURE_CONN_REQ = 'SECURE_CONN_REQ',
     SIGNATURE_REQUIRED = 'SIG_REQ',
@@ -88,6 +89,7 @@ export class Messages {
         this.messages[ErrorCode.NON_SECURE_CONN_REQ] = 'Server does not support a secure connection.';
         this.messages[ErrorCode.NONCE_SIGNER_NOTFUNC] = 'nonce signer is not a function';
         this.messages[ErrorCode.REQ_TIMEOUT] = 'Request timed out.';
+        this.messages[ErrorCode.RECONNECT_DELAY_NOTFUNC] = "reconnectDelayHandler is not a function";
         this.messages[ErrorCode.SECURE_CONN_REQ] = 'Server requires a secure connection.';
         this.messages[ErrorCode.SIGNATURE_REQUIRED] = 'Server requires an nkey signature.';
         this.messages[ErrorCode.SSL_ERR] = 'TLS credentials verification failed';

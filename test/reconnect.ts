@@ -20,6 +20,7 @@ import {connect} from '../src/nats';
 import url from 'url';
 import {Lock} from './helpers/latch';
 import {createInbox} from '../src/util';
+import { Socket, createServer } from 'net'
 
 test.before(async (t) => {
     let server = await startServer();
@@ -281,3 +282,84 @@ test('indefinite reconnects', async (t) => {
 
     return lock.latch;
 });
+
+test('jitter', async(t) => {
+    t.plan(2)
+    let lock = new Lock();
+    let socket: Socket | null = null
+    const srv = createServer((c: Socket) => {
+        // @ts-ignore
+        socket = c
+        c.write('INFO ' + JSON.stringify({
+            server_id: 'TEST',
+            version: '0.0.0',
+            host: '127.0.0.1',
+            // @ts-ignore
+            port: srv.address.port,
+            auth_required: false
+        }) + '\r\n')
+        c.on('data', (d: string) => {
+            const r = d.toString()
+            const lines = r.split('\r\n')
+            lines.forEach((line) => {
+                if (line === '\r\n') {
+                    return
+                }
+                if (/^CONNECT\s+/.test(line)) {
+                } else if (/^PING/.test(line)) {
+                    c.write('PONG\r\n')
+
+                    process.nextTick(()=> {
+                        // @ts-ignore
+                        socket.destroy()
+                    })
+                } else if (/^SUB\s+/i.test(line)) {
+                } else if (/^PUB\s+/i.test(line)) {
+                } else if (/^UNSUB\s+/i.test(line)) {
+                } else if (/^MSG\s+/i.test(line)) {
+                } else if (/^INFO\s+/i.test(line)) {
+                }
+            })
+        })
+        c.on('error', () => {
+            // we are messing with the server so this will raise connection reset
+        })
+    })
+    // @ts-ignore
+    srv.sockets = []
+    srv.listen(0, async () => {
+        // @ts-ignore
+        const p = srv.address().port
+        connect({
+            url: 'nats://localhost:' + p,
+            reconnect: true,
+            reconnectTimeWait: 100,
+            reconnectJitter: 100
+        }).then(async (nc) => {
+            const durations: number[] = []
+            let startTime: number
+
+            nc.on('reconnect', () => {
+                const elapsed = Date.now() - startTime
+                durations.push(elapsed)
+                if (durations.length === 10) {
+                    const sum = durations.reduce((a, b) => {
+                        return a + b
+                    }, 0)
+                    t.true(sum >= 1000 && 2000 >= sum, `${sum} >= 1000 && 2000 >= ${sum}`)
+                    const extra = sum - 1000
+                    t.true(extra >= 100 && 900 >= extra, `${extra} >= 100 && 900 >= ${extra}`)
+                    srv.close(() => {
+                        nc.close()
+                        lock.unlock()
+                    })
+                }
+            })
+            nc.on('disconnect', () => {
+                startTime = Date.now()
+            })
+        })
+
+    })
+    return lock.latch
+})

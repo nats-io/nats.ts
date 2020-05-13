@@ -21,13 +21,14 @@ import {ErrorCode, INVALID_ENCODING_MSG_PREFIX, NatsError} from './error';
 import {createInbox, extend} from './util';
 import {ProtocolHandler} from './protocolhandler';
 import {
+    DEFAULT_JITTER, DEFAULT_JITTER_TLS,
     DEFAULT_MAX_PING_OUT,
     DEFAULT_MAX_RECONNECT_ATTEMPTS,
     DEFAULT_PING_INTERVAL,
     DEFAULT_PRE,
     DEFAULT_RECONNECT_TIME_WAIT,
     DEFAULT_URI
-} from './const';
+} from './const'
 import {next} from 'nuid';
 
 export {ErrorCode, NatsError}
@@ -224,6 +225,13 @@ export interface NatsConnectionOptions {
     reconnect?: boolean;
     /** Specifies the interval in milliseconds between reconnect attempts. */
     reconnectTimeWait?: number;
+    /** Random number between 0 and specified value to add to reconnectTimeWait */
+    reconnectJitter?: number;
+    /** Random number between 0 and specified value to add to reconnectTimeWait when TLS options are specified. */
+    reconnectJitterTLS?: number;
+    /** Specifies a function that determines how long to wait before the next connection attempt if the server has not been connected to. When specified,
+     * this disables `reconnectTimeWait`, `reconnectJitter` and `reconnectJitterTLS`. */
+    reconnectDelayHandler?: () => number;
     /** A list of server URLs where the client should attempt a connection. */
     servers?: Array<string>;
     /** If true, or set as a tls.TlsOption object, requires the connection to be secure. Fine grain tls settings, such as certificates can be specified by using a tls.TlsOptions object. */
@@ -331,6 +339,8 @@ export class Client extends events.EventEmitter {
             pedantic: false,
             pingInterval: DEFAULT_PING_INTERVAL,
             reconnect: true,
+            reconnectJitter: DEFAULT_JITTER,
+            reconnectJitterTLS: DEFAULT_JITTER_TLS,
             reconnectTimeWait: DEFAULT_RECONNECT_TIME_WAIT,
             tls: undefined,
             verbose: false,
@@ -375,6 +385,19 @@ export class Client extends events.EventEmitter {
         let bufEncoding = options.encoding as BufferEncoding;
         if (!Buffer.isEncoding(bufEncoding)) {
             throw new NatsError(INVALID_ENCODING_MSG_PREFIX + options.encoding, ErrorCode.INVALID_ENCODING);
+        }
+
+        if (options.reconnectDelayHandler && typeof options.reconnectDelayHandler !== 'function') {
+            throw NatsError.errorForCode(ErrorCode.RECONNECT_DELAY_NOTFUNC);
+        } else {
+            options.reconnectDelayHandler = () => {
+                let extra = options.tls ? options.reconnectJitterTLS : options.reconnectJitter
+                if (extra) {
+                    extra++
+                    extra = Math.floor(Math.random() * extra)
+                }
+                return options.reconnectTimeWait + extra
+            }
         }
 
         return options;

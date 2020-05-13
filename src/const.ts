@@ -22,6 +22,8 @@ export const DEFAULT_URI = DEFAULT_PRE + DEFAULT_PORT;
 // Reconnect Parameters, 2 sec wait, 10 tries
 export const DEFAULT_RECONNECT_TIME_WAIT = 2 * 1000;
 export const DEFAULT_MAX_RECONNECT_ATTEMPTS = 10;
+export const DEFAULT_JITTER = 100;
+export const DEFAULT_JITTER_TLS = 1000;
 
 // Ping interval
 export const DEFAULT_PING_INTERVAL = 2 * 60 * 1000; // 2 minutes
