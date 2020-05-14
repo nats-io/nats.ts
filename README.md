@@ -474,6 +474,10 @@ The following is the list of connection options and default values.
 | `payload`              | `Payload.STRING`          | Sets the payload type [`Payload.STRING`, `Payload.BINARY`, or `Payload.JSON`].
 | `pedantic`             | `false`                   | Turns on strict subject format checks
 | `pingInterval`         | `120000`                  | Number of milliseconds between client-sent pings
+| `reconnect`            | `true`                    | If false server will not attempt reconnecting
+| `reconnectJitter`      | `100`                     | Number of millis to randomize after `reconnectTimeWait`. See [jitter](#jitter).
+| `reconnectJitterTLS`   | `1000`                    | Number of millis to randomize after `reconnectTimeWait` when TLS options are specified. See [jitter](#jitter).
+| `reconnectDelayHandler`| Generated function        | A function that returns the number of millis to wait before the next connection to a server it connected to. See [jitter](#jitter).
 | `reconnectTimeWait`    | `2000`                    | If disconnected, the client will wait the specified number of milliseconds between reconnect attempts
 | `reconnect`            | `true`                    | If false server will not attempt reconnecting
 | `servers`              |                           | Array of connection `url`s
@@ -488,6 +492,21 @@ The following is the list of connection options and default values.
 | `waitOnFirstConnect`   | `false`                   | If `true` the server will fall back to a reconnect mode if it fails its first connection attempt.
 | `yieldTime`            |                           | If set and processing exceeds yieldTime, client will yield to IO callbacks before processing additional inbound messages 
 
+
+### Jitter 
+
+The settings `reconnectTimeWait`, `reconnectJitter`, `reconnectJitterTLS`, `reconnectDelayHandler` are all related.
+They control how long before the NATS client attempts to reconnect to a server it has previously connected.
+
+The intention of the settings is to spread out the number of clients attempting to reconnect to a server over a period of time, 
+and thus preventing a ["Thundering Herd"](https://docs.nats.io/developing-with-nats/reconnect/random).
+
+The relationship between these is:
+
+- If `reconnectDelayHandler` is specified, the client will wait the value returned by this function. No other value will be taken into account.
+- If the client specified TLS options, the client will generate a number between 0 and `reconnectJitterTLS` and add it to
+`reconnectTimeWait`.
+- If the client didn't specify TLS options, the client will generate a number between 0 and `reconnectJitter` and add it to `reconnectTimeWait`.
 
 
 ## Supported Node Versions    
