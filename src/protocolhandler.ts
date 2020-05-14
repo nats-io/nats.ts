@@ -135,7 +135,8 @@ export class ProtocolHandler extends EventEmitter {
         return new Promise<ProtocolHandler>(async(resolve, reject) => {
             let ph = new ProtocolHandler(client, opts);
             while(true) {
-                let wait = ph.options.reconnectTimeWait || 0;
+                // @ts-ignore
+                let wait = ph.options.reconnectDelayHandler();
                 let maxWait = wait;
                 for (let i=0; i < ph.servers.length(); i++) {
                     const srv = ph.selectServer();
@@ -1034,7 +1035,8 @@ export class ProtocolHandler extends EventEmitter {
         if (this.wasConnected) {
             this.reconnecting = true;
         }
-        let wait = this.options.reconnectTimeWait || 0;
+        //@ts-ignore
+        let wait = this.options.reconnectDelayHandler();
         let maxWait = wait;
         const now = Date.now();
         for (let i=0; i < this.servers.length(); i++) {
