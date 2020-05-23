@@ -99,7 +99,6 @@ export class ProtocolHandler extends EventEmitter {
     private pout: number = 0;
     private reconnecting: boolean = false;
     private servers: Servers;
-    private ssid: number = 1;
     private state: ParserState = ParserState.AWAITING_CONTROL;
     private transport: Transport;
     private url!: url.UrlObject;
@@ -203,7 +202,6 @@ export class ProtocolHandler extends EventEmitter {
         this.closed = true;
         this.removeAllListeners();
         this.closeStream();
-        this.ssid = -1;
         this.subscriptions.close();
         this.muxSubscriptions.close();
         this.state = ParserState.CLOSED;
@@ -276,7 +274,7 @@ export class ProtocolHandler extends EventEmitter {
             this.sendCommand(ProtocolHandler.buildProtocolMessage(`SUB ${sub.subject} ${sub.sid}`));
         }
         if (s.max) {
-            this.unsubscribe(this.ssid, s.max);
+            this.unsubscribe(sub.sid, s.max);
         }
         return new Subscription(sub, this);
     }

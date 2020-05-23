@@ -625,7 +625,7 @@ test('reconnect sends unsubs', (t) => {
         }).then((nc) => {
             conn = nc;
             nc.on('connect', () => {
-                nc.subscribe("test", (err, _) => {
+                nc.subscribe("test", (err) => {
                     if (err) {
                         t.fail(err.toString());
                     }
@@ -670,4 +670,35 @@ test('should handle hostports - servers', async (t) => {
     await nc.flush();
     t.pass()
     nc.close();
+})
+
+test('unsub gets right number of messages', async (t) => {
+    t.plan(4);
+    let sc = t.context as SC;
+    let u = new url.URL(sc.server.nats);
+    let nc = await connect({servers: [`${u.host}`] } as NatsConnectionOptions);
+
+    const inbox = createInbox()
+    let subC = 0
+    const sub = await nc.subscribe(`hello.*`, () => {
+        subC++
+    })
+    t.is(sub.sid, 1)
+
+    let sub2C = 0
+    const sub2 = await nc.subscribe(`${inbox}.*`, () => {
+        sub2C++
+    }, {max: 1})
+    t.is(sub2.sid, 2)
+
+    nc.publish(`${inbox}.world`, 'one')
+    nc.publish(`hello.world`, 'one')
+    nc.publish(`hello.world`, 'two')
+    nc.publish(`${inbox}.world`, 'two')
+    nc.publish(`hello.world`, 'three')
+    await nc.flush()
+    nc.close()
+
+    t.is(subC, 3)
+    t.is(sub2C, 1)
 })
