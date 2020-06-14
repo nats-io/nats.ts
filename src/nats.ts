@@ -232,6 +232,8 @@ export interface NatsConnectionOptions {
     /** Specifies a function that determines how long to wait before the next connection attempt if the server has not been connected to. When specified,
      * this disables `reconnectTimeWait`, `reconnectJitter` and `reconnectJitterTLS`. */
     reconnectDelayHandler?: () => number;
+    /** Specifies a function that handles errors from client EventEmitter */
+    errorHandler?: (error: any) => void;
     /** A list of server URLs where the client should attempt a connection. */
     servers?: Array<string>;
     /** If true, or set as a tls.TlsOption object, requires the connection to be secure. Fine grain tls settings, such as certificates can be specified by using a tls.TlsOptions object. */
@@ -317,6 +319,9 @@ export class Client extends events.EventEmitter {
         return new Promise((resolve, reject) => {
             let options = Client.parseOptions(opts);
             let client = new Client();
+            if (options.errorHandler) {
+                client.on('error', options.errorHandler);
+            }
             ProtocolHandler.connect(client, options)
                 .then((ph) => {
                     client.protocolHandler = ph;
