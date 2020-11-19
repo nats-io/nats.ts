@@ -20,6 +20,25 @@ npm install ts-nats
 npm install ts-nats@next
 ```
 
+## NATS.ts functionality is rolling into nats.js 2.0
+
+> The async functionality of nats.ts has been incorporated into nats.js 2.0. 
+> While the API has changed, moving to the new API should be fairly simple for users 
+> of ts-nats. The new API is a complete re-write of the client and uses a shared 
+> client implementation supporting all our JavaScript environments (Node.js, Browser, Deno). 
+> This means that code that you write for one platform will run on the other platforms 
+> with minimal changes; such as changing `require` statements for `imports`, and server 
+> specification in the case the websocket (browser) compatible library.
+>
+> While porting is easy, it will require changes on existing code bases. 
+> You can read more about it at https://github.com/nats-io/nats.js/blob/nd/README.md and 
+> https://github.com/nats-io/nats.js/blob/nd/migration.md.
+>
+> If you are getting started with nats.ts, please look at nats.js v2 instead.
+>
+> To play with NATS.js 2.0, `npm install nats@beta`.
+
+
 ## Basic Usage
 
 The starting point is the `connect()` function. You can give no arguments, a port, an URL or a
