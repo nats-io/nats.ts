@@ -20,7 +20,7 @@ npm install ts-nats
 npm install ts-nats@next
 ```
 
-## NATS.ts functionality is rolling into nats.js 2.0
+## Nats.ts functionality is rolling into Nats.js 2.0
 
 > The async functionality of nats.ts has been incorporated into nats.js 2.0. 
 > While the API has changed, moving to the new API should be fairly simple for users 
